@@ -1,0 +1,29 @@
+{
+  "name": "ruizhu-project",
+  "version": "1.0.0",
+  "description": "Ruizhu E-Commerce Platform - Multi-service Project",
+  "private": true,
+  "scripts": {
+    "start": "npm run start:all",
+    "start:all": "node scripts/start-all.js",
+    "setup:database": "node scripts/setup-database.js",
+    "dev:backend": "cd nestapi && npm run start:dev",
+    "dev:miniprogram": "cd miniprogram && npm run dev:h5",
+    "dev:admin": "cd admin && npm run dev",
+    "build:backend": "cd nestapi && npm run build",
+    "build:miniprogram": "cd miniprogram && npm run build:h5",
+    "build:admin": "cd admin && npm run build",
+    "install:all": "npm install && cd nestapi && npm install && cd ../miniprogram && npm install && cd ../admin && npm install",
+    "lint:all": "cd nestapi && npm run lint && cd ../miniprogram && npm run lint && cd ../admin && npm run lint"
+  },
+  "dependencies": {
+    "mysql2": "^3.6.5"
+  },
+  "keywords": [
+    "ruizhu",
+    "e-commerce",
+    "platform"
+  ],
+  "author": "Ruizhu Team",
+  "license": "MIT"
+}
