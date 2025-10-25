@@ -1,5 +1,5 @@
 #!/bin/bash
 
-# 启动前端小程序
+# 启动前端小程序 (H5 版本)
 cd /Users/peak/work/pikecode/ruizhu_project/miniprogram
-PORT=5173 npm run dev:h5
+PORT=8080 npm run dev:h5
