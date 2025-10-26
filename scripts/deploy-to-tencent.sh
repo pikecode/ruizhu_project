@@ -36,7 +36,7 @@ echo -e "${YELLOW}[1/6] 构建本地项目...${NC}"
 # 构建后端
 echo "构建 NestJS 后端..."
 cd nestapi
-npm install --production
+npm install --production --legacy-peer-deps
 npm run build
 cd ..
 
