@@ -4,7 +4,7 @@ import { JwtGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 
-@Controller('api/v1/wechat')
+@Controller('wechat')
 export class WechatController {
   constructor(private wechatService: WechatService) {}
 

@@ -7,6 +7,7 @@ const LoginPage = lazy(() => import('@/pages/Login'))
 const DashboardPage = lazy(() => import('@/pages/Dashboard'))
 const ProductsPage = lazy(() => import('@/pages/Products'))
 const OrdersPage = lazy(() => import('@/pages/Orders'))
+const CouponsPage = lazy(() => import('@/pages/Coupons'))
 const UsersPage = lazy(() => import('@/pages/Users'))
 const SettingsPage = lazy(() => import('@/pages/Settings'))
 const FileManagerPage = lazy(() => import('@/pages/FileManager'))
@@ -34,6 +35,10 @@ export const routes = [
   {
     path: '/orders',
     element: withSuspense(OrdersPage),
+  },
+  {
+    path: '/coupons',
+    element: withSuspense(CouponsPage),
   },
   {
     path: '/users',

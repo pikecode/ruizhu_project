@@ -24,32 +24,37 @@ export default function Layout({ children }: LayoutProps) {
   const menuItems = [
     {
       key: '/dashboard',
-      label: 'Dashboard',
+      label: '仪表板',
       onClick: () => navigate('/dashboard'),
     },
     {
       key: '/products',
-      label: 'Products',
+      label: '产品管理',
       onClick: () => navigate('/products'),
     },
     {
       key: '/orders',
-      label: 'Orders',
+      label: '订单管理',
       onClick: () => navigate('/orders'),
     },
     {
+      key: '/coupons',
+      label: '优惠券管理',
+      onClick: () => navigate('/coupons'),
+    },
+    {
       key: '/users',
-      label: 'Users',
+      label: '用户管理',
       onClick: () => navigate('/users'),
     },
     {
       key: '/files',
-      label: 'Files',
+      label: '文件管理',
       onClick: () => navigate('/files'),
     },
     {
       key: '/settings',
-      label: 'Settings',
+      label: '系统设置',
       onClick: () => navigate('/settings'),
     },
   ]
@@ -57,12 +62,12 @@ export default function Layout({ children }: LayoutProps) {
   const userMenu = [
     {
       key: 'profile',
-      label: 'Profile',
+      label: '个人资料',
       icon: <UserOutlined />,
     },
     {
       key: 'logout',
-      label: 'Logout',
+      label: '退出登录',
       icon: <LogoutOutlined />,
       onClick: handleLogout,
     },

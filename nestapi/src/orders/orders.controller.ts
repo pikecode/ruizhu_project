@@ -16,7 +16,7 @@ import { JwtGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Order, OrderStatus } from './entities/order.entity';
 
-@Controller('api/v1/orders')
+@Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 

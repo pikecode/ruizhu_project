@@ -11,14 +11,19 @@ import {
 } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
+import { WechatPayService } from './wechat-pay.service';
 import { CreatePaymentDto } from './dto/payment.dto';
+import { CreateWechatPayDto } from './dto/wechat-pay.dto';
 import { JwtGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Request } from 'express';
 
-@Controller('api/v1/payments')
+@Controller('payments')
 export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    private readonly wechatPayService: WechatPayService,
+  ) {}
 
   /**
    * 创建支付订单
@@ -167,6 +172,124 @@ export class PaymentsController {
       return {
         statusCode: HttpStatus.BAD_REQUEST,
         message: '获取失败',
+        data: null,
+      };
+    }
+  }
+
+  /**
+   * 创建微信JSAPI支付
+   */
+  @Post('wechat/jsapi')
+  @UseGuards(JwtGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async createWechatJSAPIPayment(
+    @CurrentUser() user: any,
+    @Body() createWechatPayDto: CreateWechatPayDto,
+  ) {
+    try {
+      const paymentParams = await this.wechatPayService.createPayment(
+        user.id,
+        createWechatPayDto,
+      );
+
+      return {
+        statusCode: HttpStatus.CREATED,
+        message: '微信支付订单创建成功',
+        data: paymentParams,
+      };
+    } catch (error) {
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || '创建微信支付订单失败',
+        data: null,
+      };
+    }
+  }
+
+  /**
+   * 微信V3回调处理
+   * 微信服务器会在支付完成后调用此接口
+   */
+  @Post('wechat/v3-callback')
+  @HttpCode(HttpStatus.OK)
+  async handleWechatV3Callback(@Req() req: RawBodyRequest<Request>) {
+    try {
+      const callbackData = req.body;
+
+      await this.wechatPayService.handleCallback(callbackData);
+
+      return {
+        code: 'SUCCESS',
+        message: '成功',
+      };
+    } catch (error) {
+      console.error('微信支付V3回调处理失败:', error);
+      return {
+        code: 'FAIL',
+        message: error.message,
+      };
+    }
+  }
+
+  /**
+   * 查询微信支付状态
+   */
+  @Get('wechat/:outTradeNo/status')
+  @UseGuards(JwtGuard)
+  async getWechatPaymentStatus(
+    @Param('outTradeNo') outTradeNo: string,
+  ) {
+    try {
+      const paymentStatus =
+        await this.wechatPayService.queryPaymentStatus(outTradeNo);
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: '查询成功',
+        data: paymentStatus,
+      };
+    } catch (error) {
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || '查询失败',
+        data: null,
+      };
+    }
+  }
+
+  /**
+   * 申请微信退款
+   */
+  @Post('wechat/refund')
+  @UseGuards(JwtGuard)
+  @HttpCode(HttpStatus.CREATED)
+  async refundWechatPayment(
+    @Body()
+    refundData: {
+      outTradeNo: string;
+      outRefundNo: string;
+      refundAmount: number;
+      totalAmount: number;
+    },
+  ) {
+    try {
+      const refundResult = await this.wechatPayService.refund(
+        refundData.outTradeNo,
+        refundData.outRefundNo,
+        refundData.refundAmount,
+        refundData.totalAmount,
+      );
+
+      return {
+        statusCode: HttpStatus.CREATED,
+        message: '退款申请已提交',
+        data: refundResult,
+      };
+    } catch (error) {
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || '退款申请失败',
         data: null,
       };
     }
