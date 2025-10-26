@@ -43,6 +43,11 @@ export default function Layout({ children }: LayoutProps) {
       onClick: () => navigate('/users'),
     },
     {
+      key: '/files',
+      label: 'Files',
+      onClick: () => navigate('/files'),
+    },
+    {
       key: '/settings',
       label: 'Settings',
       onClick: () => navigate('/settings'),

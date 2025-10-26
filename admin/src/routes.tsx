@@ -9,6 +9,7 @@ const ProductsPage = lazy(() => import('@/pages/Products'))
 const OrdersPage = lazy(() => import('@/pages/Orders'))
 const UsersPage = lazy(() => import('@/pages/Users'))
 const SettingsPage = lazy(() => import('@/pages/Settings'))
+const FileManagerPage = lazy(() => import('@/pages/FileManager'))
 const NotFoundPage = lazy(() => import('@/pages/NotFound'))
 
 const withSuspense = (Component: React.LazyExoticComponent<() => JSX.Element>) => (
@@ -37,6 +38,10 @@ export const routes = [
   {
     path: '/users',
     element: withSuspense(UsersPage),
+  },
+  {
+    path: '/files',
+    element: withSuspense(FileManagerPage),
   },
   {
     path: '/settings',
