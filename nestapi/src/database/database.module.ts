@@ -4,6 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { User } from '../users/entities/user.entity';
 import { Role } from '../roles/entities/role.entity';
 import { File } from '../files/entities/file.entity';
+import { Order } from '../orders/entities/order.entity';
+import { Address } from '../addresses/entities/address.entity';
+import { Payment } from '../payments/entities/payment.entity';
 
 @Module({
   imports: [
@@ -15,7 +18,7 @@ import { File } from '../files/entities/file.entity';
         username: configService.get<string>('DB_USER') || 'root',
         password: configService.get<string>('DB_PASSWORD') || '',
         database: configService.get<string>('DB_NAME') || 'ruizhu',
-        entities: [User, Role, File],
+        entities: [User, Role, File, Order, Address, Payment],
         synchronize: true,
         logging: false,
       }),

@@ -32,6 +32,22 @@ export class User {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
+  // WeChat fields
+  @Column({ type: 'varchar', length: 100, unique: true, nullable: true })
+  openid: string;
+
+  @Column({ type: 'text', nullable: true })
+  sessionKey: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  wechatNickname: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  avatar: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  unionid: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -7,6 +7,10 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
 import { FilesModule } from './files/files.module';
+import { WechatModule } from './wechat/wechat.module';
+import { OrdersModule } from './orders/orders.module';
+import { AddressesModule } from './addresses/addresses.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -19,6 +23,10 @@ import { FilesModule } from './files/files.module';
     UsersModule,
     RolesModule,
     FilesModule,
+    WechatModule,
+    OrdersModule,
+    AddressesModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
