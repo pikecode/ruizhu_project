@@ -156,8 +156,9 @@ const handleRegister = async () => {
     await authService.register(form.username, form.email, form.password)
     uni.showToast({ title: '注册成功', icon: 'success' })
 
+    // 使用 switchTab 跳转到 tabBar 页面（index 是 tabBar 页面）
     setTimeout(() => {
-      uni.redirectTo({ url: '/pages/index/index' })
+      uni.switchTab({ url: '/pages/index/index' })
     }, 1500)
   } catch (error: any) {
     uni.showToast({

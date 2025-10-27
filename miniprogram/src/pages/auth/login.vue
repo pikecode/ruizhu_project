@@ -98,8 +98,9 @@ const handleLogin = async () => {
     uni.showToast({ title: '登录成功', icon: 'success' })
 
     // 延迟跳转，让用户看到成功提示
+    // 使用 switchTab 跳转到 tabBar 页面（index 是 tabBar 页面）
     setTimeout(() => {
-      uni.redirectTo({ url: '/pages/index/index' })
+      uni.switchTab({ url: '/pages/index/index' })
     }, 1500)
   } catch (error: any) {
     uni.showToast({
