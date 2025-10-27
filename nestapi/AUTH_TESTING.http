@@ -1,0 +1,295 @@
+### NestJS Authentication API Testing
+### Use VS Code REST Client extension or similar
+
+@baseUrl = http://localhost:3000
+@accessToken =
+@refreshToken =
+
+###############################################
+# 1. User Registration
+###############################################
+
+### Register new user
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "email": "john@example.com",
+  "password": "StrongPass123",
+  "phone": "13800138000",
+  "realName": "John Doe"
+}
+
+### Register with minimal data
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "janedoe",
+  "email": "jane@example.com",
+  "password": "SecurePass456"
+}
+
+### Register with invalid data (should fail)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "ab",
+  "email": "invalid-email",
+  "password": "weak"
+}
+
+###############################################
+# 2. User Login
+###############################################
+
+### Login with username
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "password": "StrongPass123"
+}
+
+### Login with wrong password (should fail)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "password": "WrongPassword123"
+}
+
+### Login with non-existent user (should fail)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "nonexistent",
+  "password": "SomePassword123"
+}
+
+###############################################
+# 3. Get Current User (Protected)
+###############################################
+
+### Get current user info
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{accessToken}}
+
+### Get user without token (should fail)
+GET {{baseUrl}}/auth/me
+
+###############################################
+# 4. Update Profile (Protected)
+###############################################
+
+### Update user profile
+PUT {{baseUrl}}/auth/profile
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "realName": "John Smith Updated",
+  "phone": "13900139000"
+}
+
+### Update email
+PUT {{baseUrl}}/auth/profile
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "email": "john.updated@example.com"
+}
+
+### Update with existing email (should fail)
+PUT {{baseUrl}}/auth/profile
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "email": "jane@example.com"
+}
+
+###############################################
+# 5. Change Password (Protected)
+###############################################
+
+### Change password successfully
+POST {{baseUrl}}/auth/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "StrongPass123",
+  "newPassword": "NewStrongPass456",
+  "confirmPassword": "NewStrongPass456"
+}
+
+### Change password with wrong current password (should fail)
+POST {{baseUrl}}/auth/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "WrongPassword",
+  "newPassword": "NewStrongPass456",
+  "confirmPassword": "NewStrongPass456"
+}
+
+### Change password with mismatched confirmation (should fail)
+POST {{baseUrl}}/auth/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "StrongPass123",
+  "newPassword": "NewStrongPass456",
+  "confirmPassword": "DifferentPassword456"
+}
+
+### Change password with weak new password (should fail)
+POST {{baseUrl}}/auth/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "StrongPass123",
+  "newPassword": "weak",
+  "confirmPassword": "weak"
+}
+
+###############################################
+# 6. Refresh Token
+###############################################
+
+### Refresh access token
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Refresh with invalid token (should fail)
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "invalid-refresh-token"
+}
+
+### Refresh with expired token (should fail after 7 days)
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "expired-refresh-token"
+}
+
+###############################################
+# 7. Logout (Protected)
+###############################################
+
+### Logout user
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Try to use revoked refresh token (should fail)
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+###############################################
+# 8. Test After Password Change
+###############################################
+
+### Login with old password (should fail)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "password": "StrongPass123"
+}
+
+### Login with new password
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "password": "NewStrongPass456"
+}
+
+###############################################
+# 9. Edge Cases
+###############################################
+
+### Register duplicate username (should fail)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "email": "different@example.com",
+  "password": "StrongPass123"
+}
+
+### Register duplicate email (should fail)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "differentuser",
+  "email": "john@example.com",
+  "password": "StrongPass123"
+}
+
+### Try to access protected route with expired token (should fail)
+GET {{baseUrl}}/auth/me
+Authorization: Bearer expired.jwt.token
+
+###############################################
+# 10. Performance Tests
+###############################################
+
+### Multiple rapid login attempts
+# @name rapidLogin1
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "password": "StrongPass123"
+}
+
+### Rapid login 2
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "password": "StrongPass123"
+}
+
+### Rapid login 3
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "password": "StrongPass123"
+}

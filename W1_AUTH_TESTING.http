@@ -1,0 +1,323 @@
+### W1 Authentication System - API Testing Guide
+### Test these endpoints using Postman, Thunder Client, or the REST Client VS Code extension
+
+@baseUrl = http://localhost:8888/api/v1
+@contentType = application/json
+
+### ============ TEST 1: USER REGISTRATION ============
+
+### Register User 1
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "john_doe",
+  "email": "john@example.com",
+  "password": "SecurePassword123"
+}
+
+### Register User 2
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "jane_smith",
+  "email": "jane@example.com",
+  "password": "AnotherPassword456"
+}
+
+### Register User 3 (Test Error - Duplicate Email)
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+  "username": "john_duplicate",
+  "email": "john@example.com",
+  "password": "Password123"
+}
+
+### ============ TEST 2: USER LOGIN ============
+
+### Login User 1 - Valid Credentials
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "john_doe",
+  "password": "SecurePassword123"
+}
+
+### Login User 1 - Invalid Password
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "john_doe",
+  "password": "WrongPassword"
+}
+
+### Login with Non-Existent User
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "username": "nonexistent",
+  "password": "Password123"
+}
+
+### ============ TEST 3: GET CURRENT USER (PROTECTED) ============
+
+### Get Current User - With Valid Token
+### Replace with actual accessToken from login response
+GET {{baseUrl}}/auth/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+### Get Current User - No Token (Should Fail)
+GET {{baseUrl}}/auth/me
+
+### ============ TEST 4: UPDATE PROFILE (PROTECTED) ============
+
+### Update User Profile
+### Replace with actual accessToken from login response
+PUT {{baseUrl}}/auth/profile
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: {{contentType}}
+
+{
+  "nickname": "Johnny",
+  "realName": "John Doe",
+  "phone": "13800138000"
+}
+
+### ============ TEST 5: CHANGE PASSWORD (PROTECTED) ============
+
+### Change Password - Valid Old Password
+### Replace with actual accessToken from login response
+POST {{baseUrl}}/auth/change-password
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: {{contentType}}
+
+{
+  "currentPassword": "SecurePassword123",
+  "newPassword": "NewPassword789",
+  "confirmPassword": "NewPassword789"
+}
+
+### Change Password - Invalid Old Password
+### Replace with actual accessToken from login response
+POST {{baseUrl}}/auth/change-password
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: {{contentType}}
+
+{
+  "currentPassword": "WrongPassword",
+  "newPassword": "NewPassword789",
+  "confirmPassword": "NewPassword789"
+}
+
+### Change Password - Passwords Don't Match
+### Replace with actual accessToken from login response
+POST {{baseUrl}}/auth/change-password
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: {{contentType}}
+
+{
+  "currentPassword": "SecurePassword123",
+  "newPassword": "NewPassword789",
+  "confirmPassword": "DifferentPassword"
+}
+
+### ============ TEST 6: REFRESH TOKEN (PUBLIC) ============
+
+### Refresh Access Token
+### Replace with actual refreshToken from login response
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+
+### Refresh Token - Invalid Token
+POST {{baseUrl}}/auth/refresh-token
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "invalid_token_here"
+}
+
+### ============ TEST 7: LOGOUT (PROTECTED) ============
+
+### Logout User
+### Replace with actual refreshToken from login response
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+
+### ============ EXPECTED TEST RESULTS ============
+
+### Test 1 - User Registration
+# ✅ Register User 1: 201 Created - Returns user info and tokens
+# ✅ Register User 2: 201 Created - Returns user info and tokens
+# ✅ Register User 3 (Duplicate Email): 409 Conflict - "Email already exists"
+
+### Test 2 - User Login
+# ✅ Login Valid: 200 OK - Returns accessToken, refreshToken, user info, expiresIn
+# ✅ Login Invalid Password: 401 Unauthorized - "Invalid credentials"
+# ✅ Login Non-Existent: 401 Unauthorized - "Invalid credentials"
+
+### Test 3 - Get Current User
+# ✅ With Valid Token: 200 OK - Returns full user object
+# ✅ Without Token: 401 Unauthorized - Token required
+
+### Test 4 - Update Profile
+# ✅ Valid Update: 200 OK - Returns updated user info
+# ✅ Without Token: 401 Unauthorized - Token required
+
+### Test 5 - Change Password
+# ✅ Valid Change: 200 OK - { "message": "Password changed successfully" }
+# ✅ Invalid Old Password: 401 Unauthorized - "Current password is incorrect"
+# ✅ Passwords Don't Match: 400 Bad Request - "New password and confirmation do not match"
+# ✅ Without Token: 401 Unauthorized - Token required
+
+### Test 6 - Refresh Token
+# ✅ Valid Refresh: 200 OK - Returns new accessToken, expiresIn, refreshToken
+# ✅ Invalid Token: 401 Unauthorized - "Invalid refresh token"
+
+### Test 7 - Logout
+# ✅ Valid Logout: 200 OK - { "message": "Logged out successfully" }
+
+### ============ KEY FEATURES TESTED ============
+
+### Authentication Features:
+# ✓ Password hashing with bcryptjs (salt rounds: 12)
+# ✓ JWT token generation (access token expires in 1 day)
+# ✓ Refresh token generation (expires in 7 days)
+# ✓ Token verification and validation
+# ✓ Bearer token authentication via Authorization header
+
+### Security Features:
+# ✓ Role-based access control (RBAC)
+# ✓ Permission-based access control (PBAC)
+# ✓ Input validation (email format, password strength)
+# ✓ Duplicate prevention (username, email)
+# ✓ Account status checking (inactive accounts blocked)
+# ✓ Login attempt logging
+# ✓ IP address tracking
+# ✓ User agent logging
+
+### Database Features:
+# ✓ User entity with 15+ fields
+# ✓ Role relationships (ManyToOne)
+# ✓ RefreshToken tracking
+# ✓ LoginLog auditing
+# ✓ Soft delete support (deletedAt)
+# ✓ Timestamp tracking (createdAt, updatedAt)
+
+### ============ DATABASE INITIALIZATION ============
+
+### Execute the SQL migration:
+# mysql -h gz-cdb-qtjza6az.sql.tencentcdb.com -P 27226 -u root -p < nestapi/db/01-auth-system.sql
+
+### This creates:
+# ✓ users table (15 columns)
+# ✓ roles table (5 columns) + 3 default roles
+# ✓ permissions table (7 columns) + 21 default permissions
+# ✓ user_roles junction table
+# ✓ role_permissions junction table
+# ✓ refresh_tokens table
+# ✓ login_logs table
+
+### ============ RESPONSE FORMAT EXAMPLES ============
+
+### Successful Registration/Login Response:
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsInVzZXJuYW1lIjoiam9obiBkb2UiLCJlbWFpbCI6ImpvaG5AZXhhbXBsZS5jb20iLCJyb2xlSWQiOm51bGwsImlhdCI6MTcxNDc4MzEyMywiZXhwIjoxNzE0ODY5NTIzfQ.signature",
+  "refreshToken": "random64bytehexstring",
+  "expiresIn": 86400,
+  "user": {
+    "id": 1,
+    "username": "john_doe",
+    "email": "john@example.com",
+    "realName": null,
+    "phone": null,
+    "avatar": null,
+    "role": null
+  }
+}
+
+### Successful Get Current User Response:
+{
+  "id": 1,
+  "username": "john_doe",
+  "email": "john@example.com",
+  "password": "$2a$12$encryptedpassword",
+  "realName": null,
+  "phone": null,
+  "roleId": null,
+  "role": null,
+  "isActive": true,
+  "lastLoginAt": "2025-10-27T22:43:34.000Z",
+  "lastLoginIp": "127.0.0.1",
+  "openid": null,
+  "sessionKey": null,
+  "wechatNickname": null,
+  "avatar": null,
+  "unionid": null,
+  "resetPasswordToken": null,
+  "resetPasswordExpires": null,
+  "createdAt": "2025-10-27T22:43:34.000Z",
+  "updatedAt": "2025-10-27T22:43:34.000Z"
+}
+
+### ============ POSTMAN SETUP INSTRUCTIONS ============
+
+### 1. Create a new Postman Collection
+### 2. Set Base URL variable: {{baseUrl}} = http://localhost:8888/api/v1
+### 3. Create environment variable for tokens after login:
+###    - accessToken (from login response)
+###    - refreshToken (from login response)
+### 4. Use pre-request scripts to store tokens:
+###
+### pm.environment.set("accessToken", pm.response.json().accessToken);
+### pm.environment.set("refreshToken", pm.response.json().refreshToken);
+###
+### 5. Reference in requests: Authorization: Bearer {{accessToken}}
+
+### ============ MANUAL TESTING CHECKLIST ============
+
+### Functional Tests:
+# [ ] Register with valid data
+# [ ] Register with duplicate email
+# [ ] Register with invalid email format
+# [ ] Login with correct password
+# [ ] Login with incorrect password
+# [ ] Get current user with valid token
+# [ ] Get current user with expired token
+# [ ] Get current user without token
+# [ ] Update profile with valid data
+# [ ] Change password successfully
+# [ ] Refresh token and receive new access token
+# [ ] Logout and verify token is revoked
+
+### Security Tests:
+# [ ] Attempt SQL injection in username
+# [ ] Attempt password with special characters
+# [ ] Verify JWT tokens cannot be forged
+# [ ] Check refresh token rotation
+# [ ] Verify account lockout after failed attempts (if implemented)
+# [ ] Test CORS headers (if applicable)
+# [ ] Verify sensitive data not exposed in responses
+
+### Edge Cases:
+# [ ] Empty fields in request body
+# [ ] Extra fields in request body
+# [ ] Very long username/email
+# [ ] Unicode characters in fields
+# [ ] Concurrent login attempts
+# [ ] Rapid password change attempts
+# [ ] Token expiration boundary conditions

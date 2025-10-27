@@ -5,12 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToMany,
-  JoinTable,
 } from 'typeorm';
-import { Permission } from '../../auth/entities/permission.entity';
+import { Role } from '../../roles/entities/role.entity';
 
-@Entity('roles')
-export class Role {
+@Entity('permissions')
+export class Permission {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -23,19 +22,14 @@ export class Role {
   @Column({ type: 'varchar', length: 500, nullable: true })
   description: string;
 
-  @ManyToMany(() => Permission, permission => permission.roles, { eager: true })
-  @JoinTable({
-    name: 'role_permissions',
-    joinColumn: { name: 'roleId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'permissionId', referencedColumnName: 'id' },
-  })
-  permissions: Permission[];
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  module: string;
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
-  @Column({ type: 'int', default: 0 })
-  level: number; // Role hierarchy level (0=super admin, 1=admin, 2=manager, 3=user)
+  @ManyToMany(() => Role, role => role.permissions)
+  roles: Role[];
 
   @CreateDateColumn()
   createdAt: Date;

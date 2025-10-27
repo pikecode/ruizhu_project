@@ -4,6 +4,9 @@ import { ConfigService } from '@nestjs/config';
 // Users & Auth
 import { User } from '../users/entities/user.entity';
 import { Role } from '../roles/entities/role.entity';
+import { Permission } from '../auth/entities/permission.entity';
+import { RefreshToken } from '../auth/entities/refresh-token.entity';
+import { LoginLog } from '../auth/entities/login-log.entity';
 // Files
 import { File } from '../files/entities/file.entity';
 // Products
@@ -39,6 +42,9 @@ import { Payment } from '../payments/entities/payment.entity';
             // Users & Auth
             User,
             Role,
+            Permission,
+            RefreshToken,
+            LoginLog,
             // Files
             File,
             // Products

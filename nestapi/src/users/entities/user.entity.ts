@@ -4,7 +4,13 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
 } from 'typeorm';
+import { Role } from '../../roles/entities/role.entity';
+import { RefreshToken } from '../../auth/entities/refresh-token.entity';
+import { LoginLog } from '../../auth/entities/login-log.entity';
 
 @Entity('users')
 export class User {
@@ -17,7 +23,7 @@ export class User {
   @Column({ type: 'varchar', length: 255 })
   password: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: 'varchar', length: 100, unique: true })
   username: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -29,8 +35,18 @@ export class User {
   @Column({ type: 'int', nullable: true })
   roleId: number;
 
+  @ManyToOne(() => Role, { eager: true })
+  @JoinColumn({ name: 'roleId' })
+  role: Role;
+
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastLoginAt: Date;
+
+  @Column({ type: 'varchar', length: 45, nullable: true })
+  lastLoginIp: string;
 
   // WeChat fields
   @Column({ type: 'varchar', length: 100, unique: true, nullable: true })
@@ -47,6 +63,19 @@ export class User {
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   unionid: string;
+
+  // Password reset fields
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  resetPasswordToken: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  resetPasswordExpires: Date;
+
+  @OneToMany(() => RefreshToken, refreshToken => refreshToken.user)
+  refreshTokens: RefreshToken[];
+
+  @OneToMany(() => LoginLog, loginLog => loginLog.user)
+  loginLogs: LoginLog[];
 
   @CreateDateColumn()
   createdAt: Date;

@@ -61,8 +61,8 @@ DB_PASSWORD=Pp123456
 DB_NAME=mydb
 
 # Tencent COS Configuration
-COS_SECRET_ID=AKIDiSyGOJzdDdrunW7Xp5A3lJkz51oQzMYZ
-COS_SECRET_KEY=rW6VigP5bv1wgtvjMp581kGXaSwIQNlw
+COS_SECRET_ID=your-secret-id-here
+COS_SECRET_KEY=your-secret-key-here
 COS_REGION=ap-guangzhou
 COS_BUCKET=ruizhu-1256655507
 COS_UPLOAD_MAX_SIZE=52428800
