@@ -3,7 +3,11 @@
  * 所有 HTTP 请求都通过此服务处理
  */
 
-const BASE_URL = process.env.VUE_APP_API_URL || 'http://localhost:8888/api/v1'
+// 小程序环境兼容：使用 __DEV__ 全局变量判断环境
+// __DEV__ 在开发模式为 true，生产模式为 false
+const BASE_URL = __DEV__
+  ? 'http://localhost:8888/api/v1'           // 开发环境
+  : 'http://api.ruizhu.com/api/v1'            // 生产环境（需根据实际修改）
 
 interface RequestOptions {
   method?: string

@@ -158,9 +158,7 @@
     "navigationBarTitleText": "Ruizhu",
     "navigationBarBackgroundColor": "#FFFFFF",
     "backgroundColor": "#FFFFFF",
-    "pageOrientation": "portrait",
-    "animationType": "pop-in",
-    "animationDuration": 300
+    "pageOrientation": "portrait"
   },
   "tabBar": {
     "color": "#999999",
