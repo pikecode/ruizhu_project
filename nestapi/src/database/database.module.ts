@@ -70,8 +70,8 @@ import { Payment } from '../payments/entities/payment.entity';
             Address,
             Payment,
           ],
-          synchronize: false,  // 禁用自动同步以避免表冲突
-          logging: false,
+          synchronize: false,  // 禁用自动同步，避免 FK 冲突
+          logging: true,  // 启用日志查看 SQL 执行
         };
 
         // Use URL connection string if available
