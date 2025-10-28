@@ -7,11 +7,11 @@ import {
   Transfer,
   Spin,
   Card,
-  Select,
+  Tabs,
 } from 'antd'
 import { DeleteOutlined, SaveOutlined } from '@ant-design/icons'
 import { useState, useEffect } from 'react'
-import { ProductListItem } from '@/types'
+import { ProductListItem, Category } from '@/types'
 import { collectionsService } from '@/services/collections'
 import { productsService } from '@/services/products'
 
@@ -28,17 +28,18 @@ export default function CollectionProductsModal({
 }: CollectionProductsModalProps) {
   const [products, setProducts] = useState<ProductListItem[]>([])
   const [allProducts, setAllProducts] = useState<ProductListItem[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedProductIds, setSelectedProductIds] = useState<(string | number)[]>([])
   const [collectionName, setCollectionName] = useState('')
   const [sortChanged, setSortChanged] = useState(false)
   const [tempProducts, setTempProducts] = useState<ProductListItem[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
 
   useEffect(() => {
     if (visible) {
       loadCollectionProducts()
       loadAllProducts()
+      loadCategories()
     }
   }, [visible, collectionId])
 
@@ -68,6 +69,15 @@ export default function CollectionProductsModal({
       setAllProducts(data.items)
     } catch (error) {
       console.error(error)
+    }
+  }
+
+  const loadCategories = async () => {
+    try {
+      const data = await productsService.getCategories()
+      setCategories(data)
+    } catch (error) {
+      console.error('加载分类失败:', error)
     }
   }
 
@@ -114,29 +124,12 @@ export default function CollectionProductsModal({
     setTempProducts(products)
     setSelectedProductIds(products.map((p) => p.id))
     setSortChanged(false)
-    setSelectedCategory(null)
     onClose()
   }
 
-  // 获取所有分类
-  const getCategories = () => {
-    const categoryMap = new Map<number, string>()
-    allProducts.forEach((p) => {
-      if (p.categoryId && p.categoryName) {
-        categoryMap.set(p.categoryId, p.categoryName)
-      }
-    })
-    return Array.from(categoryMap.entries())
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }
-
-  // 根据选中的分类过滤产品
-  const getFilteredProducts = () => {
-    if (!selectedCategory) {
-      return allProducts
-    }
-    return allProducts.filter((p) => p.categoryId === selectedCategory)
+  // 获取指定分类的商品
+  const getProductsByCategory = (categoryId: number) => {
+    return allProducts.filter((p) => p.categoryId === categoryId)
   }
 
   const handleRemoveFromSort = (index: number) => {
@@ -255,30 +248,19 @@ export default function CollectionProductsModal({
       ]}
     >
       <Spin spinning={loading}>
-        <div style={{ marginBottom: 16 }}>
-          <Select
-            placeholder="按分类过滤产品"
-            allowClear
-            value={selectedCategory}
-            onChange={setSelectedCategory}
-            style={{ width: '200px' }}
-            options={[
-              { label: '全部分类', value: null },
-              ...getCategories().map((cat) => ({
-                label: cat.name,
-                value: cat.id,
-              })),
-            ]}
-          />
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
-          <Transfer
-            dataSource={getFilteredProducts().map((p) => ({
-              key: `${p.id}`,
-              title: p.name,
-              description: `${p.sku} | ¥${(p.currentPrice / 100).toFixed(2)}`,
-            }))}
+        <Tabs
+          tabPosition="top"
+          items={categories.map((category) => ({
+            key: `${category.id}`,
+            label: `${category.name}`,
+            children: (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+                <Transfer
+                  dataSource={getProductsByCategory(category.id).map((p) => ({
+                    key: `${p.id}`,
+                    title: p.name,
+                    description: `${p.sku} | ¥${(p.currentPrice / 100).toFixed(2)}`,
+                  }))}
             titles={['可用产品', '已选产品']}
             targetKeys={selectedProductIds.map((id) => `${id}`)}
             onChange={(newKeys) => {
@@ -305,8 +287,11 @@ export default function CollectionProductsModal({
             }}
           />
         </div>
+            ),
+          }))}
+        />
 
-        {tempProducts.length > 0 && (
+      {tempProducts.length > 0 && (
           <div style={{ marginTop: 24 }}>
             <Card
               title={`排序 (共 ${tempProducts.length} 个已选产品)`}
