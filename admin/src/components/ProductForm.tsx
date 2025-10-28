@@ -90,11 +90,12 @@ export default function ProductForm({
     try {
       setSubmitting(true)
       // 将价格从元转换为分（乘以 100）
+      const { price, ...otherValues } = values
       const payload = {
-        ...values,
+        ...otherValues,
         price: {
-          originalPrice: Math.round((values.price || 0) * 100),
-          currentPrice: Math.round((values.price || 0) * 100),
+          originalPrice: Math.round((price || 0) * 100),
+          currentPrice: Math.round((price || 0) * 100),
           discountRate: 100,
           currency: 'CNY',
         },
@@ -106,7 +107,6 @@ export default function ProductForm({
           sortOrder: index,
         })),
       }
-      delete payload.price // 上面已经处理了price字段
 
       await onSubmit(payload)
       message.success(product ? '产品更新成功' : '产品创建成功')
