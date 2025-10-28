@@ -123,9 +123,123 @@ export class ProductListResponseDto {
   pages: number;
 }
 
+import { IsOptional, IsString, IsNumber, IsBoolean, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
 /**
- * 更新商品 DTO - 接受任意更新字段，全部可选
+ * 更新商品 DTO
+ *
+ * 说明：
+ * - 所有字段都是可选的
+ * - images 字段用于更新商品图片，会自动更新 coverImageUrl 和 coverImageId
+ * - coverImageUrl 和 coverImageId 是只读缓存字段，直接传递这些字段会被忽略
+ * - price 字段用于更新价格信息
+ *
+ * 示例请求体：
+ * {
+ *   "name": "更新后的商品名",
+ *   "stockQuantity": 100,
+ *   "price": {
+ *     "originalPrice": 5000,
+ *     "currentPrice": 3999
+ *   },
+ *   "images": [
+ *     {
+ *       "imageUrl": "http://...",
+ *       "imageType": "cover",
+ *       "altText": "商品图"
+ *     }
+ *   ]
+ * }
  */
 export class UpdateProductDto {
-  [key: string]: any;
+  // 基本信息
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  subtitle?: string;
+
+  @IsOptional()
+  @IsString()
+  sku?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsNumber()
+  categoryId?: number;
+
+  // 状态信息
+  @IsOptional()
+  @IsBoolean()
+  isNew?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isSaleOn?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isOutOfStock?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isSoldOut?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isVipOnly?: boolean;
+
+  // 库存信息
+  @IsOptional()
+  @IsNumber()
+  stockQuantity?: number;
+
+  @IsOptional()
+  @IsNumber()
+  lowStockThreshold?: number;
+
+  // 物流信息
+  @IsOptional()
+  @IsNumber()
+  weight?: number;
+
+  @IsOptional()
+  @IsNumber()
+  shippingTemplateId?: number;
+
+  @IsOptional()
+  @IsNumber()
+  freeShippingThreshold?: number;
+
+  // 价格信息（需要特殊处理）
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => Object)
+  price?: {
+    originalPrice?: number;
+    currentPrice?: number;
+    discountRate?: number;
+    currency?: string;
+    vipDiscountRate?: number;
+  };
+
+  // 图片信息（需要特殊处理）
+  @IsOptional()
+  @IsArray()
+  images?: Array<{
+    imageUrl: string;
+    imageType: 'thumb' | 'cover' | 'list' | 'detail';
+    altText?: string;
+    sortOrder?: number;
+  }>;
+
+  // 注意：以下字段是只读的，不允许直接更新
+  // - coverImageUrl: 从第一张图片自动生成
+  // - coverImageId: 从第一张图片自动生成
 }

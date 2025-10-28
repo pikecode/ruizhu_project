@@ -373,11 +373,26 @@ export class ProductsService {
       }
     }
 
-    // 分离 images 字段（特殊处理）
-    const { images, ...otherUpdateData } = updateDto as any;
+    // 分离特殊字段（images 需要特殊处理，coverImage* 是只读缓存字段）
+    const { images, coverImageUrl, coverImageId, ...otherUpdateData } = updateDto as any;
+
+    // 过滤掉不允许直接更新的字段
+    const allowedFields = [
+      'name', 'subtitle', 'sku', 'description', 'categoryId',
+      'isNew', 'isSaleOn', 'isOutOfStock', 'isSoldOut', 'isVipOnly',
+      'stockQuantity', 'lowStockThreshold', 'weight', 'shippingTemplateId',
+      'freeShippingThreshold'
+    ];
+
+    const filteredUpdateData: any = {};
+    allowedFields.forEach(field => {
+      if (field in otherUpdateData) {
+        filteredUpdateData[field] = otherUpdateData[field];
+      }
+    });
 
     // 更新商品基本信息
-    Object.assign(product, otherUpdateData);
+    Object.assign(product, filteredUpdateData);
     await this.productRepository.save(product);
 
     // 处理价格更新
