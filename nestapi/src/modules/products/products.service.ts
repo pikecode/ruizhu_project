@@ -243,7 +243,7 @@ export class ProductsService {
     let query_obj = this.productRepository.createQueryBuilder('product')
       .leftJoinAndSelect('product.price', 'price')
       .leftJoinAndSelect('product.stats', 'stats')
-      .leftJoinAndSelect('product.images', 'images', 'images.imageType = :imageType', { imageType: 'cover' })
+      .leftJoinAndSelect('product.images', 'images', 'images.sortOrder = 0')  // 只加载第一张图片
       .leftJoinAndSelect('product.tags', 'tags');
 
     // 应用 where 条件
@@ -361,9 +361,50 @@ export class ProductsService {
       }
     }
 
-    // 更新商品
-    Object.assign(product, updateDto);
+    // 分离 images 字段（特殊处理）
+    const { images, ...otherUpdateData } = updateDto as any;
+
+    // 更新商品基本信息
+    Object.assign(product, otherUpdateData);
     await this.productRepository.save(product);
+
+    // 处理价格更新
+    if (updateDto.price) {
+      let price = await this.priceRepository.findOne({ where: { productId } });
+      if (!price) {
+        price = this.priceRepository.create({
+          productId,
+          originalPrice: updateDto.price.originalPrice,
+          currentPrice: updateDto.price.currentPrice,
+          discountRate: updateDto.price.discountRate || 100,
+          currency: updateDto.price.currency || 'CNY',
+          vipDiscountRate: updateDto.price.vipDiscountRate,
+        });
+      } else {
+        Object.assign(price, updateDto.price);
+      }
+      await this.priceRepository.save(price);
+    }
+
+    // 处理图片更新
+    if (images && Array.isArray(images)) {
+      // 删除旧图片
+      await this.imageRepository.delete({ productId });
+
+      // 创建新图片
+      if (images.length > 0) {
+        const newImages = images.map((img: any, index: number) =>
+          this.imageRepository.create({
+            productId,
+            imageUrl: img.imageUrl,
+            imageType: img.imageType,
+            altText: img.altText || '',
+            sortOrder: index,
+          }),
+        );
+        await this.imageRepository.save(newImages);
+      }
+    }
 
     return this.getProductDetail(productId);
   }
@@ -392,7 +433,7 @@ export class ProductsService {
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.price', 'price')
       .leftJoinAndSelect('product.stats', 'stats')
-      .leftJoinAndSelect('product.images', 'images', 'images.imageType = :imageType', { imageType: 'cover' })
+      .leftJoinAndSelect('product.images', 'images', 'images.sortOrder = 0')  // 只加载第一张图片
       .leftJoinAndSelect('product.tags', 'tags')
       .where('product.categoryId = :categoryId', { categoryId })
       .andWhere('product.isSaleOn = :isSaleOn', { isSaleOn: true })
@@ -431,7 +472,7 @@ export class ProductsService {
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.price', 'price')
       .leftJoinAndSelect('product.stats', 'stats')
-      .leftJoinAndSelect('product.images', 'images', 'images.imageType = :imageType', { imageType: 'cover' })
+      .leftJoinAndSelect('product.images', 'images', 'images.sortOrder = 0')  // 只加载第一张图片
       .where('product.isSaleOn = :isSaleOn', { isSaleOn: true })
       .orderBy('stats.salesCount', 'DESC')
       .take(limit)
@@ -467,7 +508,7 @@ export class ProductsService {
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.price', 'price')
       .leftJoinAndSelect('product.stats', 'stats')
-      .leftJoinAndSelect('product.images', 'images', 'images.imageType = :imageType', { imageType: 'cover' })
+      .leftJoinAndSelect('product.images', 'images', 'images.sortOrder = 0')  // 只加载第一张图片
       .where('product.name LIKE :keyword OR product.description LIKE :keyword', {
         keyword: `%${keyword}%`,
       })
