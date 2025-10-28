@@ -5,7 +5,7 @@ export class ProductDetailResponseDto {
   id: number;
   name: string;
   subtitle?: string;
-  sku: string;
+  sku?: string | null;
   description?: string;
   categoryId: number;
   categoryName?: string;
@@ -79,7 +79,7 @@ export class ProductListItemDto {
   id: number;
   name: string;
   subtitle?: string;
-  sku: string;
+  sku?: string | null;
   categoryId: number;
 
   // 价格（分）

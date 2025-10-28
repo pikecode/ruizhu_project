@@ -51,12 +51,14 @@ export class ProductsService {
       throw new BadRequestException(`分类 ID ${createDto.categoryId} 不存在`);
     }
 
-    // 检查 SKU 是否唯一
-    const existingProduct = await this.productRepository.findOne({
-      where: { sku: createDto.sku },
-    });
-    if (existingProduct) {
-      throw new BadRequestException(`SKU ${createDto.sku} 已存在`);
+    // 检查 SKU 是否唯一（仅在 SKU 被提供时）
+    if (createDto.sku) {
+      const existingProduct = await this.productRepository.findOne({
+        where: { sku: createDto.sku },
+      });
+      if (existingProduct) {
+        throw new BadRequestException(`SKU ${createDto.sku} 已存在`);
+      }
     }
 
     // 创建商品

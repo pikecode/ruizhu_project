@@ -34,8 +34,8 @@ export class Product {
   @Column({ type: 'varchar', length: 200, nullable: true })
   subtitle: string; // 小标题
 
-  @Column({ type: 'varchar', length: 100, unique: true })
-  sku: string;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  sku: string | null;
 
   @Column({ type: 'text', nullable: true })
   description: string;

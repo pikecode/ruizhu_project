@@ -9,6 +9,7 @@ import {
   IsInt,
   ValidateNested,
   IsArray,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -25,9 +26,8 @@ export class CreateProductDto {
   @Length(0, 200)
   subtitle?: string; // 小标题
 
-  @IsString()
-  @Length(1, 100)
-  sku: string; // 商品编号
+  @IsOptional()
+  sku?: string; // 商品编号
 
   @IsOptional()
   @IsString()
