@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Layout as AntLayout, Menu, Button, Dropdown, Space, Drawer } from 'antd'
+import { Layout as AntLayout, Menu, Button, Dropdown, Space } from 'antd'
 import { MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store'

@@ -119,24 +119,8 @@ export class ProductListResponseDto {
 }
 
 /**
- * 更新商品 DTO
+ * 更新商品 DTO - 接受任意更新字段，全部可选
  */
 export class UpdateProductDto {
-  name?: string;
-  subtitle?: string;
-  description?: string;
-  categoryId?: number;
-
-  isNew?: boolean;
-  isSaleOn?: boolean;
-  isOutOfStock?: boolean;
-  isSoldOut?: boolean;
-  isVipOnly?: boolean;
-
-  stockQuantity?: number;
-  lowStockThreshold?: number;
-
-  weight?: number;
-  shippingTemplateId?: number;
-  freeShippingThreshold?: number;
+  [key: string]: any;
 }

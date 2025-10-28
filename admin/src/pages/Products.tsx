@@ -1,5 +1,5 @@
-import { Table, Button, Space, Card, Input, Select, Popconfirm, message, Spin, Row, Col, Statistic } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Table, Button, Space, Card, Input, Select, Popconfirm, message, Row, Col, Image } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, PictureOutlined, VideoCameraOutlined } from '@ant-design/icons'
 import { useState, useEffect } from 'react'
 import Layout from '@/components/Layout'
 import ProductForm from '@/components/ProductForm'
@@ -129,10 +129,43 @@ export default function ProductsPage() {
       ),
     },
     {
-      title: 'SKU编码',
-      dataIndex: 'sku',
-      key: 'sku',
-      width: 120,
+      title: '配图/视频',
+      dataIndex: 'coverImage',
+      key: 'media',
+      width: 100,
+      render: (coverImage: string | undefined, record: ProductListItem) => {
+        if (!coverImage) {
+          return (
+            <div style={{ color: '#999', fontSize: '12px', textAlign: 'center', padding: '8px' }}>
+              <PictureOutlined style={{ fontSize: '16px' }} />
+              <div>未添加</div>
+            </div>
+          )
+        }
+        const isVideo = coverImage.toLowerCase().endsWith('.mp4') ||
+                       coverImage.toLowerCase().endsWith('.webm') ||
+                       coverImage.toLowerCase().endsWith('.mov')
+        return (
+          <div style={{ textAlign: 'center', position: 'relative' }}>
+            {isVideo ? (
+              <div style={{ fontSize: '20px' }}>
+                <VideoCameraOutlined />
+              </div>
+            ) : (
+              <Image
+                src={coverImage}
+                alt={record.name}
+                width={60}
+                height={60}
+                style={{ objectFit: 'cover', borderRadius: '4px' }}
+                preview={{
+                  mask: '查看',
+                }}
+              />
+            )}
+          </div>
+        )
+      },
     },
     {
       title: '分类',
@@ -147,18 +180,10 @@ export default function ProductsPage() {
     {
       title: '价格',
       key: 'price',
-      width: 100,
-      render: (_, record: ProductListItem) => {
-        const originalPrice = (record.originalPrice / 100).toFixed(2)
-        const currentPrice = (record.currentPrice / 100).toFixed(2)
-        return (
-          <div>
-            <div style={{ color: '#f5222d', fontWeight: 500 }}>¥{currentPrice}</div>
-            <div style={{ fontSize: '12px', color: '#999', textDecoration: 'line-through' }}>
-              ¥{originalPrice}
-            </div>
-          </div>
-        )
+      width: 80,
+      render: (_: any, record: ProductListItem) => {
+        const price = (record.currentPrice / 100).toFixed(2)
+        return <div style={{ color: '#f5222d', fontWeight: 500 }}>¥{price}</div>
       },
     },
     {
@@ -195,7 +220,7 @@ export default function ProductsPage() {
       key: 'actions',
       width: 150,
       fixed: 'right' as const,
-      render: (_, record: ProductListItem) => (
+      render: (_: any, record: ProductListItem) => (
         <Space size="small">
           <Button
             type="primary"
@@ -245,8 +270,7 @@ export default function ProductsPage() {
           <Row gutter={16}>
             <Col xs={24} sm={12} md={8}>
               <Input.Search
-                placeholder="按名称或SKU搜索"
-                icon={<SearchOutlined />}
+                placeholder="按产品名称搜索"
                 onSearch={handleSearch}
                 allowClear
               />

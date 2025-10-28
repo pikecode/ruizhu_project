@@ -1,5 +1,5 @@
 import api from './api'
-import { Product, ProductListItem, Category, PaginationParams } from '@/types'
+import { Product, ProductListItem, Category } from '@/types'
 
 export interface ProductListResponse {
   items: ProductListItem[]
