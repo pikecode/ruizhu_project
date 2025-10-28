@@ -174,6 +174,8 @@ export class ProductsService {
       weight: product.weight,
       shippingTemplateId: product.shippingTemplateId,
       freeShippingThreshold: product.freeShippingThreshold,
+      coverImageUrl: product.coverImageUrl,
+      coverImageId: product.coverImageId,
       price: price ? {
         id: price.id,
         originalPrice: price.originalPrice,
@@ -329,7 +331,8 @@ export class ProductsService {
       isOutOfStock: product.isOutOfStock,
       isVipOnly: product.isVipOnly,
       stockQuantity: product.stockQuantity,
-      coverImage: product.images?.[0]?.imageUrl,
+      coverImageUrl: product.coverImageUrl,
+      coverImageId: product.coverImageId,
       tags: product.tags?.map((tag) => tag.tagName),
       createdAt: product.createdAt,
     }));
@@ -475,7 +478,8 @@ export class ProductsService {
       isOutOfStock: product.isOutOfStock,
       isVipOnly: product.isVipOnly,
       stockQuantity: product.stockQuantity,
-      coverImage: product.images?.[0]?.imageUrl,
+      coverImageUrl: product.coverImageUrl,
+      coverImageId: product.coverImageId,
       tags: product.tags?.map((tag) => tag.tagName),
       createdAt: product.createdAt,
     }));
@@ -511,7 +515,8 @@ export class ProductsService {
       isOutOfStock: product.isOutOfStock,
       isVipOnly: product.isVipOnly,
       stockQuantity: product.stockQuantity,
-      coverImage: product.images?.[0]?.imageUrl,
+      coverImageUrl: product.coverImageUrl,
+      coverImageId: product.coverImageId,
       createdAt: product.createdAt,
     }));
   }
@@ -549,7 +554,8 @@ export class ProductsService {
       isOutOfStock: product.isOutOfStock,
       isVipOnly: product.isVipOnly,
       stockQuantity: product.stockQuantity,
-      coverImage: product.images?.[0]?.imageUrl,
+      coverImageUrl: product.coverImageUrl,
+      coverImageId: product.coverImageId,
       createdAt: product.createdAt,
     }));
   }

@@ -26,6 +26,10 @@ export class ProductDetailResponseDto {
   shippingTemplateId?: number;
   freeShippingThreshold?: number;
 
+  // 代表图片缓存
+  coverImageUrl?: string | null;
+  coverImageId?: number | null;
+
   // 价格信息
   price?: {
     id: number;
@@ -97,8 +101,9 @@ export class ProductListItemDto {
   // 库存
   stockQuantity: number;
 
-  // 第一张图片
-  coverImage?: string;
+  // 代表图片缓存
+  coverImageUrl?: string | null;
+  coverImageId?: number | null;
 
   // 标签
   tags?: string[];
