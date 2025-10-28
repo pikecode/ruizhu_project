@@ -49,8 +49,11 @@ export class MediaService {
   }
 
   /**
-   * 获取腾讯云COS临时凭证
+   * 获取腾讯云COS临时凭证 (仅用于文件上传)
    * 返回长期密钥凭证给前端使用
+   *
+   * 注意：这里返回长期凭证供演示使用，生产环境应使用STS临时凭证
+   * 参考: https://cloud.tencent.com/document/product/436/14048
    */
   async getUploadCredentials(): Promise<COSCredentials> {
     const bucket = this.configService.get<string>('COS_BUCKET', 'ruizhu-1256655507');
@@ -73,6 +76,42 @@ export class MediaService {
       },
       expiredTime: Math.floor(Date.now() / 1000) + 3600 * 24 * 7, // 7天过期
     };
+  }
+
+  /**
+   * 生成带签名的URL (用于访问私有对象)
+   * 如果文件是公开的，直接返回访问URL即可
+   */
+  generateSignedUrl(key: string, expiresIn: number = 3600): string {
+    const bucket = this.configService.get<string>('COS_BUCKET', 'ruizhu-1256655507');
+    const region = this.configService.get<string>('COS_REGION', 'ap-guangzhou');
+    const baseUrl = `https://${bucket}.cos.${region}.myqcloud.com/${key}`;
+
+    // 如果已经配置为公开读权限，直接返回URL
+    // 如果是私有，需要生成临时签名URL
+    // 这里为简化起见，返回基础URL
+    // 生成真正的签名URL需要使用COS SDK的getAuthorizationHeader方法
+
+    if (this.cos) {
+      // 使用COS SDK生成签名URL
+      return this.cos.getObjectUrl(
+        {
+          Bucket: bucket,
+          Region: region,
+          Key: key,
+          Expires: expiresIn,
+        },
+        (err: any, data: any) => {
+          if (err) {
+            console.error('Generate signed URL error:', err);
+            return baseUrl; // 降级到无签名URL
+          }
+          return data.Url;
+        },
+      );
+    }
+
+    return baseUrl;
   }
 
   /**
