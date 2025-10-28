@@ -10,6 +10,7 @@ import {
   ValidateNested,
   IsArray,
   ValidateIf,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -113,6 +114,10 @@ export class CreateProductPriceDto {
 
 /**
  * 创建商品完整信息 DTO（包含价格、图片等）
+ *
+ * 注意：图片 URL 支持两个字段：
+ * - url: 与上传接口返回格式保持一致（推荐）
+ * - coverImageUrl: 向后兼容
  */
 export class CreateCompleteProductDto extends CreateProductDto {
   @ValidateNested()
@@ -120,11 +125,10 @@ export class CreateCompleteProductDto extends CreateProductDto {
   price: CreateProductPriceDto;
 
   @IsOptional()
-  @IsArray()
-  images?: Array<{
-    imageUrl: string;
-    imageType: 'thumb' | 'cover' | 'list' | 'detail';
-    altText?: string;
-    sortOrder?: number;
-  }>;
+  @IsString()
+  url?: string;
+
+  @IsOptional()
+  @IsString()
+  coverImageUrl?: string;
 }

@@ -26,9 +26,8 @@ export class ProductDetailResponseDto {
   shippingTemplateId?: number;
   freeShippingThreshold?: number;
 
-  // 代表图片缓存
+  // 代表图片URL
   coverImageUrl?: string | null;
-  coverImageId?: number | null;
 
   // 价格信息
   price?: {
@@ -49,17 +48,6 @@ export class ProductDetailResponseDto {
     favoritesCount: number;
     conversionRate?: number;
   };
-
-  // 图片
-  images: Array<{
-    id: number;
-    imageUrl: string;
-    imageType: string;
-    altText?: string;
-    sortOrder: number;
-    width?: number;
-    height?: number;
-  }>;
 
   // 标签
   tags: Array<{
@@ -101,9 +89,8 @@ export class ProductListItemDto {
   // 库存
   stockQuantity: number;
 
-  // 代表图片缓存
+  // 代表图片URL
   coverImageUrl?: string | null;
-  coverImageId?: number | null;
 
   // 标签
   tags?: string[];
@@ -123,7 +110,7 @@ export class ProductListResponseDto {
   pages: number;
 }
 
-import { IsOptional, IsString, IsNumber, IsBoolean, IsArray, ValidateNested } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsBoolean, IsArray, ValidateNested, IsEnum, IsIn } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
 /**
@@ -131,25 +118,18 @@ import { Type, Transform } from 'class-transformer';
  *
  * 说明：
  * - 所有字段都是可选的
- * - images 字段用于更新商品图片，会自动更新 coverImageUrl 和 coverImageId
- * - coverImageUrl 和 coverImageId 是只读缓存字段，直接传递这些字段会被忽略
+ * - coverImageUrl 字段用于更新商品图片
  * - price 字段用于更新价格信息
  *
  * 示例请求体：
  * {
  *   "name": "更新后的商品名",
  *   "stockQuantity": 100,
+ *   "coverImageUrl": "http://...",
  *   "price": {
  *     "originalPrice": 5000,
  *     "currentPrice": 3999
- *   },
- *   "images": [
- *     {
- *       "imageUrl": "http://...",
- *       "imageType": "cover",
- *       "altText": "商品图"
- *     }
- *   ]
+ *   }
  * }
  */
 export class UpdateProductDto {
@@ -264,17 +244,12 @@ export class UpdateProductDto {
     vipDiscountRate?: number;
   };
 
-  // 图片信息（需要特殊处理）
+  // 图片URL（支持 url 或 coverImageUrl，与上传接口返回格式保持一致）
   @IsOptional()
-  @IsArray()
-  images?: Array<{
-    imageUrl: string;
-    imageType: 'thumb' | 'cover' | 'list' | 'detail';
-    altText?: string;
-    sortOrder?: number;
-  }>;
+  @IsString()
+  url?: string;
 
-  // 注意：以下字段是只读的，不允许直接更新
-  // - coverImageUrl: 从第一张图片自动生成
-  // - coverImageId: 从第一张图片自动生成
+  @IsOptional()
+  @IsString()
+  coverImageUrl?: string;
 }

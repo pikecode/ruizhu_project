@@ -4,7 +4,6 @@ import { Repository, Like, Between, MoreThanOrEqual, LessThanOrEqual } from 'typ
 import {
   Product,
   ProductPrice,
-  ProductImage,
   ProductStats,
   ProductTag,
 } from '../../entities/product.entity';
@@ -27,8 +26,6 @@ export class ProductsService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(ProductPrice)
     private readonly priceRepository: Repository<ProductPrice>,
-    @InjectRepository(ProductImage)
-    private readonly imageRepository: Repository<ProductImage>,
     @InjectRepository(ProductStats)
     private readonly statsRepository: Repository<ProductStats>,
     @InjectRepository(ProductTag)
@@ -104,26 +101,13 @@ export class ProductsService {
     });
     await this.statsRepository.save(stats);
 
-    // 创建图片
-    if (createDto.images && createDto.images.length > 0) {
-      const images = createDto.images.map((img, index) =>
-        this.imageRepository.create({
-          productId: savedProduct.id,
-          imageUrl: img.imageUrl,
-          imageType: img.imageType,
-          altText: img.altText,
-          sortOrder: img.sortOrder ?? index,
-        }),
-      );
-      const savedImages = await this.imageRepository.save(images);
-
-      // 自动设置 cover 图片缓存（第一张图片）
-      if (savedImages.length > 0) {
-        const firstImage = savedImages[0];
-        savedProduct.coverImageUrl = firstImage.imageUrl;
-        savedProduct.coverImageId = firstImage.id;
-        await this.productRepository.save(savedProduct);
-      }
+    // 保存图片URL（优先使用 url，其次 coverImageUrl）
+    if (createDto.url) {
+      savedProduct.coverImageUrl = createDto.url;
+      await this.productRepository.save(savedProduct);
+    } else if (createDto.coverImageUrl) {
+      savedProduct.coverImageUrl = createDto.coverImageUrl;
+      await this.productRepository.save(savedProduct);
     }
 
     return this.getProductDetail(savedProduct.id);
@@ -141,10 +125,9 @@ export class ProductsService {
       throw new NotFoundException(`商品 ID ${productId} 不存在`);
     }
 
-    const [price, stats, images, tags] = await Promise.all([
+    const [price, stats, tags] = await Promise.all([
       this.priceRepository.findOne({ where: { productId } }),
       this.statsRepository.findOne({ where: { productId } }),
-      this.imageRepository.find({ where: { productId }, order: { sortOrder: 'ASC' } }),
       this.tagRepository.find({ where: { productId } }),
     ]);
 
@@ -177,7 +160,6 @@ export class ProductsService {
       shippingTemplateId: product.shippingTemplateId,
       freeShippingThreshold: product.freeShippingThreshold,
       coverImageUrl: product.coverImageUrl,
-      coverImageId: product.coverImageId,
       price: price ? {
         id: price.id,
         originalPrice: price.originalPrice,
@@ -194,15 +176,6 @@ export class ProductsService {
         favoritesCount: stats.favoritesCount,
         conversionRate: stats.conversionRate,
       } : undefined,
-      images: images.map((img) => ({
-        id: img.id,
-        imageUrl: img.imageUrl,
-        imageType: img.imageType,
-        altText: img.altText,
-        sortOrder: img.sortOrder,
-        width: img.width,
-        height: img.height,
-      })),
       tags: tags.map((tag) => ({
         id: tag.id,
         tagName: tag.tagName,
@@ -373,8 +346,8 @@ export class ProductsService {
       }
     }
 
-    // 分离特殊字段（images 需要特殊处理，coverImage* 是只读缓存字段）
-    const { images, coverImageUrl, coverImageId, ...otherUpdateData } = updateDto as any;
+    // 分离特殊字段（url 和 coverImageUrl 都可以用来更新图片）
+    const { url, coverImageUrl, ...otherUpdateData } = updateDto as any;
 
     // 过滤掉不允许直接更新的字段
     const allowedFields = [
@@ -393,6 +366,14 @@ export class ProductsService {
 
     // 更新商品基本信息
     Object.assign(product, filteredUpdateData);
+
+    // 处理图片更新（优先使用 url，其次 coverImageUrl）
+    if (url) {
+      product.coverImageUrl = url;
+    } else if (coverImageUrl) {
+      product.coverImageUrl = coverImageUrl;
+    }
+
     await this.productRepository.save(product);
 
     // 处理价格更新
@@ -411,37 +392,6 @@ export class ProductsService {
         Object.assign(price, updateDto.price);
       }
       await this.priceRepository.save(price);
-    }
-
-    // 处理图片更新
-    if (images && Array.isArray(images)) {
-      // 删除旧图片
-      await this.imageRepository.delete({ productId });
-
-      // 创建新图片
-      if (images.length > 0) {
-        const newImages = images.map((img: any, index: number) =>
-          this.imageRepository.create({
-            productId,
-            imageUrl: img.imageUrl,
-            imageType: img.imageType,
-            altText: img.altText || '',
-            sortOrder: index,
-          }),
-        );
-        const savedNewImages = await this.imageRepository.save(newImages);
-
-        // 更新 cover 图片缓存（第一张图片）
-        const firstImage = savedNewImages[0];
-        product.coverImageUrl = firstImage.imageUrl;
-        product.coverImageId = firstImage.id;
-        await this.productRepository.save(product);
-      } else {
-        // 如果没有图片了，清空 cover 缓存
-        product.coverImageUrl = null;
-        product.coverImageId = null;
-        await this.productRepository.save(product);
-      }
     }
 
     return this.getProductDetail(productId);
