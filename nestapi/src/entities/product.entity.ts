@@ -73,6 +73,12 @@ export class Product {
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, name: 'free_shipping_threshold' })
   freeShippingThreshold: number; // 元
 
+  @Column({ type: 'varchar', length: 500, nullable: true, name: 'cover_image_url' })
+  coverImageUrl: string | null; // 第一张图片URL缓存
+
+  @Column({ type: 'int', nullable: true, name: 'cover_image_id' })
+  coverImageId: number | null; // 第一张图片ID
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
