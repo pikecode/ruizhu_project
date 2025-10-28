@@ -13,7 +13,10 @@
     "build:backend": "cd nestapi && npm run build",
     "build:miniprogram": "cd miniprogram && npm run build:h5",
     "build:admin": "cd admin && npm run build",
-    "install:all": "npm install && cd nestapi && npm install && cd ../miniprogram && npm install && cd ../admin && npm install",
+    "install:all": "node scripts/install-all.js",
+    "install:backend": "cd nestapi && npm install",
+    "install:miniprogram": "cd miniprogram && npm install",
+    "install:admin": "cd admin && npm install",
     "lint:all": "cd nestapi && npm run lint && cd ../miniprogram && npm run lint && cd ../admin && npm run lint"
   },
   "dependencies": {

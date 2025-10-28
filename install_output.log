@@ -1,0 +1,97 @@
+
+> ruizhu-project@1.0.0 install:all
+> node scripts/install-all.js
+
+
+[1m[34m╔═══════════════════════════════════════════════════════════════╗[0m
+[1m[34m║       📦 Ruizhu Project - Install All Dependencies 📦        ║[0m
+[1m[34m╚═══════════════════════════════════════════════════════════════╝[0m
+  
+[34m[INFO][0m [36m15:16:09[0m Verifying project structure...
+[32m[✓][0m [36m15:16:09[0m Root Project verified at /Users/peakom/work/ruizhu_project
+[32m[✓][0m [36m15:16:09[0m NestAPI Backend verified at /Users/peakom/work/ruizhu_project/nestapi
+[32m[✓][0m [36m15:16:09[0m MiniProgram Frontend verified at /Users/peakom/work/ruizhu_project/miniprogram
+[32m[✓][0m [36m15:16:09[0m Admin Dashboard verified at /Users/peakom/work/ruizhu_project/admin
+
+[34m[INFO][0m [36m15:16:09[0m Starting installation of 4 projects...
+
+[1m[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[35m[⬇][0m [36m15:16:09[0m Installing dependencies for [1mRoot Project[0m...
+
+up to date, audited 14 packages in 983ms
+
+2 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+[32m[✓][0m [36m15:16:10[0m Root Project dependencies installed successfully
+
+[1m[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[35m[⬇][0m [36m15:16:10[0m Installing dependencies for [1mNestAPI Backend[0m...
+
+added 1 package, and audited 766 packages in 1s
+
+139 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+[32m[✓][0m [36m15:16:11[0m NestAPI Backend dependencies installed successfully
+
+[1m[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[35m[⬇][0m [36m15:16:11[0m Installing dependencies for [1mMiniProgram Frontend[0m...
+
+added 1 package, removed 368 packages, and audited 558 packages in 7s
+
+64 packages are looking for funding
+  run `npm fund` for details
+
+44 vulnerabilities (9 low, 8 moderate, 27 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+[32m[✓][0m [36m15:16:19[0m MiniProgram Frontend dependencies installed successfully
+
+[1m[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[35m[⬇][0m [36m15:16:19[0m Installing dependencies for [1mAdmin Dashboard[0m...
+
+up to date, audited 278 packages in 1s
+
+43 packages are looking for funding
+  run `npm fund` for details
+
+2 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+[32m[✓][0m [36m15:16:20[0m Admin Dashboard dependencies installed successfully
+
+[1m[33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+
+[1m[32m╔═══════════════════════════════════════════════════════════════╗[0m
+[1m[32m║        ✅ All Dependencies Installed Successfully! ✅         ║[0m
+[1m[32m╚═══════════════════════════════════════════════════════════════╝[0m
+
+[1mNext Steps:[0m
+  [36m1.[0m Start all services: [33mnpm start[0m
+  [36m2.[0m Or start individual services:
+     - Backend: [33mnpm run dev:backend[0m
+     - MiniProgram: [33mnpm run dev:miniprogram[0m
+     - Admin: [33mnpm run dev:admin[0m
+
+[1m📍 Service URLs:[0m
+  [35m•[0m Backend API: [33mhttp://localhost:3000[0m
+  [35m•[0m MiniProgram: [33mhttp://localhost:5173[0m
+  [35m•[0m Admin Dashboard: [33mhttp://localhost:5174[0m
+
+[1m💡 Tips:[0m
+  [36m•[0m Before running services, ensure MySQL is running
+  [36m•[0m Run database setup: [33mnpm run setup:database[0m
+  [36m•[0m Check node_modules size: [33mdu -sh ./*/node_modules[0m
+
