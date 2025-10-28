@@ -9,6 +9,7 @@ import { RolesModule } from './roles/roles.module';
 import { ProductsModule } from './modules/products/products.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { MediaModule } from './modules/media/media.module';
+import { CollectionsModule } from './modules/collections/collections.module';
 import { getDatabaseConfig } from './database/database.config';
 
 @Module({
@@ -29,6 +30,7 @@ import { getDatabaseConfig } from './database/database.config';
     CategoriesModule,
     ProductsModule,
     MediaModule,
+    CollectionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

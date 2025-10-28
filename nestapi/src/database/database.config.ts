@@ -21,6 +21,8 @@ import {
   OrderRefund,
 } from '../entities/product.entity';
 import { Category } from '../entities/category.entity';
+import { Collection } from '../entities/collection.entity';
+import { CollectionProduct } from '../entities/collection-product.entity';
 
 /**
  * 获取 TypeORM 数据库配置
@@ -88,6 +90,8 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
       Order,
       OrderItem,
       OrderRefund,
+      Collection,
+      CollectionProduct,
     ],
 
     // 禁用自动同步 - 使用 migration

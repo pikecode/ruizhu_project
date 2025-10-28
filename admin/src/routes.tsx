@@ -6,6 +6,7 @@ import Loading from '@/components/Loading'
 const LoginPage = lazy(() => import('@/pages/Login'))
 const DashboardPage = lazy(() => import('@/pages/Dashboard'))
 const ProductsPage = lazy(() => import('@/pages/Products'))
+const CollectionsPage = lazy(() => import('@/pages/Collections'))
 const OrdersPage = lazy(() => import('@/pages/Orders'))
 const UsersPage = lazy(() => import('@/pages/Users'))
 const SettingsPage = lazy(() => import('@/pages/Settings'))
@@ -29,6 +30,10 @@ export const routes = [
   {
     path: '/products',
     element: withSuspense(ProductsPage),
+  },
+  {
+    path: '/collections',
+    element: withSuspense(CollectionsPage),
   },
   {
     path: '/orders',

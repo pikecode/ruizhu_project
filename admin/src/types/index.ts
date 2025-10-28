@@ -106,6 +106,31 @@ export interface Category {
   updatedAt?: string
 }
 
+// Collection
+export interface Collection {
+  id: number
+  name: string
+  slug: string
+  description?: string
+  coverImageUrl?: string | null
+  iconUrl?: string | null
+  sortOrder: number
+  isActive: boolean
+  isFeatured: boolean
+  remark?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CollectionListItem extends Collection {
+  productCount: number
+}
+
+export interface CollectionDetail extends Collection {
+  products?: ProductListItem[]
+  productCount: number
+}
+
 // Order
 export interface Order {
   id: string

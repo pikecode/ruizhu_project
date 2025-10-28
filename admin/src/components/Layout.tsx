@@ -33,6 +33,11 @@ export default function Layout({ children }: LayoutProps) {
       onClick: () => navigate('/products'),
     },
     {
+      key: '/collections',
+      label: '集合',
+      onClick: () => navigate('/collections'),
+    },
+    {
       key: '/orders',
       label: '订单',
       onClick: () => navigate('/orders'),
