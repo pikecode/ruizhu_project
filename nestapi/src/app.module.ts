@@ -6,6 +6,8 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { RolesModule } from './roles/roles.module';
+import { ProductsModule } from './modules/products/products.module';
+import { CategoriesModule } from './modules/categories/categories.module';
 import { getDatabaseConfig } from './database/database.config';
 
 @Module({
@@ -23,6 +25,8 @@ import { getDatabaseConfig } from './database/database.config';
     AuthModule,
     UsersModule,
     RolesModule,
+    CategoriesModule,
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

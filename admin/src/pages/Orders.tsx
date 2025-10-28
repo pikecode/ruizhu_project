@@ -13,42 +13,42 @@ export default function OrdersPage() {
 
   const columns = [
     {
-      title: 'Order ID',
+      title: '订单ID',
       dataIndex: 'id',
       key: 'id',
     },
     {
-      title: 'User',
+      title: '用户',
       dataIndex: 'user',
       key: 'user',
     },
     {
-      title: 'Total',
+      title: '总额',
       dataIndex: 'total',
       key: 'total',
       render: (total: number) => `¥${total.toFixed(2)}`,
     },
     {
-      title: 'Status',
+      title: '状态',
       dataIndex: 'status',
       key: 'status',
       render: (status: string) => <Tag color={statusColor[status]}>{status}</Tag>,
     },
     {
-      title: 'Created',
+      title: '创建时间',
       dataIndex: 'created',
       key: 'created',
     },
     {
-      title: 'Actions',
+      title: '操作',
       key: 'actions',
       render: () => (
         <Space>
           <Button type="primary" size="small" icon={<EyeOutlined />}>
-            View
+            查看
           </Button>
           <Button danger size="small" icon={<DeleteOutlined />}>
-            Delete
+            删除
           </Button>
         </Space>
       ),
@@ -77,7 +77,7 @@ export default function OrdersPage() {
   return (
     <Layout>
       <div className="p-3">
-        <h1>Orders</h1>
+        <h1>订单</h1>
 
         <Card style={{ marginTop: 24 }}>
           <Table columns={columns} dataSource={data} pagination={{ pageSize: 10 }} />

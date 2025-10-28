@@ -24,27 +24,27 @@ export default function Layout({ children }: LayoutProps) {
   const menuItems = [
     {
       key: '/dashboard',
-      label: 'Dashboard',
+      label: '仪表板',
       onClick: () => navigate('/dashboard'),
     },
     {
       key: '/products',
-      label: 'Products',
+      label: '产品',
       onClick: () => navigate('/products'),
     },
     {
       key: '/orders',
-      label: 'Orders',
+      label: '订单',
       onClick: () => navigate('/orders'),
     },
     {
       key: '/users',
-      label: 'Users',
+      label: '用户',
       onClick: () => navigate('/users'),
     },
     {
       key: '/settings',
-      label: 'Settings',
+      label: '设置',
       onClick: () => navigate('/settings'),
     },
   ]
@@ -52,12 +52,12 @@ export default function Layout({ children }: LayoutProps) {
   const userMenu = [
     {
       key: 'profile',
-      label: 'Profile',
+      label: '个人资料',
       icon: <UserOutlined />,
     },
     {
       key: 'logout',
-      label: 'Logout',
+      label: '退出登录',
       icon: <LogoutOutlined />,
       onClick: handleLogout,
     },
@@ -67,7 +67,7 @@ export default function Layout({ children }: LayoutProps) {
     <AntLayout className={styles.layout}>
       <Sider trigger={null} collapsible collapsed={collapsed} className={styles.sider}>
         <div className={styles.logo}>
-          {collapsed ? 'RA' : 'Ruizhu Admin'}
+          {collapsed ? 'RZ' : '瑞竹管理系统'}
         </div>
         <Menu
           theme="dark"
@@ -91,7 +91,7 @@ export default function Layout({ children }: LayoutProps) {
               <Button type="text">
                 <Space>
                   <UserOutlined />
-                  {user?.username || 'User'}
+                  {user?.username || '用户'}
                 </Space>
               </Button>
             </Dropdown>

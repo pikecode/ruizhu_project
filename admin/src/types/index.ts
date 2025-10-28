@@ -24,15 +24,86 @@ export interface Permission {
 
 // Product
 export interface Product {
-  id: string
+  id: number
   name: string
-  description: string
-  price: number
-  stock: number
-  category: string
-  images: string[]
+  subtitle?: string
+  sku: string
+  description?: string
+  categoryId: number
+  categoryName?: string
+  // Status fields
+  isNew: boolean
+  isSaleOn: boolean
+  isOutOfStock: boolean
+  isSoldOut: boolean
+  isVipOnly: boolean
+  // Stock
+  stockQuantity: number
+  lowStockThreshold: number
+  // Shipping
+  weight?: number
+  shippingTemplateId?: number
+  freeShippingThreshold?: number
+  // Price
+  price?: {
+    id: number
+    originalPrice: number
+    currentPrice: number
+    discountRate: number
+    currency: string
+    vipDiscountRate?: number
+  }
+  // Stats
+  stats?: {
+    salesCount: number
+    viewsCount: number
+    averageRating: number
+    reviewsCount: number
+    favoritesCount: number
+    conversionRate?: number
+  }
+  // Images
+  images?: Array<{
+    id: number
+    imageUrl: string
+    imageType: string
+    altText?: string
+    sortOrder: number
+    width?: number
+    height?: number
+  }>
+  // Tags
+  tags?: Array<{
+    id: number
+    tagName: string
+  }>
+  // Timestamps
   createdAt: string
   updatedAt: string
+}
+
+export interface ProductListItem extends Omit<Product, 'images'> {
+  coverImage?: string
+  tags?: string[]
+  currentPrice: number
+  originalPrice: number
+  discountRate: number
+  salesCount: number
+  averageRating: number
+  reviewsCount: number
+}
+
+export interface Category {
+  id: number
+  name: string
+  slug?: string
+  icon?: string
+  description?: string
+  sortOrder?: number
+  isActive?: boolean
+  parentId?: number
+  createdAt?: string
+  updatedAt?: string
 }
 
 // Order

@@ -25,7 +25,7 @@ export default function LoginPage() {
       setToken(response.accessToken)
       setUser(response.user)
 
-      message.success('Login successful')
+      message.success('登录成功')
       navigate('/dashboard')
     } catch (error) {
       message.error(getErrorMessage(error))
@@ -38,18 +38,18 @@ export default function LoginPage() {
     <div className={styles.container}>
       <Card className={styles.card}>
         <div className={styles.header}>
-          <h1>Ruizhu Admin</h1>
-          <p>E-Commerce Management Platform</p>
+          <h1>瑞竹管理系统</h1>
+          <p>电商管理平台</p>
         </div>
 
         <Form form={form} onFinish={onFinish} layout="vertical">
           <Form.Item
             name="username"
-            rules={[{ required: true, message: 'Please input your username!' }]}
+            rules={[{ required: true, message: '请输入用户名!' }]}
           >
             <Input
               prefix={<UserOutlined />}
-              placeholder="Username"
+              placeholder="用户名"
               size="large"
               autoComplete="username"
             />
@@ -57,11 +57,11 @@ export default function LoginPage() {
 
           <Form.Item
             name="password"
-            rules={[{ required: true, message: 'Please input your password!' }]}
+            rules={[{ required: true, message: '请输入密码!' }]}
           >
             <Input.Password
               prefix={<LockOutlined />}
-              placeholder="Password"
+              placeholder="密码"
               size="large"
               autoComplete="current-password"
             />
@@ -69,13 +69,13 @@ export default function LoginPage() {
 
           <Form.Item>
             <Button type="primary" htmlType="submit" block size="large">
-              Sign In
+              登录
             </Button>
           </Form.Item>
         </Form>
 
         <div className={styles.footer}>
-          <p>Demo: Use any username/password to test</p>
+          <p>演示: 使用任何用户名/密码进行测试</p>
         </div>
       </Card>
     </div>

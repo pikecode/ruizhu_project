@@ -10,17 +10,17 @@ export default function UsersPage() {
       key: 'id',
     },
     {
-      title: 'Username',
+      title: '用户名',
       dataIndex: 'username',
       key: 'username',
     },
     {
-      title: 'Email',
+      title: '邮箱',
       dataIndex: 'email',
       key: 'email',
     },
     {
-      title: 'Role',
+      title: '角色',
       dataIndex: 'role',
       key: 'role',
       render: (role: string) => (
@@ -28,20 +28,20 @@ export default function UsersPage() {
       ),
     },
     {
-      title: 'Joined',
+      title: '加入时间',
       dataIndex: 'joined',
       key: 'joined',
     },
     {
-      title: 'Actions',
+      title: '操作',
       key: 'actions',
       render: () => (
         <Space>
           <Button type="primary" size="small" icon={<EditOutlined />}>
-            Edit
+            编辑
           </Button>
           <Button danger size="small" icon={<DeleteOutlined />}>
-            Delete
+            删除
           </Button>
         </Space>
       ),
@@ -70,7 +70,7 @@ export default function UsersPage() {
   return (
     <Layout>
       <div className="p-3">
-        <h1>Users</h1>
+        <h1>用户</h1>
 
         <Card style={{ marginTop: 24 }}>
           <Table columns={columns} dataSource={data} pagination={{ pageSize: 10 }} />
