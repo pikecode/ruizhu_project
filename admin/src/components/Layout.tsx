@@ -38,6 +38,11 @@ export default function Layout({ children }: LayoutProps) {
       onClick: () => navigate('/collections'),
     },
     {
+      key: '/array-collections',
+      label: '数组集合',
+      onClick: () => navigate('/array-collections'),
+    },
+    {
       key: '/orders',
       label: '订单',
       onClick: () => navigate('/orders'),

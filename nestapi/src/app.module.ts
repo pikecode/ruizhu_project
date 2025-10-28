@@ -10,6 +10,7 @@ import { ProductsModule } from './modules/products/products.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { MediaModule } from './modules/media/media.module';
 import { CollectionsModule } from './modules/collections/collections.module';
+import { ArrayCollectionsModule } from './modules/array-collections/array-collections.module';
 import { getDatabaseConfig } from './database/database.config';
 
 @Module({
@@ -31,6 +32,7 @@ import { getDatabaseConfig } from './database/database.config';
     ProductsModule,
     MediaModule,
     CollectionsModule,
+    ArrayCollectionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

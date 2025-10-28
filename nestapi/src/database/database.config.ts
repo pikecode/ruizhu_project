@@ -23,6 +23,9 @@ import {
 import { Category } from '../entities/category.entity';
 import { Collection } from '../entities/collection.entity';
 import { CollectionProduct } from '../entities/collection-product.entity';
+import { ArrayCollection } from '../entities/array-collection.entity';
+import { ArrayCollectionItem } from '../entities/array-collection-item.entity';
+import { ArrayCollectionItemProduct } from '../entities/array-collection-item-product.entity';
 
 /**
  * 获取 TypeORM 数据库配置
@@ -92,6 +95,9 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
       OrderRefund,
       Collection,
       CollectionProduct,
+      ArrayCollection,
+      ArrayCollectionItem,
+      ArrayCollectionItemProduct,
     ],
 
     // 禁用自动同步 - 使用 migration
