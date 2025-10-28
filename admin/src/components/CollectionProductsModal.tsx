@@ -4,14 +4,12 @@ import {
   Button,
   Popconfirm,
   message,
-  Select,
-  InputNumber,
-  Row,
-  Col,
+  Transfer,
   Spin,
   Card,
+  Select,
 } from 'antd'
-import { PlusOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons'
+import { DeleteOutlined, SaveOutlined } from '@ant-design/icons'
 import { useState, useEffect } from 'react'
 import { ProductListItem } from '@/types'
 import { collectionsService } from '@/services/collections'
@@ -31,9 +29,11 @@ export default function CollectionProductsModal({
   const [products, setProducts] = useState<ProductListItem[]>([])
   const [allProducts, setAllProducts] = useState<ProductListItem[]>([])
   const [loading, setLoading] = useState(false)
-  const [newProductIds, setNewProductIds] = useState<number[]>([])
+  const [selectedProductIds, setSelectedProductIds] = useState<(string | number)[]>([])
   const [collectionName, setCollectionName] = useState('')
   const [sortChanged, setSortChanged] = useState(false)
+  const [tempProducts, setTempProducts] = useState<ProductListItem[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
 
   useEffect(() => {
     if (visible) {
@@ -47,7 +47,10 @@ export default function CollectionProductsModal({
       setLoading(true)
       const data = await collectionsService.getCollectionDetail(collectionId)
       setCollectionName(data.name)
-      setProducts(data.products || [])
+      const productList = data.products || []
+      setProducts(productList)
+      setTempProducts(productList)
+      setSelectedProductIds(productList.map((p) => p.id))
     } catch (error) {
       message.error('加载集合产品失败')
       console.error(error)
@@ -68,67 +71,94 @@ export default function CollectionProductsModal({
     }
   }
 
-  const handleAddProducts = async () => {
-    if (newProductIds.length === 0) {
-      message.warning('请选择要添加的产品')
-      return
-    }
-    try {
-      setLoading(true)
-      await collectionsService.addProductsToCollection(collectionId, newProductIds)
-      message.success(`成功添加 ${newProductIds.length} 个产品`)
-      setNewProductIds([])
-      await loadCollectionProducts()
-    } catch (error) {
-      message.error('添加产品失败')
-    } finally {
-      setLoading(false)
-    }
-  }
 
-  const handleRemoveProduct = async (productId: number) => {
+  const handleSaveChanges = async () => {
     try {
       setLoading(true)
-      await collectionsService.removeProductsFromCollection(collectionId, [productId])
-      message.success('产品已移除')
-      await loadCollectionProducts()
-    } catch (error) {
-      message.error('移除产品失败')
-    } finally {
-      setLoading(false)
-    }
-  }
 
-  const handleSaveSort = async () => {
-    try {
-      setLoading(true)
-      const sortData = products.map((p, index) => ({
+      // 获取新增和移除的产品
+      const currentIds = products.map((p) => p.id)
+      const newIds = selectedProductIds.map((id) => Number(id))
+
+      const toAdd = newIds.filter((id) => !currentIds.includes(id))
+      const toRemove = currentIds.filter((id) => !newIds.includes(id))
+
+      // 执行新增
+      if (toAdd.length > 0) {
+        await collectionsService.addProductsToCollection(collectionId, toAdd)
+      }
+
+      // 执行移除
+      if (toRemove.length > 0) {
+        await collectionsService.removeProductsFromCollection(collectionId, toRemove)
+      }
+
+      // 保存排序
+      const sortData = tempProducts.map((p, index) => ({
         productId: p.id,
         sortOrder: index,
       }))
       await collectionsService.updateProductsSort(collectionId, sortData)
-      message.success('排序已保存')
+
+      message.success('产品已更新')
       setSortChanged(false)
       await loadCollectionProducts()
     } catch (error) {
-      message.error('保存排序失败')
+      message.error('更新产品失败')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSortChange = (index: number, newValue: number) => {
-    const newProducts = [...products]
-    const item = newProducts[index]
-    newProducts.splice(index, 1)
-    newProducts.splice(newValue, 0, item)
-    setProducts(newProducts)
+  const handleCancel = () => {
+    setTempProducts(products)
+    setSelectedProductIds(products.map((p) => p.id))
+    setSortChanged(false)
+    setSelectedCategory(null)
+    onClose()
+  }
+
+  // 获取所有分类
+  const getCategories = () => {
+    const categoryMap = new Map<number, string>()
+    allProducts.forEach((p) => {
+      if (p.categoryId && p.categoryName) {
+        categoryMap.set(p.categoryId, p.categoryName)
+      }
+    })
+    return Array.from(categoryMap.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  // 根据选中的分类过滤产品
+  const getFilteredProducts = () => {
+    if (!selectedCategory) {
+      return allProducts
+    }
+    return allProducts.filter((p) => p.categoryId === selectedCategory)
+  }
+
+  const handleRemoveFromSort = (index: number) => {
+    const newProducts = tempProducts.filter((_, i) => i !== index)
+    setTempProducts(newProducts)
+    setSelectedProductIds(newProducts.map((p) => p.id))
     setSortChanged(true)
   }
 
-  const availableProducts = allProducts.filter(
-    (p) => !products.find((cp) => cp.id === p.id)
-  )
+  const handleSortMove = (index: number, direction: 'up' | 'down') => {
+    const newProducts = [...tempProducts]
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+
+    if (targetIndex < 0 || targetIndex >= newProducts.length) return
+
+    ;[newProducts[index], newProducts[targetIndex]] = [
+      newProducts[targetIndex],
+      newProducts[index],
+    ]
+    setTempProducts(newProducts)
+    setSortChanged(true)
+  }
 
   const productColumns = [
     {
@@ -136,12 +166,22 @@ export default function CollectionProductsModal({
       key: 'sort',
       width: 80,
       render: (_: any, _record: ProductListItem, index: number) => (
-        <InputNumber
-          min={0}
-          value={index}
-          onChange={(val) => handleSortChange(index, val || 0)}
-          style={{ width: '60px' }}
-        />
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <Button
+            size="small"
+            disabled={index === 0}
+            onClick={() => handleSortMove(index, 'up')}
+          >
+            ↑
+          </Button>
+          <Button
+            size="small"
+            disabled={index === tempProducts.length - 1}
+            onClick={() => handleSortMove(index, 'down')}
+          >
+            ↓
+          </Button>
+        </div>
       ),
     },
     {
@@ -176,16 +216,16 @@ export default function CollectionProductsModal({
       title: '操作',
       key: 'action',
       width: 100,
-      render: (_: any, record: ProductListItem) => (
+      render: (_: any, _record: ProductListItem, index: number) => (
         <Popconfirm
-          title="删除产品"
-          description="确定要从集合中移除此产品吗？"
+          title="移除产品"
+          description="确定要从排序列表中移除此产品吗？"
           okText="确定"
           cancelText="取消"
-          onConfirm={() => handleRemoveProduct(record.id)}
+          onConfirm={() => handleRemoveFromSort(index)}
         >
           <Button type="default" danger size="small" icon={<DeleteOutlined />}>
-            删除
+            移除
           </Button>
         </Popconfirm>
       ),
@@ -196,82 +236,93 @@ export default function CollectionProductsModal({
     <Modal
       title={`${collectionName} - 产品管理`}
       open={visible}
-      onCancel={onClose}
-      width={1200}
+      onCancel={handleCancel}
+      width={1400}
       footer={[
-        <Button key="close" onClick={onClose}>
-          关闭
+        <Button key="cancel" onClick={handleCancel}>
+          取消
         </Button>,
-        sortChanged && (
-          <Button
-            key="save"
-            type="primary"
-            icon={<SaveOutlined />}
-            onClick={handleSaveSort}
-            loading={loading}
-          >
-            保存排序
-          </Button>
-        ),
+        <Button
+          key="save"
+          type="primary"
+          icon={<SaveOutlined />}
+          onClick={handleSaveChanges}
+          loading={loading}
+          disabled={!sortChanged}
+        >
+          保存更改
+        </Button>,
       ]}
     >
       <Spin spinning={loading}>
-        <div style={{ marginBottom: 24 }}>
-          <Card title="添加产品" size="small">
-            <Row gutter={16}>
-              <Col flex="auto">
-                <Select
-                  mode="multiple"
-                  placeholder="选择要添加的产品"
-                  value={newProductIds}
-                  onChange={setNewProductIds}
-                  style={{ width: '100%' }}
-                  optionLabelProp="label"
-                  maxTagCount="responsive"
-                >
-                  {availableProducts.map((p) => (
-                    <Select.Option key={p.id} value={p.id} label={p.name}>
-                      <div>{p.name}</div>
-                      <small style={{ color: '#999' }}>{p.sku}</small>
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Col>
-              <Col>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={handleAddProducts}
-                  disabled={newProductIds.length === 0}
-                >
-                  添加选中产品
-                </Button>
-              </Col>
-            </Row>
-          </Card>
+        <div style={{ marginBottom: 16 }}>
+          <Select
+            placeholder="按分类过滤产品"
+            allowClear
+            value={selectedCategory}
+            onChange={setSelectedCategory}
+            style={{ width: '200px' }}
+            options={[
+              { label: '全部分类', value: null },
+              ...getCategories().map((cat) => ({
+                label: cat.name,
+                value: cat.id,
+              })),
+            ]}
+          />
         </div>
 
-        <div>
-          <Card
-            title={`集合产品 (共 ${products.length} 个)`}
-            extra={sortChanged && <span style={{ color: '#ff4d4f' }}>有未保存的排序</span>}
-            size="small"
-          >
-            {products.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>
-                该集合还没有产品，请添加产品
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+          <Transfer
+            dataSource={getFilteredProducts().map((p) => ({
+              key: `${p.id}`,
+              title: p.name,
+              description: `${p.sku} | ¥${(p.currentPrice / 100).toFixed(2)}`,
+            }))}
+            titles={['可用产品', '已选产品']}
+            targetKeys={selectedProductIds.map((id) => `${id}`)}
+            onChange={(newKeys) => {
+              setSelectedProductIds(newKeys.map((k) => Number(k)))
+              const newProducts = newKeys
+                .map((key) =>
+                  allProducts.find((p) => p.id === Number(key))
+                )
+                .filter(Boolean) as ProductListItem[]
+              setTempProducts(newProducts)
+              setSortChanged(true)
+            }}
+            listStyle={{ height: 400, width: '45%' }}
+            render={(item: any) => (
+              <div>
+                <div style={{ fontWeight: 500 }}>{item.title}</div>
+                <small style={{ color: '#999' }}>{item.description}</small>
               </div>
-            ) : (
+            )}
+            operations={['添加', '移除']}
+            locale={{
+              itemUnit: '项',
+              itemsUnit: '项',
+            }}
+          />
+        </div>
+
+        {tempProducts.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <Card
+              title={`排序 (共 ${tempProducts.length} 个已选产品)`}
+              extra={sortChanged && <span style={{ color: '#ff4d4f' }}>有未保存的更改</span>}
+              size="small"
+            >
               <Table
                 columns={productColumns}
-                dataSource={products}
+                dataSource={tempProducts}
                 rowKey="id"
                 pagination={false}
                 size="small"
               />
-            )}
-          </Card>
-        </div>
+            </Card>
+          </div>
+        )}
       </Spin>
     </Modal>
   )
