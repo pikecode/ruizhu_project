@@ -151,13 +151,9 @@ export default function ProductForm({
           discountRate: 100,
           currency: 'CNY',
         },
-        // 添加媒体文件信息
-        images: mediaFiles.map((file, index) => ({
-          imageUrl: file.url,
-          imageType: file.type,
-          altText: file.altText || '',
-          sortOrder: index,
-        })),
+        // 当前阶段只支持单张图片维护，使用 coverImageUrl
+        // 如果有上传图片，使用第一张（mediaFiles maxCount=1）
+        ...(mediaFiles.length > 0 && { coverImageUrl: mediaFiles[0].url }),
       }
 
       await onSubmit(payload)
