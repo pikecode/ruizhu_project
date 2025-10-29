@@ -12,6 +12,7 @@ import { MediaModule } from './modules/media/media.module';
 import { CollectionsModule } from './modules/collections/collections.module';
 import { ArrayCollectionsModule } from './modules/array-collections/array-collections.module';
 import { BannersModule } from './modules/banners/banners.module';
+import { WechatModule } from './modules/wechat/wechat.module';
 import { getDatabaseConfig } from './database/database.config';
 
 @Module({
@@ -35,6 +36,7 @@ import { getDatabaseConfig } from './database/database.config';
     CollectionsModule,
     ArrayCollectionsModule,
     BannersModule,
+    WechatModule, // 微信集成模块（支付、通知、登录）
   ],
   controllers: [AppController],
   providers: [AppService],
