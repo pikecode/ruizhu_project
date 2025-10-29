@@ -83,7 +83,7 @@ export interface Product {
 }
 
 export interface ProductListItem extends Omit<Product, 'images' | 'tags'> {
-  coverImage?: string
+  coverImageUrl?: string | null
   tags?: string[]
   currentPrice: number
   originalPrice: number

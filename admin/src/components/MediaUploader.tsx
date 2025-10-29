@@ -18,7 +18,6 @@ import {
 import {
   DeleteOutlined,
   PictureOutlined,
-  PlayCircleOutlined,
   UploadOutlined,
   LinkOutlined,
 } from '@ant-design/icons'
@@ -58,15 +57,12 @@ export default function MediaUploader({
 
   // 验证文件类型和大小
   const validateFile = (file: RcFile): boolean => {
-    const isValidType =
-      file.type.startsWith('image/') ||
-      file.type.startsWith('video/') ||
-      file.type === 'application/octet-stream'
+    const isValidType = file.type.startsWith('image/')
 
     const isValidSize = file.size / 1024 / 1024 < maxSize
 
     if (!isValidType) {
-      message.error(`仅支持图片和视频文件`)
+      message.error(`仅支持图片文件`)
       return false
     }
 
@@ -117,7 +113,7 @@ export default function MediaUploader({
 
             const mediaFile: MediaFile = {
               url,
-              type: file.type.startsWith('video/') ? 'video' : 'image',
+              type: 'image',
               size: file.size,
               name: file.name,
               altText: '',
@@ -179,14 +175,14 @@ export default function MediaUploader({
             return false
           }}
           disabled={uploading || value.length >= maxCount}
-          accept="image/*,video/*"
+          accept="image/*"
         >
           <p className={styles.dragIcon}>
             <UploadOutlined style={{ fontSize: '32px', color: '#1890ff' }} />
           </p>
           <p className={styles.dragText}>拖拽文件到此处，或点击选择</p>
           <p className={styles.dragHint}>
-            支持图片和视频，单个文件不超过 {maxSize}MB
+            支持图片，单个文件不超过 {maxSize}MB
           </p>
         </Upload.Dragger>
       </div>
@@ -222,34 +218,27 @@ export default function MediaUploader({
                 {value.map((file, index) => (
                   <Col xs={24} sm={12} md={8} lg={6} key={index}>
                     <div className={styles.mediaCard}>
-                      {/* 媒体预览 */}
+                      {/* 图片预览 */}
                       <div className={styles.mediaPreview}>
-                        {file.type === 'image' ? (
-                          <Image
-                            src={file.url}
-                            preview={{
-                              mask: '预览',
-                            }}
-                            style={{
-                              width: '100%',
-                              height: '120px',
-                              objectFit: 'cover',
-                            }}
-                          />
-                        ) : (
-                          <div className={styles.videoPreview}>
-                            <PlayCircleOutlined style={{ fontSize: '48px' }} />
-                            <p>{file.name.substring(0, 20)}</p>
-                          </div>
-                        )}
+                        <Image
+                          src={file.url}
+                          preview={{
+                            mask: '预览',
+                          }}
+                          style={{
+                            width: '100%',
+                            height: '120px',
+                            objectFit: 'cover',
+                          }}
+                        />
                       </div>
 
                       {/* 文件信息 */}
                       <div className={styles.mediaInfo} style={{ padding: '8px' }}>
                         <div style={{ marginBottom: '4px' }}>
-                          <Tag color={file.type === 'image' ? 'blue' : 'orange'}>
-                            {file.type === 'image' ? <PictureOutlined /> : <PlayCircleOutlined />}
-                            {file.type === 'image' ? '图片' : '视频'}
+                          <Tag color="blue">
+                            <PictureOutlined />
+                            图片
                           </Tag>
                         </div>
                         <Tooltip title={file.name}>

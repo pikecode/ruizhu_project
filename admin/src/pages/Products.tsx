@@ -130,11 +130,11 @@ export default function ProductsPage() {
     },
     {
       title: '配图/视频',
-      dataIndex: 'coverImage',
+      dataIndex: 'coverImageUrl',
       key: 'media',
       width: 100,
-      render: (coverImage: string | undefined, record: ProductListItem) => {
-        if (!coverImage) {
+      render: (coverImageUrl: string | undefined, record: ProductListItem) => {
+        if (!coverImageUrl) {
           return (
             <div style={{ color: '#999', fontSize: '12px', textAlign: 'center', padding: '8px' }}>
               <PictureOutlined style={{ fontSize: '16px' }} />
@@ -142,9 +142,9 @@ export default function ProductsPage() {
             </div>
           )
         }
-        const isVideo = coverImage.toLowerCase().endsWith('.mp4') ||
-                       coverImage.toLowerCase().endsWith('.webm') ||
-                       coverImage.toLowerCase().endsWith('.mov')
+        const isVideo = coverImageUrl.toLowerCase().endsWith('.mp4') ||
+                       coverImageUrl.toLowerCase().endsWith('.webm') ||
+                       coverImageUrl.toLowerCase().endsWith('.mov')
         return (
           <div style={{ textAlign: 'center', position: 'relative' }}>
             {isVideo ? (
@@ -153,7 +153,7 @@ export default function ProductsPage() {
               </div>
             ) : (
               <Image
-                src={coverImage}
+                src={coverImageUrl}
                 alt={record.name}
                 width={60}
                 height={60}

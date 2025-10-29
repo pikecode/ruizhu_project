@@ -37,7 +37,7 @@ export default function LoginPage() {
     <div className={styles.container}>
       <Card className={styles.card}>
         <div className={styles.header}>
-          <h1>瑞竹管理系统</h1>
+          <h1>睿珠管理系统</h1>
           <p>电商管理平台</p>
         </div>
 

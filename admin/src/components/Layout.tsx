@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Layout as AntLayout, Menu, Button, Dropdown, Space } from 'antd'
 import { MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store'
 import styles from './Layout.module.scss'
 
@@ -14,6 +14,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const [collapsed, setCollapsed] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
   const { logout, user } = useAuthStore()
 
   const handleLogout = () => {
@@ -77,12 +78,12 @@ export default function Layout({ children }: LayoutProps) {
     <AntLayout className={styles.layout}>
       <Sider trigger={null} collapsible collapsed={collapsed} className={styles.sider}>
         <div className={styles.logo}>
-          {collapsed ? 'RZ' : '瑞竹管理系统'}
+          {collapsed ? 'RZ' : '睿珠管理系统'}
         </div>
         <Menu
           theme="dark"
           mode="inline"
-          defaultSelectedKeys={['/dashboard']}
+          selectedKeys={[location.pathname]}
           items={menuItems}
         />
       </Sider>
