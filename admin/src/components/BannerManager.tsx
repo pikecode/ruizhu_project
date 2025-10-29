@@ -28,7 +28,7 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons'
 import type { UploadFile } from 'antd'
-import { API_BASE_URL } from '../config'
+import { bannerService } from '../services/banner'
 
 interface Banner {
   id: number
@@ -74,13 +74,12 @@ export default function BannerManager() {
   const loadBanners = async () => {
     setLoading(true)
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/v1/banners?page=${pagination.current}&limit=${pagination.pageSize}`
-      )
-      const data = await response.json()
-      if (data.code === 200) {
-        setBanners(data.data.items)
-        setPagination({ ...pagination, total: data.data.total })
+      const response = await bannerService.getList(pagination.current, pagination.pageSize)
+      if (response.code === 200) {
+        setBanners(response.data.items)
+        setPagination({ ...pagination, total: response.data.total })
+      } else {
+        message.error(response.message || '加载Banner失败')
       }
     } catch (error) {
       message.error('加载Banner失败')
@@ -121,26 +120,19 @@ export default function BannerManager() {
 
   const handleSaveBanner = async (values: CreateBannerPayload) => {
     try {
-      const url = editingBanner
-        ? `${API_BASE_URL}/api/v1/banners/${editingBanner.id}`
-        : `${API_BASE_URL}/api/v1/banners`
+      let response
+      if (editingBanner) {
+        response = await bannerService.update(editingBanner.id, values)
+      } else {
+        response = await bannerService.create(values)
+      }
 
-      const method = editingBanner ? 'PUT' : 'POST'
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      })
-
-      const data = await response.json()
-
-      if (data.code === 200 || data.code === 201) {
+      if (response.code === 200 || response.code === 201) {
         message.success(editingBanner ? 'Banner更新成功' : 'Banner创建成功')
         handleCloseModal()
         loadBanners()
       } else {
-        message.error(data.message || '操作失败')
+        message.error(response.message || '操作失败')
       }
     } catch (error) {
       message.error('保存Banner失败')
@@ -150,17 +142,13 @@ export default function BannerManager() {
 
   const handleDeleteBanner = async (id: number) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/banners/${id}`, {
-        method: 'DELETE',
-      })
+      const response = await bannerService.delete(id)
 
-      const data = await response.json()
-
-      if (data.code === 200) {
+      if (response.code === 200) {
         message.success('Banner删除成功')
         loadBanners()
       } else {
-        message.error(data.message || '删除失败')
+        message.error(response.message || '删除失败')
       }
     } catch (error) {
       message.error('删除Banner失败')
@@ -169,49 +157,19 @@ export default function BannerManager() {
   }
 
   const handleUploadImage = async (bannerId: number, file: File) => {
-    const formData = new FormData()
-    formData.append('file', file)
-
     setUploadingId(bannerId)
     setUploadProgress(0)
 
     try {
-      const xhr = new XMLHttpRequest()
-
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const percentCompleted = Math.round((event.loaded / event.total) * 100)
-          setUploadProgress(percentCompleted)
-        }
+      await bannerService.uploadImage(bannerId, file, (percent) => {
+        setUploadProgress(percent)
       })
-
-      xhr.addEventListener('load', () => {
-        if (xhr.status === 200) {
-          const response = JSON.parse(xhr.responseText)
-          if (response.code === 200) {
-            message.success('图片上传成功')
-            loadBanners()
-          } else {
-            message.error(response.message || '上传失败')
-          }
-        } else {
-          message.error('上传失败')
-        }
-        setUploadingId(null)
-        setUploadProgress(0)
-      })
-
-      xhr.addEventListener('error', () => {
-        message.error('上传失败')
-        setUploadingId(null)
-        setUploadProgress(0)
-      })
-
-      xhr.open('POST', `${API_BASE_URL}/api/v1/banners/${bannerId}/upload-image`)
-      xhr.send(formData)
-    } catch (error) {
-      message.error('上传图片失败')
+      message.success('图片上传成功')
+      loadBanners()
+    } catch (error: any) {
+      message.error(error.message || '上传图片失败')
       console.error(error)
+    } finally {
       setUploadingId(null)
       setUploadProgress(0)
     }
@@ -220,49 +178,19 @@ export default function BannerManager() {
   }
 
   const handleUploadVideo = async (bannerId: number, file: File) => {
-    const formData = new FormData()
-    formData.append('file', file)
-
     setUploadingId(bannerId)
     setUploadProgress(0)
 
     try {
-      const xhr = new XMLHttpRequest()
-
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const percentCompleted = Math.round((event.loaded / event.total) * 100)
-          setUploadProgress(percentCompleted)
-        }
+      await bannerService.uploadVideo(bannerId, file, (percent) => {
+        setUploadProgress(percent)
       })
-
-      xhr.addEventListener('load', () => {
-        if (xhr.status === 200) {
-          const response = JSON.parse(xhr.responseText)
-          if (response.code === 200) {
-            message.success('视频上传并转换成功')
-            loadBanners()
-          } else {
-            message.error(response.message || '上传失败')
-          }
-        } else {
-          message.error('上传失败')
-        }
-        setUploadingId(null)
-        setUploadProgress(0)
-      })
-
-      xhr.addEventListener('error', () => {
-        message.error('上传失败')
-        setUploadingId(null)
-        setUploadProgress(0)
-      })
-
-      xhr.open('POST', `${API_BASE_URL}/api/v1/banners/${bannerId}/upload-video`)
-      xhr.send(formData)
-    } catch (error) {
-      message.error('上传视频失败')
+      message.success('视频上传并转换成功')
+      loadBanners()
+    } catch (error: any) {
+      message.error(error.message || '上传视频失败')
       console.error(error)
+    } finally {
       setUploadingId(null)
       setUploadProgress(0)
     }
