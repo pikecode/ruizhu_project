@@ -1,0 +1,201 @@
+{
+  "pages": [
+    {
+      "path": "pages/auth/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/auth/register",
+      "style": {
+        "navigationBarTitleText": "注册",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/category/category",
+      "style": {
+        "navigationBarTitleText": "分类"
+      }
+    },
+    {
+      "path": "pages/gifts/gifts",
+      "style": {
+        "navigationBarTitleText": "VIP私人定制", 
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/cart/cart",
+      "style": {
+        "navigationBarTitleText": "购物袋"
+      }
+    },
+    {
+      "path": "pages/profile/profile",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationStyle": "custom"
+      }
+    },
+  {
+      "path": "pages/video-player/video-player",
+      "style": {
+        "navigationBarTitleText": "视频播放",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/membership/join",
+      "style": {
+        "navigationBarTitleText": "完善个人资料"
+      }
+    },
+    {
+      "path": "pages/collection/explore",
+      "style": {
+        "navigationBarTitleText": "精选系列"
+      }
+    },
+    {
+      "path": "pages/orders/orders",
+      "style": {
+        "navigationBarTitleText": "我的订单"
+      }
+    },
+    {
+      "path": "pages/wishlist/wishlist",
+      "style": {
+        "navigationBarTitleText": "心愿单"
+      }
+    },
+    {
+      "path": "pages/addresses/addresses",
+      "style": {
+        "navigationBarTitleText": "地址管理"
+      }
+    },
+    {
+      "path": "pages/addresses/add-edit",
+      "style": {
+        "navigationBarTitleText": "地址",
+        "navigationBarBackgroundColor": "#FFFFFF"
+      }
+    },
+    {
+      "path": "pages/legal/legal",
+      "style": {
+        "navigationBarTitleText": "法律条款"
+      }
+    },
+    {
+      "path": "pages/legal/authorization",
+      "style": {
+        "navigationBarTitleText": "个人信息授权"
+      }
+    },
+    {
+      "path": "pages/profile/edit",
+      "style": {
+        "navigationBarTitleText": "完善个人资料"
+      }
+    },
+    {
+      "path": "pages/product/detail",
+      "style": {
+        "navigationBarTitleText": "商品详情"
+      }
+    },
+    {
+      "path": "pages/collection/detail",
+      "style": {
+        "navigationBarTitleText": "集合详情"
+      }
+    },
+    {
+      "path": "pages/consultation/consultation",
+      "style": {
+        "navigationBarTitleText": "定制咨询",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/checkout/checkout",
+      "style": {
+        "navigationBarTitleText": "确认订单"
+      }
+    },
+    {
+      "path": "pages/order/confirmation",
+      "style": {
+        "navigationBarTitleText": "订单确认"
+      }
+    },
+    {
+      "path": "pages/payment/payment",
+      "style": {
+        "navigationBarTitleText": "支付"
+      }
+    },
+    {
+      "path": "pages/orders/detail",
+      "style": {
+        "navigationBarTitleText": "订单详情"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "Ruizhu",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#FFFFFF",
+    "pageOrientation": "portrait"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#000000",
+    "borderStyle": "white",
+    "backgroundColor": "#FFFFFF",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "/static/icons/tab-home.png",
+        "selectedIconPath": "/static/icons/tab-home.png"
+      },
+      {
+        "pagePath": "pages/category/category",
+        "text": "分类",
+        "iconPath": "/static/icons/tab-category.png",
+        "selectedIconPath": "/static/icons/tab-category.png"
+      },
+      {
+        "pagePath": "pages/gifts/gifts",
+        "text": "私人定制",
+        "iconPath": "/static/icons/tab-vip.png",
+        "selectedIconPath": "/static/icons/tab-vip.png"
+      },
+      {
+        "pagePath": "pages/cart/cart",
+        "text": "购物袋",
+        "iconPath": "/static/icons/tab-cart.png",
+        "selectedIconPath": "/static/icons/tab-cart.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "/static/icons/tab-profile.png",
+        "selectedIconPath": "/static/icons/tab-profile.png"
+      }
+    ]
+  }
+}
