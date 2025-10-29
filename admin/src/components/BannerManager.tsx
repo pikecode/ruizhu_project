@@ -65,8 +65,10 @@ export default function BannerManager() {
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
   const [form] = Form.useForm()
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
-  const [uploadingId, setUploadingId] = useState<number | null>(null)
+  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadStatus, setUploadStatus] = useState<string>('')
 
   useEffect(() => {
     loadBanners()
@@ -117,27 +119,92 @@ export default function BannerManager() {
   const handleCloseModal = () => {
     setFormVisible(false)
     form.resetFields()
+    setMediaFile(null)
+    setUploadProgress(0)
   }
 
   const handleSaveBanner = async (values: CreateBannerPayload) => {
     try {
+      setUploading(true)
+      setUploadProgress(0)
+      setUploadStatus('')
       let response
-      if (editingBanner) {
-        response = await bannerService.update(editingBanner.id, values)
+      const bannerId = editingBanner?.id
+
+      // 编辑时：先上传媒体，再保存基本信息
+      // 创建时：先保存基本信息获得ID，再上传媒体
+      if (bannerId && mediaFile) {
+        // 编辑现有Banner：先上传媒体文件
+        if (values.type === 'image') {
+          setUploadStatus('上传图片中...')
+          setUploadProgress(0)
+          await bannerService.uploadImage(bannerId, mediaFile, (percent) => {
+            setUploadProgress(percent)
+          })
+        } else if (values.type === 'video') {
+          setUploadStatus('上传视频中...')
+          setUploadProgress(0)
+          await bannerService.uploadVideo(bannerId, mediaFile, (percent) => {
+            setUploadProgress(percent)
+          })
+        }
+
+        // 再更新基本信息
+        setUploadStatus('保存基本信息中...')
+        response = await bannerService.update(bannerId, values)
       } else {
-        response = await bannerService.create(values)
+        // 创建新Banner或只更新信息：先保存基本信息
+        setUploadStatus('保存基本信息中...')
+        if (bannerId) {
+          response = await bannerService.update(bannerId, values)
+        } else {
+          response = await bannerService.create(values)
+        }
+
+        if (response.code !== 200 && response.code !== 201) {
+          message.error(response.message || '保存失败')
+          setUploading(false)
+          setUploadStatus('')
+          return
+        }
+
+        const currentBannerId = bannerId || response.data.id
+
+        // 如果有媒体文件，上传
+        if (mediaFile) {
+          if (values.type === 'image') {
+            setUploadStatus('上传图片中...')
+            setUploadProgress(0)
+            await bannerService.uploadImage(currentBannerId, mediaFile, (percent) => {
+              setUploadProgress(percent)
+            })
+          } else if (values.type === 'video') {
+            setUploadStatus('上传视频中...')
+            setUploadProgress(0)
+            await bannerService.uploadVideo(currentBannerId, mediaFile, (percent) => {
+              setUploadProgress(percent)
+            })
+          }
+        }
       }
 
-      if (response.code === 200 || response.code === 201) {
-        message.success(editingBanner ? 'Banner更新成功' : 'Banner创建成功')
-        handleCloseModal()
-        loadBanners()
-      } else {
-        message.error(response.message || '操作失败')
+      if (response && (response.code !== 200 && response.code !== 201)) {
+        message.error(response.message || '保存失败')
+        setUploading(false)
+        setUploadStatus('')
+        return
       }
+
+      message.success(editingBanner ? 'Banner更新成功' : 'Banner创建成功')
+      handleCloseModal()
+      loadBanners()
     } catch (error) {
       message.error('保存Banner失败')
       console.error(error)
+    } finally {
+      setUploading(false)
+      setUploadStatus('')
+      setUploadProgress(0)
     }
   }
 
@@ -155,48 +222,6 @@ export default function BannerManager() {
       message.error('删除Banner失败')
       console.error(error)
     }
-  }
-
-  const handleUploadImage = async (bannerId: number, file: File) => {
-    setUploadingId(bannerId)
-    setUploadProgress(0)
-
-    try {
-      await bannerService.uploadImage(bannerId, file, (percent) => {
-        setUploadProgress(percent)
-      })
-      message.success('图片上传成功')
-      loadBanners()
-    } catch (error: any) {
-      message.error(error.message || '上传图片失败')
-      console.error(error)
-    } finally {
-      setUploadingId(null)
-      setUploadProgress(0)
-    }
-
-    return false
-  }
-
-  const handleUploadVideo = async (bannerId: number, file: File) => {
-    setUploadingId(bannerId)
-    setUploadProgress(0)
-
-    try {
-      await bannerService.uploadVideo(bannerId, file, (percent) => {
-        setUploadProgress(percent)
-      })
-      message.success('视频上传并转换成功')
-      loadBanners()
-    } catch (error: any) {
-      message.error(error.message || '上传视频失败')
-      console.error(error)
-    } finally {
-      setUploadingId(null)
-      setUploadProgress(0)
-    }
-
-    return false
   }
 
   const columns = [
@@ -284,97 +309,26 @@ export default function BannerManager() {
       width: 240,
       fixed: 'right',
       render: (_: any, record: Banner) => (
-        <Space direction="vertical" size="small" style={{ width: '100%' }}>
-          <Space size="small">
-            <Button
-              type="primary"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleOpenModal(record)}
-            >
-              编辑
+        <Space size="small">
+          <Button
+            type="primary"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleOpenModal(record)}
+          >
+            编辑
+          </Button>
+          <Popconfirm
+            title="删除Banner"
+            description="确定要删除这个Banner吗?"
+            onConfirm={() => handleDeleteBanner(record.id)}
+            okText="删除"
+            cancelText="取消"
+          >
+            <Button danger size="small" icon={<DeleteOutlined />}>
+              删除
             </Button>
-            <Popconfirm
-              title="删除Banner"
-              description="确定要删除这个Banner吗?"
-              onConfirm={() => handleDeleteBanner(record.id)}
-              okText="删除"
-              cancelText="取消"
-            >
-              <Button danger size="small" icon={<DeleteOutlined />}>
-                删除
-              </Button>
-            </Popconfirm>
-          </Space>
-
-          <Space size="small">
-            {record.type === 'image' && (
-              <Upload
-                maxCount={1}
-                beforeUpload={(file) => {
-                  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-                    message.error('仅支持JPEG、PNG、WebP格式')
-                    return false
-                  }
-                  handleUploadImage(record.id, file)
-                  return false
-                }}
-                fileList={
-                  uploadingId === record.id
-                    ? [{ uid: '-1', name: '上传中...', status: 'uploading' }]
-                    : []
-                }
-              >
-                <Button
-                  type="dashed"
-                  size="small"
-                  icon={<PictureOutlined />}
-                  disabled={uploadingId === record.id}
-                >
-                  上传图片
-                </Button>
-              </Upload>
-            )}
-
-            {record.type === 'video' && (
-              <Upload
-                maxCount={1}
-                beforeUpload={(file) => {
-                  if (
-                    ![
-                      'video/mp4',
-                      'video/quicktime',
-                      'video/x-msvideo',
-                      'video/mpeg',
-                    ].includes(file.type)
-                  ) {
-                    message.error('仅支持MP4、MOV、AVI、MPEG格式')
-                    return false
-                  }
-                  handleUploadVideo(record.id, file)
-                  return false
-                }}
-                fileList={
-                  uploadingId === record.id
-                    ? [{ uid: '-1', name: '上传中...', status: 'uploading' }]
-                    : []
-                }
-              >
-                <Button
-                  type="dashed"
-                  size="small"
-                  icon={<VideoCameraOutlined />}
-                  disabled={uploadingId === record.id}
-                >
-                  上传视频
-                </Button>
-              </Upload>
-            )}
-          </Space>
-
-          {uploadingId === record.id && (
-            <Progress percent={uploadProgress} size="small" status="active" />
-          )}
+          </Popconfirm>
         </Space>
       ),
     },
@@ -414,10 +368,13 @@ export default function BannerManager() {
         title={editingBanner ? '编辑Banner' : '创建Banner'}
         open={formVisible}
         onOk={() => form.submit()}
-        onCancel={handleCloseModal}
+        onCancel={uploading ? undefined : handleCloseModal}
         width={600}
         okText={editingBanner ? '更新' : '创建'}
         cancelText="取消"
+        confirmLoading={uploading}
+        okButtonProps={{ loading: uploading, disabled: uploading }}
+        cancelButtonProps={{ disabled: uploading }}
       >
         <Form
           form={form}
@@ -443,6 +400,66 @@ export default function BannerManager() {
                 <VideoCameraOutlined /> 视频
               </Select.Option>
             </Select>
+          </Form.Item>
+
+          <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.type !== currentValues.type}>
+            {({ getFieldValue }) => {
+              const bannerType = getFieldValue('type')
+              return (
+                <Form.Item
+                  label={bannerType === 'image' ? '图片' : '视频'}
+                  extra={bannerType === 'image' ? '支持：JPEG、PNG、WebP' : '支持：MP4、MOV、AVI、MPEG'}
+                >
+                  <Upload
+                    maxCount={1}
+                    beforeUpload={(file) => {
+                      if (bannerType === 'image') {
+                        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                          message.error('仅支持JPEG、PNG、WebP格式')
+                          return false
+                        }
+                      } else {
+                        if (
+                          ![
+                            'video/mp4',
+                            'video/quicktime',
+                            'video/x-msvideo',
+                            'video/mpeg',
+                          ].includes(file.type)
+                        ) {
+                          message.error('仅支持MP4、MOV、AVI、MPEG格式')
+                          return false
+                        }
+                      }
+                      setMediaFile(file)
+                      return false
+                    }}
+                    fileList={mediaFile ? [{ uid: '-1', name: mediaFile.name, status: 'done' }] : []}
+                  >
+                    <Button icon={bannerType === 'image' ? <PictureOutlined /> : <VideoCameraOutlined />}>
+                      {mediaFile
+                        ? `已选择：${mediaFile.name}`
+                        : `选择${bannerType === 'image' ? '图片' : '视频'}`}
+                    </Button>
+                  </Upload>
+                  {uploading && (uploadProgress > 0 || uploadStatus) && (
+                    <div style={{ marginTop: 12 }}>
+                      {uploadStatus && (
+                        <div style={{ marginBottom: 8, fontSize: 12, color: '#666' }}>
+                          {uploadStatus}
+                          {uploadProgress > 0 && ` (${uploadProgress}%)`}
+                        </div>
+                      )}
+                      <Progress
+                        percent={uploadProgress}
+                        size="small"
+                        status="active"
+                      />
+                    </div>
+                  )}
+                </Form.Item>
+              )
+            }}
           </Form.Item>
 
           <Form.Item
