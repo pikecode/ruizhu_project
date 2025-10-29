@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Table,
   Button,
@@ -14,7 +14,6 @@ import {
   Popconfirm,
   Card,
   Row,
-  Col,
   Image,
   Tag,
   Progress,
@@ -27,7 +26,6 @@ import {
   VideoCameraOutlined,
   ReloadOutlined,
 } from '@ant-design/icons'
-import type { UploadFile } from 'antd'
 import { bannerService } from '../services/banner'
 
 interface Banner {
@@ -224,7 +222,7 @@ export default function CustomBannerManager() {
     }
   }
 
-  const columns = [
+  const columns: any = [
     {
       title: '标题',
       dataIndex: 'mainTitle',

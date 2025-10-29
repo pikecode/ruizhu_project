@@ -90,14 +90,15 @@ export default function ProductForm({
           sortOrder: img.sortOrder,
         }))
         setMediaFiles(files)
-      } else if (product.coverImageUrl) {
+      } else if ((product as any).coverImageUrl) {
         // 如果没有 images 数组但有 coverImageUrl，使用它
+        const coverUrl = (product as any).coverImageUrl as string
         const files: MediaFile[] = [
           {
-            url: product.coverImageUrl,
+            url: coverUrl,
             type: 'image',
             size: 0,
-            name: product.coverImageUrl.split('/').pop() || 'image',
+            name: coverUrl.split('/').pop() || 'image',
             altText: '',
             sortOrder: 0,
           },

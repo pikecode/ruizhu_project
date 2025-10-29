@@ -1,7 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -10,6 +11,9 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
+  /**
+   * 验证用户名密码
+   */
   async validateUser(username: string, password: string): Promise<any> {
     const user = await this.usersService.findByUsername(username);
     if (user && await bcrypt.compare(password, user.password)) {
@@ -19,6 +23,9 @@ export class AuthService {
     return null;
   }
 
+  /**
+   * 用户名密码登录
+   */
   async login(username: string, password: string) {
     const user = await this.validateUser(username, password);
     if (!user) {
@@ -32,11 +39,168 @@ export class AuthService {
     };
   }
 
+  /**
+   * 用户注册
+   */
   async register(registerDto: { username: string; password: string; email: string }) {
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
     return this.usersService.create({
       ...registerDto,
       password: hashedPassword,
     });
+  }
+
+  /**
+   * 解密微信手机号数据
+   * 微信小程序通过 Button 组件 getPhoneNumber 获取加密的手机号数据
+   * 需要使用 sessionKey 解密
+   *
+   * @param encryptedData 加密的手机号数据（base64编码）
+   * @param iv 初始化向量（base64编码）
+   * @param sessionKey 微信会话密钥（base64编码）
+   * @returns 解密后的手机号数据对象
+   */
+  decryptWechatData(
+    encryptedData: string,
+    iv: string,
+    sessionKey: string,
+  ): any {
+    try {
+      // 转换为 Buffer
+      const encryptedDataBuf = Buffer.from(encryptedData, 'base64');
+      const ivBuf = Buffer.from(iv, 'base64');
+      const sessionKeyBuf = Buffer.from(sessionKey, 'base64');
+
+      // 使用 AES-128-CBC 解密
+      const decipher = crypto.createDecipheriv('aes-128-cbc', sessionKeyBuf, ivBuf);
+
+      // 关键：禁用自动填充，以便手动处理
+      decipher.setAutoPadding(false);
+
+      let decoded = decipher.update(encryptedDataBuf, undefined, 'utf8');
+      decoded += decipher.final('utf8');
+
+      // 移除 PKCS#7 填充
+      const pad = decoded.charCodeAt(decoded.length - 1);
+      if (pad < 1 || pad > 16) {
+        throw new Error('Invalid padding');
+      }
+
+      decoded = decoded.slice(0, -pad);
+
+      // 解析 JSON
+      return JSON.parse(decoded);
+    } catch (error) {
+      throw new BadRequestException(`手机号解密失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 微信手机号授权登录
+   * 小程序用户通过手机号授权进行登录
+   *
+   * @param openId 微信openId
+   * @param encryptedPhone 加密的手机号数据
+   * @param iv 初始化向量
+   * @param sessionKey 会话密钥
+   * @returns JWT token 和用户信息
+   */
+  async wechatPhoneLogin(
+    openId: string,
+    encryptedPhone: string,
+    iv: string,
+    sessionKey: string,
+  ) {
+    // 解密手机号数据
+    const phoneData = this.decryptWechatData(encryptedPhone, iv, sessionKey);
+
+    if (!phoneData.phoneNumber) {
+      throw new BadRequestException('无法获取手机号');
+    }
+
+    const phone = phoneData.phoneNumber;
+
+    // 查找或创建用户
+    let user = await this.usersService.findByPhone(phone);
+
+    if (user) {
+      // 更新现有用户的openId和授权状态
+      if (user.openId !== openId) {
+        user = await this.usersService.bindPhoneToOpenId(openId, phone);
+      }
+    } else {
+      // 创建新用户
+      user = await this.usersService.createOrUpdateByPhone(phone, openId, {
+        nickname: phoneData.name || `用户_${phone.slice(-4)}`,
+      });
+    }
+
+    // 更新最后登录信息
+    // 注意：这里需要客户端提供IP，或者在中间件中获取
+    const ip = '0.0.0.0'; // 实际应该从请求中获取
+    await this.usersService.updateLastLogin(user.id, ip);
+
+    // 生成 JWT token
+    const payload = { phone: user.phone, sub: user.id, openId: user.openId };
+    const { password, ...userWithoutPassword } = user;
+
+    return {
+      access_token: this.jwtService.sign(payload),
+      user: userWithoutPassword,
+    };
+  }
+
+  /**
+   * 微信openId登录
+   * 用户第一次使用微信小程序登录（无手机号）
+   */
+  async wechatOpenIdLogin(
+    openId: string,
+    userData?: {
+      nickName?: string;
+      avatarUrl?: string;
+      gender?: number;
+      province?: string;
+      city?: string;
+      country?: string;
+    },
+  ) {
+    // 查找或创建用户
+    let user = await this.usersService.findByOpenId(openId);
+
+    if (!user) {
+      // 创建新用户
+      user = await this.usersService.createOrUpdateByPhone(
+        null,
+        openId,
+        {
+          nickname: userData?.nickName,
+          avatarUrl: userData?.avatarUrl,
+          gender: userData?.gender ? (userData.gender === 1 ? 'male' : userData.gender === 2 ? 'female' : 'unknown') : 'unknown',
+          province: userData?.province,
+          city: userData?.city,
+          country: userData?.country,
+          isProfileAuthorized: true,
+        },
+      );
+    } else {
+      // 更新现有用户信息
+      if (userData) {
+        user = await this.usersService.bindPhoneToOpenId(openId, user.phone);
+      }
+    }
+
+    // 更新最后登录信息
+    const ip = '0.0.0.0';
+    await this.usersService.updateLastLogin(user.id, ip);
+
+    // 生成 JWT token
+    const payload = { sub: user.id, openId: user.openId };
+    const { password, ...userWithoutPassword } = user;
+
+    return {
+      access_token: this.jwtService.sign(payload),
+      user: userWithoutPassword,
+    };
   }
 }
