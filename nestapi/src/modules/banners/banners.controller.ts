@@ -22,14 +22,16 @@ export class BannersController {
 
   /**
    * 获取Banner列表（分页）
-   * GET /api/v1/banners?page=1&limit=10
+   * GET /api/v1/banners?page=1&limit=10&pageType=home
+   * pageType: 'home' | 'custom' (default: 'home')
    */
   @Get()
   async getBannerList(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('pageType') pageType: 'home' | 'custom' = 'home',
   ): Promise<{ code: number; message: string; data: BannerListResponseDto }> {
-    const data = await this.bannersService.getBannerList(page, limit);
+    const data = await this.bannersService.getBannerList(page, limit, false, pageType);
     return {
       code: 200,
       message: 'Successfully retrieved banner list',

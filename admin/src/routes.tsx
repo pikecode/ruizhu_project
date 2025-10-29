@@ -9,6 +9,7 @@ const ProductsPage = lazy(() => import('@/pages/Products'))
 const CollectionsPage = lazy(() => import('@/pages/Collections'))
 const ArrayCollectionsPage = lazy(() => import('@/pages/ArrayCollections'))
 const BannersPage = lazy(() => import('@/pages/Banners'))
+const CustomBannersPage = lazy(() => import('@/pages/CustomBanners'))
 const OrdersPage = lazy(() => import('@/pages/Orders'))
 const UsersPage = lazy(() => import('@/pages/Users'))
 const SettingsPage = lazy(() => import('@/pages/Settings'))
@@ -44,6 +45,10 @@ export const routes = [
   {
     path: '/banners',
     element: withSuspense(BannersPage),
+  },
+  {
+    path: '/custom-banners',
+    element: withSuspense(CustomBannersPage),
   },
   {
     path: '/orders',

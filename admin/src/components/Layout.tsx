@@ -49,6 +49,11 @@ export default function Layout({ children }: LayoutProps) {
       onClick: () => navigate('/banners'),
     },
     {
+      key: '/custom-banners',
+      label: '私人定制Banner',
+      onClick: () => navigate('/custom-banners'),
+    },
+    {
       key: '/orders',
       label: '订单',
       onClick: () => navigate('/orders'),

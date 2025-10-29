@@ -22,13 +22,16 @@ export class BannersService {
   /**
    * 获取Banner列表
    */
-  async getBannerList(page: number = 1, limit: number = 10, onlyActive: boolean = false): Promise<BannerListResponseDto> {
+  async getBannerList(page: number = 1, limit: number = 10, onlyActive: boolean = false, pageType: 'home' | 'custom' = 'home'): Promise<BannerListResponseDto> {
     const skip = (page - 1) * limit;
 
     let query = this.bannerRepository.createQueryBuilder('banner');
 
+    // 按页面类型筛选
+    query = query.where('banner.pageType = :pageType', { pageType });
+
     if (onlyActive) {
-      query = query.where('banner.isActive = :isActive', { isActive: true });
+      query = query.andWhere('banner.isActive = :isActive', { isActive: true });
     }
 
     const [items, total] = await query

@@ -4,6 +4,8 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 @Index('idx_sort_order', ['sortOrder'])
 @Index('idx_is_active', ['isActive'])
 @Index('idx_type', ['type'])
+@Index('idx_page_type', ['pageType'])
+@Index('idx_page_type_sort', ['pageType', 'sortOrder'])
 @Index('idx_created_at', ['createdAt'])
 export class Banner {
   @PrimaryGeneratedColumn()
@@ -94,6 +96,16 @@ export class Banner {
     comment: '视频封面文件Key',
   })
   videoThumbnailKey: string | null;
+
+  // 页面类型
+  @Column({
+    type: 'enum',
+    enum: ['home', 'custom'],
+    default: 'home',
+    name: 'page_type',
+    comment: '页面类型：home(首页) custom(私人定制)',
+  })
+  pageType: 'home' | 'custom';
 
   // 状态字段
   @Column({
