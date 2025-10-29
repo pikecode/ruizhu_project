@@ -41,11 +41,14 @@ export class BannersController {
 
   /**
    * 获取首页展示的Banner列表（仅启用的）
-   * GET /api/v1/banners/home
+   * GET /api/v1/banners/home?pageType=home
+   * pageType: 'home' | 'custom' (default: 'home')
    */
   @Get('home')
-  async getHomeBanners(): Promise<{ code: number; message: string; data: BannerResponseDto[] }> {
-    const data = await this.bannersService.getHomeBanners();
+  async getHomeBanners(
+    @Query('pageType') pageType: 'home' | 'custom' = 'home',
+  ): Promise<{ code: number; message: string; data: BannerResponseDto[] }> {
+    const data = await this.bannersService.getHomeBanners(pageType);
     return {
       code: 200,
       message: 'Successfully retrieved home banners',

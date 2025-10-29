@@ -20,6 +20,10 @@ export class CreateBannerDto {
   type?: 'image' | 'video';
 
   @IsOptional()
+  @IsEnum(['home', 'custom'])
+  pageType?: 'home' | 'custom';
+
+  @IsOptional()
   @IsNumber()
   sortOrder?: number;
 
@@ -55,6 +59,10 @@ export class UpdateBannerDto {
   @IsOptional()
   @IsEnum(['image', 'video'])
   type?: 'image' | 'video';
+
+  @IsOptional()
+  @IsEnum(['home', 'custom'])
+  pageType?: 'home' | 'custom';
 
   @IsOptional()
   @IsNumber()
@@ -97,6 +105,7 @@ export class BannerResponseDto {
   videoUrl?: string | null;
   videoThumbnailUrl?: string | null;
 
+  pageType: 'home' | 'custom';
   isActive: boolean;
   sortOrder: number;
 

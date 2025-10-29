@@ -68,9 +68,9 @@ export class BannersService {
   /**
    * 获取首页展示的Banner列表（仅包括启用的）
    */
-  async getHomeBanners(): Promise<BannerResponseDto[]> {
+  async getHomeBanners(pageType: 'home' | 'custom' = 'home'): Promise<BannerResponseDto[]> {
     const banners = await this.bannerRepository.find({
-      where: { isActive: true },
+      where: { isActive: true, pageType },
       order: {
         sortOrder: 'ASC',
         createdAt: 'DESC',
@@ -347,6 +347,7 @@ export class BannersService {
       videoThumbnailUrl: banner.videoThumbnailKey
         ? this.urlHelper.generateUrl(banner.videoThumbnailKey)
         : banner.videoThumbnailUrl,
+      pageType: banner.pageType,
       isActive: banner.isActive,
       sortOrder: banner.sortOrder,
       linkType: banner.linkType,
