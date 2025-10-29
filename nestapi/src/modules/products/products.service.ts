@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
 import {
   Product,
-  ProductStats,
   ProductTag,
 } from '../../entities/product.entity';
 import { Category } from '../../entities/category.entity';
@@ -23,8 +22,6 @@ export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
-    @InjectRepository(ProductStats)
-    private readonly statsRepository: Repository<ProductStats>,
     @InjectRepository(ProductTag)
     private readonly tagRepository: Repository<ProductTag>,
     @InjectRepository(Category)
@@ -123,17 +120,6 @@ export class ProductsService {
 
     const savedProduct = await this.productRepository.save(product);
 
-    // 创建统计信息
-    const stats = this.statsRepository.create({
-      productId: savedProduct.id,
-      salesCount: 0,
-      viewsCount: 0,
-      averageRating: 0,
-      reviewsCount: 0,
-      favoritesCount: 0,
-    });
-    await this.statsRepository.save(stats);
-
     return this.getProductDetail(savedProduct.id);
   }
 
@@ -149,20 +135,15 @@ export class ProductsService {
       throw new NotFoundException(`商品 ID ${productId} 不存在`);
     }
 
-    const [stats, tags] = await Promise.all([
-      this.statsRepository.findOne({ where: { productId } }),
-      this.tagRepository.find({ where: { productId } }),
-    ]);
+    const tags = await this.tagRepository.find({ where: { productId } });
 
     const category = await this.categoryRepository.findOne({
       where: { id: product.categoryId },
     });
 
-    // 更新浏览数
-    if (stats) {
-      stats.viewsCount += 1;
-      await this.statsRepository.save(stats);
-    }
+    // 更新浏览数（直接更新 product 表）
+    product.viewsCount += 1;
+    await this.productRepository.save(product);
 
     // 计算 stockStatus
     const stockStatus = this.convertFlagsToStockStatus(product.isOutOfStock, product.isSoldOut);
@@ -195,14 +176,14 @@ export class ProductsService {
         currency: product.currency,
         vipDiscountRate: product.vipDiscountRate,
       },
-      stats: stats ? {
-        salesCount: stats.salesCount,
-        viewsCount: stats.viewsCount,
-        averageRating: stats.averageRating,
-        reviewsCount: stats.reviewsCount,
-        favoritesCount: stats.favoritesCount,
-        conversionRate: stats.conversionRate,
-      } : undefined,
+      stats: {
+        salesCount: product.salesCount,
+        viewsCount: product.viewsCount,
+        averageRating: product.averageRating,
+        reviewsCount: product.reviewsCount,
+        favoritesCount: product.favoritesCount,
+        conversionRate: product.conversionRate,
+      },
       tags: tags.map((tag) => ({
         id: tag.id,
         tagName: tag.tagName,
@@ -251,9 +232,8 @@ export class ProductsService {
 
     const skip = (page - 1) * limit;
 
-    // 查询商品（价格字段现在直接在 products 表中）
+    // 查询商品（价格和统计字段现在直接在 products 表中）
     let query_obj = this.productRepository.createQueryBuilder('product')
-      .leftJoinAndSelect('product.stats', 'stats')
       .leftJoinAndSelect('product.tags', 'tags');
 
     // 应用 where 条件
@@ -280,7 +260,7 @@ export class ProductsService {
       query_obj = query_obj.andWhere('tags.tagName = :tag', { tag });
     }
 
-    // 排序
+    // 排序（统计字段现在直接在 products 表中）
     let orderBy = 'product.createdAt';
     let orderDir: 'ASC' | 'DESC' = 'DESC';
 
@@ -291,16 +271,16 @@ export class ProductsService {
       orderBy = 'product.currentPrice';
       orderDir = 'DESC';
     } else if (sort === 'sales') {
-      orderBy = 'stats.salesCount';
+      orderBy = 'product.salesCount';
       orderDir = 'ASC';
     } else if (sort === '-sales') {
-      orderBy = 'stats.salesCount';
+      orderBy = 'product.salesCount';
       orderDir = 'DESC';
     } else if (sort === 'rating') {
-      orderBy = 'stats.averageRating';
+      orderBy = 'product.averageRating';
       orderDir = 'ASC';
     } else if (sort === '-rating') {
-      orderBy = 'stats.averageRating';
+      orderBy = 'product.averageRating';
       orderDir = 'DESC';
     } else if (sort === '-created') {
       orderBy = 'product.createdAt';
@@ -326,9 +306,9 @@ export class ProductsService {
         currentPrice: product.currentPrice || 0,
         originalPrice: product.originalPrice || 0,
         discountRate: product.discountRate || 100,
-        salesCount: product.stats?.salesCount || 0,
-        averageRating: product.stats?.averageRating || 0,
-        reviewsCount: product.stats?.reviewsCount || 0,
+        salesCount: product.salesCount || 0,
+        averageRating: product.averageRating || 0,
+        reviewsCount: product.reviewsCount || 0,
         isNew: product.isNew,
         isSaleOn: product.isSaleOn,
         isOutOfStock: product.isOutOfStock,
@@ -449,7 +429,6 @@ export class ProductsService {
   async getProductsByCategory(categoryId: number, limit = 12): Promise<ProductListItemDto[]> {
     const products = await this.productRepository
       .createQueryBuilder('product')
-      .leftJoinAndSelect('product.stats', 'stats')
       .leftJoinAndSelect('product.tags', 'tags')
       .where('product.categoryId = :categoryId', { categoryId })
       .andWhere('product.isSaleOn = :isSaleOn', { isSaleOn: true })
@@ -468,9 +447,9 @@ export class ProductsService {
         currentPrice: product.currentPrice || 0,
         originalPrice: product.originalPrice || 0,
         discountRate: product.discountRate || 100,
-        salesCount: product.stats?.salesCount || 0,
-        averageRating: product.stats?.averageRating || 0,
-        reviewsCount: product.stats?.reviewsCount || 0,
+        salesCount: product.salesCount || 0,
+        averageRating: product.averageRating || 0,
+        reviewsCount: product.reviewsCount || 0,
         isNew: product.isNew,
         isSaleOn: product.isSaleOn,
         isOutOfStock: product.isOutOfStock,
@@ -491,9 +470,8 @@ export class ProductsService {
   async getHotProducts(limit = 10): Promise<ProductListItemDto[]> {
     const products = await this.productRepository
       .createQueryBuilder('product')
-      .leftJoinAndSelect('product.stats', 'stats')
       .where('product.isSaleOn = :isSaleOn', { isSaleOn: true })
-      .orderBy('stats.salesCount', 'DESC')
+      .orderBy('product.salesCount', 'DESC')
       .take(limit)
       .getMany();
 
@@ -508,9 +486,9 @@ export class ProductsService {
         currentPrice: product.currentPrice || 0,
         originalPrice: product.originalPrice || 0,
         discountRate: product.discountRate || 100,
-        salesCount: product.stats?.salesCount || 0,
-        averageRating: product.stats?.averageRating || 0,
-        reviewsCount: product.stats?.reviewsCount || 0,
+        salesCount: product.salesCount || 0,
+        averageRating: product.averageRating || 0,
+        reviewsCount: product.reviewsCount || 0,
         isNew: product.isNew,
         isSaleOn: product.isSaleOn,
         isOutOfStock: product.isOutOfStock,
@@ -530,7 +508,6 @@ export class ProductsService {
   async searchProducts(keyword: string, limit = 20): Promise<ProductListItemDto[]> {
     const products = await this.productRepository
       .createQueryBuilder('product')
-      .leftJoinAndSelect('product.stats', 'stats')
       .where('product.name LIKE :keyword OR product.description LIKE :keyword', {
         keyword: `%${keyword}%`,
       })
@@ -550,9 +527,9 @@ export class ProductsService {
         currentPrice: product.currentPrice || 0,
         originalPrice: product.originalPrice || 0,
         discountRate: product.discountRate || 100,
-        salesCount: product.stats?.salesCount || 0,
-        averageRating: product.stats?.averageRating || 0,
-        reviewsCount: product.stats?.reviewsCount || 0,
+        salesCount: product.salesCount || 0,
+        averageRating: product.averageRating || 0,
+        reviewsCount: product.reviewsCount || 0,
         isNew: product.isNew,
         isSaleOn: product.isSaleOn,
         isOutOfStock: product.isOutOfStock,

@@ -104,6 +104,28 @@ export class Product {
   @Column({ type: 'tinyint', nullable: true, name: 'vip_discount_rate' })
   vipDiscountRate: number | null; // VIP折扣率
 
+  // 统计信息（合并到 products 表，简化架构）
+  @Column({ type: 'int', default: 0, name: 'sales_count' })
+  salesCount: number; // 销售数
+
+  @Column({ type: 'int', default: 0, name: 'views_count' })
+  viewsCount: number; // 浏览数
+
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 0, name: 'average_rating' })
+  averageRating: number; // 平均评分
+
+  @Column({ type: 'int', default: 0, name: 'reviews_count' })
+  reviewsCount: number; // 评论数
+
+  @Column({ type: 'int', default: 0, name: 'favorites_count' })
+  favoritesCount: number; // 收藏数
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true, name: 'conversion_rate' })
+  conversionRate: number | null; // 转化率
+
+  @Column({ type: 'timestamp', nullable: true, name: 'last_sold_at' })
+  lastSoldAt: Date | null; // 最后销售时间
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -119,9 +141,6 @@ export class Product {
 
   @OneToMany('ProductImage', (image: any) => image.product, { eager: true })
   images: any[];
-
-  @OneToOne('ProductStats', (stats: any) => stats.product, { eager: true })
-  stats: any;
 
   @OneToMany('ProductAttribute', (attr: any) => attr.product)
   attributes: any[];
