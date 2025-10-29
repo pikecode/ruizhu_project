@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-const COS = require('cos-nodejs-sdk-v5');
+import { CosService } from '../../common/services/cos.service';
 
 export interface MediaUploadResponse {
   url: string;
@@ -24,29 +24,10 @@ export interface COSCredentials {
 
 @Injectable()
 export class MediaService {
-  private cos: any;
-
-  constructor(private configService: ConfigService) {
-    this.initializeCOS();
-  }
-
-  /**
-   * 初始化 COS 客户端
-   */
-  private initializeCOS() {
-    const secretId = this.configService.get<string>('COS_SECRET_ID');
-    const secretKey = this.configService.get<string>('COS_SECRET_KEY');
-
-    if (!secretId || !secretKey) {
-      console.warn('COS credentials not configured');
-      return;
-    }
-
-    this.cos = new COS({
-      SecretId: secretId,
-      SecretKey: secretKey,
-    });
-  }
+  constructor(
+    private configService: ConfigService,
+    private cosService: CosService,
+  ) {}
 
   /**
    * 获取腾讯云COS临时凭证 (仅用于文件上传)
@@ -79,43 +60,18 @@ export class MediaService {
   }
 
   /**
-   * 生成带签名的URL (用于访问私有对象)
-   * 如果文件是公开的，直接返回访问URL即可
+   * 生成文件访问URL
+   * 由于产品/banner图片都是公开的，直接通过CosService生成URL即可
+   * 如果需要签名URL（私有对象），可通过CosService扩展
    */
   generateSignedUrl(key: string, expiresIn: number = 3600): string {
-    const bucket = this.configService.get<string>('COS_BUCKET', 'ruizhu-1256655507');
-    const region = this.configService.get<string>('COS_REGION', 'ap-guangzhou');
-    const baseUrl = `https://${bucket}.cos.${region}.myqcloud.com/${key}`;
-
-    // 如果已经配置为公开读权限，直接返回URL
-    // 如果是私有，需要生成临时签名URL
-    // 这里为简化起见，返回基础URL
-    // 生成真正的签名URL需要使用COS SDK的getAuthorizationHeader方法
-
-    if (this.cos) {
-      // 使用COS SDK生成签名URL
-      return this.cos.getObjectUrl(
-        {
-          Bucket: bucket,
-          Region: region,
-          Key: key,
-          Expires: expiresIn,
-        },
-        (err: any, data: any) => {
-          if (err) {
-            console.error('Generate signed URL error:', err);
-            return baseUrl; // 降级到无签名URL
-          }
-          return data.Url;
-        },
-      );
-    }
-
-    return baseUrl;
+    // 对于公开文件，直接生成URL（优先使用自定义域名）
+    return this.cosService.generateUrl(key);
   }
 
   /**
    * 处理媒体上传到腾讯云COS
+   * 统一通过CosService进行上传
    */
   async uploadMedia(
     file: any,
@@ -127,22 +83,12 @@ export class MediaService {
     }
 
     try {
-      // 生成文件名
-      const timestamp = Date.now();
-      const randomStr = Math.random().toString(36).substring(7);
-      const fileName = `${timestamp}-${randomStr}-${file.originalname}`;
-      const filePath = `products/${fileName}`;
-
-      const bucket = this.configService.get<string>('COS_BUCKET', 'ruizhu-1256655507');
-      const region = this.configService.get<string>('COS_REGION', 'ap-guangzhou');
-
-      // 上传文件到COS
-      if (this.cos) {
-        await this.uploadFileToCOS(bucket, filePath, file.buffer, file.mimetype);
-      }
-
-      // 生成访问URL
-      const url = `https://${bucket}.cos.${region}.myqcloud.com/${filePath}`;
+      // 调用CosService统一上传
+      const uploadResult = await this.cosService.uploadFile(
+        file.buffer,
+        file.originalname,
+        'products',
+      );
 
       // 解析图片尺寸（可选，实际可使用sharp库）
       let width: number | undefined;
@@ -154,101 +100,30 @@ export class MediaService {
       }
 
       return {
-        url,
+        url: uploadResult.url,
         type,
-        size: file.size,
+        size: uploadResult.size,
         width,
         height,
       };
     } catch (error) {
-      console.error('COS upload error:', error);
+      console.error('Media upload error:', error);
       throw new Error(`Upload failed: ${error.message}`);
     }
   }
 
   /**
-   * 上传文件到COS
-   */
-  private uploadFileToCOS(
-    bucket: string,
-    key: string,
-    body: Buffer,
-    contentType: string,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.cos.putObject(
-        {
-          Bucket: bucket,
-          Region: this.configService.get<string>('COS_REGION', 'ap-guangzhou'),
-          Key: key,
-          Body: body,
-          ContentType: contentType,
-          onProgress: (progressData: any) => {
-            console.log(`Upload progress: ${Math.round(progressData.percent * 100)}%`);
-          },
-        },
-        (err: any, data: any) => {
-          if (err) {
-            reject(err);
-          } else {
-            console.log('File uploaded successfully:', data.Location);
-            resolve();
-          }
-        },
-      );
-    });
-  }
-
-  /**
    * 删除媒体文件
+   * 统一通过CosService进行删除
    */
   async deleteMedia(mediaUrl: string): Promise<void> {
     try {
-      // 从URL中提取文件路径
-      // URL格式: https://bucket.cos.region.myqcloud.com/products/filename
-      const bucket = this.configService.get<string>('COS_BUCKET', 'ruizhu-1256655507');
-      const region = this.configService.get<string>('COS_REGION', 'ap-guangzhou');
-      const baseUrl = `https://${bucket}.cos.${region}.myqcloud.com/`;
-
-      if (!mediaUrl.startsWith(baseUrl)) {
-        throw new Error('Invalid media URL');
-      }
-
-      const key = mediaUrl.substring(baseUrl.length);
-
-      // 从COS删除文件
-      if (this.cos) {
-        await this.deleteFileFromCOS(bucket, key);
-      }
-
-      console.log(`Media deleted successfully: ${mediaUrl}`);
+      // 调用CosService统一删除
+      await this.cosService.deleteFile(mediaUrl);
     } catch (error) {
       console.error('Delete media error:', error);
-      throw new Error(`Delete failed: ${error.message}`);
+      // 不抛出错误，避免影响主流程
     }
-  }
-
-  /**
-   * 从COS删除文件
-   */
-  private deleteFileFromCOS(bucket: string, key: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.cos.deleteObject(
-        {
-          Bucket: bucket,
-          Region: this.configService.get<string>('COS_REGION', 'ap-guangzhou'),
-          Key: key,
-        },
-        (err: any, data: any) => {
-          if (err) {
-            reject(err);
-          } else {
-            console.log('File deleted successfully from COS');
-            resolve();
-          }
-        },
-      );
-    });
   }
 
   /**
