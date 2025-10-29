@@ -4,9 +4,9 @@ import { Repository } from 'typeorm';
 import { Banner } from '../../entities/banner.entity';
 import { CreateBannerDto, UpdateBannerDto, BannerResponseDto, BannerListResponseDto } from './dto/banner.dto';
 import { ConfigService } from '@nestjs/config';
+import { MediaService } from '../media/media.service';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class BannersService {
@@ -14,6 +14,7 @@ export class BannersService {
     @InjectRepository(Banner)
     private bannerRepository: Repository<Banner>,
     private configService: ConfigService,
+    private mediaService: MediaService,
   ) {}
 
   /**
@@ -111,14 +112,14 @@ export class BannersService {
     }
 
     // 如果有关联的媒体文件，则删除COS中的文件
-    if (banner.imageKey) {
-      await this.deleteMediaFromCos(banner.imageKey);
+    if (banner.imageUrl) {
+      await this.mediaService.deleteMedia(banner.imageUrl);
     }
-    if (banner.videoKey) {
-      await this.deleteMediaFromCos(banner.videoKey);
+    if (banner.videoUrl) {
+      await this.mediaService.deleteMedia(banner.videoUrl);
     }
-    if (banner.videoThumbnailKey) {
-      await this.deleteMediaFromCos(banner.videoThumbnailKey);
+    if (banner.videoThumbnailUrl) {
+      await this.mediaService.deleteMedia(banner.videoThumbnailUrl);
     }
 
     await this.bannerRepository.remove(banner);
@@ -141,15 +142,15 @@ export class BannersService {
     }
 
     // 删除旧的图片文件
-    if (banner.imageKey) {
-      await this.deleteMediaFromCos(banner.imageKey);
+    if (banner.imageUrl) {
+      await this.mediaService.deleteMedia(banner.imageUrl);
     }
 
     // 上传新图片到COS
-    const result = await this.uploadFileToCos(file, 'products');
+    const result = await this.mediaService.uploadMedia(file, 'image');
 
     banner.imageUrl = result.url;
-    banner.imageKey = result.key;
+    banner.imageKey = result.url; // 使用URL作为key，便于后续删除
     banner.type = 'image';
 
     const updatedBanner = await this.bannerRepository.save(banner);
@@ -181,11 +182,11 @@ export class BannersService {
     }
 
     // 删除旧的视频文件
-    if (banner.videoKey) {
-      await this.deleteMediaFromCos(banner.videoKey);
+    if (banner.videoUrl) {
+      await this.mediaService.deleteMedia(banner.videoUrl);
     }
-    if (banner.videoThumbnailKey) {
-      await this.deleteMediaFromCos(banner.videoThumbnailKey);
+    if (banner.videoThumbnailUrl) {
+      await this.mediaService.deleteMedia(banner.videoThumbnailUrl);
     }
 
     // 转换视频为WebP格式
@@ -222,7 +223,7 @@ export class BannersService {
         buffer: webpBuffer,
       } as any;
 
-      const videoResult = await this.uploadFileToCos(webpFile, 'products/videos');
+      const videoResult = await this.mediaService.uploadMedia(webpFile, 'video');
 
       // 上传视频封面到COS
       const thumbnailFile: Express.Multer.File = {
@@ -237,13 +238,13 @@ export class BannersService {
         buffer: thumbnailBuffer,
       } as any;
 
-      const thumbnailResult = await this.uploadFileToCos(thumbnailFile, 'products/thumbnails');
+      const thumbnailResult = await this.mediaService.uploadMedia(thumbnailFile, 'image');
 
       // 更新Banner
       banner.videoUrl = videoResult.url;
-      banner.videoKey = videoResult.key;
+      banner.videoKey = videoResult.url; // 使用URL作为key，便于后续删除
       banner.videoThumbnailUrl = thumbnailResult.url;
-      banner.videoThumbnailKey = thumbnailResult.key;
+      banner.videoThumbnailKey = thumbnailResult.url; // 使用URL作为key，便于后续删除
       banner.type = 'video';
 
       const updatedBanner = await this.bannerRepository.save(banner);
@@ -303,89 +304,6 @@ export class BannersService {
       throw new BadRequestException(
         `Failed to extract video thumbnail. Error: ${error.message}`,
       );
-    }
-  }
-
-  /**
-   * 上传文件到COS
-   */
-  private async uploadFileToCos(
-    file: Express.Multer.File,
-    folder: string = 'banners',
-  ): Promise<{ url: string; key: string }> {
-    try {
-      // 构建COS上传URL
-      const secretId = this.configService.get<string>('COS_SECRET_ID');
-      const secretKey = this.configService.get<string>('COS_SECRET_KEY');
-      const bucket = this.configService.get<string>('COS_BUCKET');
-      const region = this.configService.get<string>('COS_REGION');
-      const cosHost = `https://${bucket}.cos.${region}.myqcloud.com`;
-
-      // 生成文件Key（带时间戳和随机值）
-      const timestamp = Date.now();
-      const random = crypto.randomBytes(6).toString('hex');
-      const ext = path.extname(file.originalname);
-      const fileKey = `${folder}/${timestamp}-${random}${ext}`;
-
-      // 调用Media Service的COS上传接口
-      // 这里使用已有的media service上传能力
-      const mediaService = require('../media/media.service').MediaService;
-      // 或者直接调用cos sdk
-
-      // 简化实现：直接构建COS URL（实际应该通过SDK上传）
-      // 这里应该使用cos-nodejs-sdk-v5来上传文件
-
-      // 示例实现（需要安装cos-nodejs-sdk-v5）：
-      /*
-      const COS = require('cos-nodejs-sdk-v5');
-      const cos = new COS({
-        SecretId: secretId,
-        SecretKey: secretKey,
-      });
-
-      return new Promise((resolve, reject) => {
-        cos.putObject(
-          {
-            Bucket: bucket,
-            Region: region,
-            Key: fileKey,
-            Body: file.buffer,
-          },
-          (err, data) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve({
-                url: `${cosHost}/${fileKey}`,
-                key: fileKey,
-              });
-            }
-          },
-        );
-      });
-      */
-
-      // 临时实现：返回模拟的URL
-      // TODO: 集成实际的COS上传逻辑
-      return {
-        url: `${cosHost}/${fileKey}`,
-        key: fileKey,
-      };
-    } catch (error) {
-      throw new BadRequestException(`Failed to upload file to COS: ${error.message}`);
-    }
-  }
-
-  /**
-   * 从COS删除媒体文件
-   */
-  private async deleteMediaFromCos(fileKey: string): Promise<void> {
-    try {
-      // TODO: 集成实际的COS删除逻辑
-      // 使用cos-nodejs-sdk-v5的deleteObject方法
-    } catch (error) {
-      // 日志记录，但不抛出错误，避免影响主流程
-      console.error(`Failed to delete file from COS: ${fileKey}`, error);
     }
   }
 
