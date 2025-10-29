@@ -146,7 +146,7 @@ export class BannersService {
     }
 
     // 上传新图片到COS
-    const result = await this.uploadFileToCos(file, 'banners');
+    const result = await this.uploadFileToCos(file, 'products');
 
     banner.imageUrl = result.url;
     banner.imageKey = result.key;
@@ -222,7 +222,7 @@ export class BannersService {
         buffer: webpBuffer,
       } as any;
 
-      const videoResult = await this.uploadFileToCos(webpFile, 'banners/videos');
+      const videoResult = await this.uploadFileToCos(webpFile, 'products/videos');
 
       // 上传视频封面到COS
       const thumbnailFile: Express.Multer.File = {
@@ -237,7 +237,7 @@ export class BannersService {
         buffer: thumbnailBuffer,
       } as any;
 
-      const thumbnailResult = await this.uploadFileToCos(thumbnailFile, 'banners/thumbnails');
+      const thumbnailResult = await this.uploadFileToCos(thumbnailFile, 'products/thumbnails');
 
       // 更新Banner
       banner.videoUrl = videoResult.url;
