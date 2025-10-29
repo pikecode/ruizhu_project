@@ -3,11 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { CosService } from '../../common/services/cos.service';
 
 export interface MediaUploadResponse {
-  url: string;
+  key: string; // 文件键，用于数据库存储
   type: 'image' | 'video';
   size: number;
   width?: number;
   height?: number;
+  url?: string; // 可选：完整URL（用于返回给前端时动态拼接）
 }
 
 export interface COSCredentials {
@@ -72,6 +73,8 @@ export class MediaService {
   /**
    * 处理媒体上传到腾讯云COS
    * 统一通过CosService进行上传
+   * 返回文件键（用于数据库存储），数据库中不再存储完整URL
+   * 前端访问时通过动态拼接 domain + key 生成完整URL
    */
   async uploadMedia(
     file: any,
@@ -99,12 +102,15 @@ export class MediaService {
         height = 1080;
       }
 
+      // 返回文件键而不是完整URL
+      // 数据库中只需存储 key，前端或API调用时动态拼接域名
       return {
-        url: uploadResult.url,
+        key: uploadResult.key,
         type,
         size: uploadResult.size,
         width,
         height,
+        url: this.cosService.generateUrl(uploadResult.key), // 可选：也返回完整URL供调用者使用
       };
     } catch (error) {
       console.error('Media upload error:', error);

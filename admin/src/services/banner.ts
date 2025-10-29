@@ -44,7 +44,7 @@ export const bannerService = {
    * 获取Banner列表
    */
   async getList(page: number = 1, limit: number = 20): Promise<BannerListResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/banners?page=${page}&limit=${limit}`);
+    const response = await fetch(`${API_BASE_URL}/banners?page=${page}&limit=${limit}`);
     return response.json();
   },
 
@@ -52,7 +52,7 @@ export const bannerService = {
    * 获取首页展示的Banner列表（仅启用的）
    */
   async getHomeBanners(): Promise<{ code: number; message: string; data: BannerData[] }> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/banners/home`);
+    const response = await fetch(`${API_BASE_URL}/banners/home`);
     return response.json();
   },
 
@@ -60,7 +60,7 @@ export const bannerService = {
    * 获取单个Banner详情
    */
   async getById(id: number): Promise<BannerResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/banners/${id}`);
+    const response = await fetch(`${API_BASE_URL}/banners/${id}`);
     return response.json();
   },
 
@@ -76,7 +76,7 @@ export const bannerService = {
     linkType?: string;
     linkValue?: string;
   }): Promise<BannerResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/banners`, {
+    const response = await fetch(`${API_BASE_URL}/banners`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -99,7 +99,7 @@ export const bannerService = {
       linkValue?: string | null;
     },
   ): Promise<BannerResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/banners/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/banners/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -111,7 +111,7 @@ export const bannerService = {
    * 删除Banner
    */
   async delete(id: number): Promise<{ code: number; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/banners/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/banners/${id}`, {
       method: 'DELETE',
     });
     return response.json();
@@ -163,7 +163,7 @@ export const bannerService = {
         reject(new Error('Upload failed'));
       });
 
-      xhr.open('POST', `${API_BASE_URL}/api/v1/banners/${id}/upload-image`);
+      xhr.open('POST', `${API_BASE_URL}/banners/${id}/upload-image`);
       xhr.send(formData);
     });
   },
@@ -221,7 +221,7 @@ export const bannerService = {
         reject(new Error('Upload failed'));
       });
 
-      xhr.open('POST', `${API_BASE_URL}/api/v1/banners/${id}/upload-video`);
+      xhr.open('POST', `${API_BASE_URL}/banners/${id}/upload-video`);
       xhr.send(formData);
     });
   },

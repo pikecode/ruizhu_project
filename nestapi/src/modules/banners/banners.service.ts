@@ -5,6 +5,7 @@ import { Banner } from '../../entities/banner.entity';
 import { CreateBannerDto, UpdateBannerDto, BannerResponseDto, BannerListResponseDto } from './dto/banner.dto';
 import { ConfigService } from '@nestjs/config';
 import { MediaService } from '../media/media.service';
+import { UrlHelper } from '../../common/utils/url.helper';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -15,6 +16,7 @@ export class BannersService {
     private bannerRepository: Repository<Banner>,
     private configService: ConfigService,
     private mediaService: MediaService,
+    private urlHelper: UrlHelper,
   ) {}
 
   /**
@@ -141,16 +143,18 @@ export class BannersService {
       throw new BadRequestException('Only JPEG, PNG, and WebP images are allowed');
     }
 
-    // 删除旧的图片文件
-    if (banner.imageUrl) {
-      await this.mediaService.deleteMedia(banner.imageUrl);
+    // 删除旧的图片文件（使用文件键删除）
+    if (banner.imageKey) {
+      await this.mediaService.deleteMedia(banner.imageKey);
     }
 
     // 上传新图片到COS
     const result = await this.mediaService.uploadMedia(file, 'image');
 
-    banner.imageUrl = result.url;
-    banner.imageKey = result.url; // 使用URL作为key，便于后续删除
+    // 只存储文件键，不存储完整URL
+    // 前端或其他调用者可以通过 UrlHelper 动态拼接完整URL
+    banner.imageKey = result.key;
+    banner.imageUrl = null; // 清除URL字段，改为存储key
     banner.type = 'image';
 
     const updatedBanner = await this.bannerRepository.save(banner);
@@ -198,32 +202,32 @@ export class BannersService {
       const originalPath = path.join(tempDir, `original${path.extname(file.originalname)}`);
       fs.writeFileSync(originalPath, file.buffer);
 
-      // 转换为WebP格式（高质量）
-      const webpPath = path.join(tempDir, 'video.webp');
-      await this.convertVideoToWebp(originalPath, webpPath);
+      // 转换为WebM格式（VP9编码，高质量）
+      const webmPath = path.join(tempDir, 'video.webm');
+      await this.convertVideoToWebp(originalPath, webmPath);
 
       // 生成视频封面
       const thumbnailPath = path.join(tempDir, 'thumbnail.jpg');
       await this.extractVideoThumbnail(originalPath, thumbnailPath);
 
       // 读取转换后的文件
-      const webpBuffer = fs.readFileSync(webpPath);
+      const webmBuffer = fs.readFileSync(webmPath);
       const thumbnailBuffer = fs.readFileSync(thumbnailPath);
 
-      // 上传WebP视频到COS
-      const webpFile: Express.Multer.File = {
+      // 上传WebM视频到COS
+      const webmFile: Express.Multer.File = {
         fieldname: 'video',
-        originalname: 'video.webp',
+        originalname: 'video.webm',
         encoding: '7bit',
-        mimetype: 'video/webp',
-        size: webpBuffer.length,
+        mimetype: 'video/webm',
+        size: webmBuffer.length,
         destination: tempDir,
-        filename: 'video.webp',
-        path: webpPath,
-        buffer: webpBuffer,
+        filename: 'video.webm',
+        path: webmPath,
+        buffer: webmBuffer,
       } as any;
 
-      const videoResult = await this.mediaService.uploadMedia(webpFile, 'video');
+      const videoResult = await this.mediaService.uploadMedia(webmFile, 'video');
 
       // 上传视频封面到COS
       const thumbnailFile: Express.Multer.File = {
@@ -240,11 +244,11 @@ export class BannersService {
 
       const thumbnailResult = await this.mediaService.uploadMedia(thumbnailFile, 'image');
 
-      // 更新Banner
-      banner.videoUrl = videoResult.url;
-      banner.videoKey = videoResult.url; // 使用URL作为key，便于后续删除
-      banner.videoThumbnailUrl = thumbnailResult.url;
-      banner.videoThumbnailKey = thumbnailResult.url; // 使用URL作为key，便于后续删除
+      // 更新Banner - 只存储文件键
+      banner.videoKey = videoResult.key;
+      banner.videoUrl = null; // 清除URL字段
+      banner.videoThumbnailKey = thumbnailResult.key;
+      banner.videoThumbnailUrl = null; // 清除URL字段
       banner.type = 'video';
 
       const updatedBanner = await this.bannerRepository.save(banner);
@@ -257,7 +261,7 @@ export class BannersService {
   }
 
   /**
-   * 将视频转换为WebP格式（高质量）
+   * 将视频转换为WebM格式（VP9编码，高质量压缩）
    * 使用ffmpeg进行转换
    */
   private async convertVideoToWebp(inputPath: string, outputPath: string): Promise<void> {
@@ -266,19 +270,21 @@ export class BannersService {
     const execAsync = promisify(exec);
 
     try {
-      // FFmpeg WebP编码参数说明：
-      // -c:v libwebp_aom: 使用WebP视频编码器（高质量）
-      // -q:v 80: 质量等级（1-100，80为高质量）
-      // -pix_fmt yuva420p: 像素格式支持透明度
+      // FFmpeg VP9编码参数说明：
+      // -c:v libvpx-vp9: 使用VP9视频编码器（高效压缩）
+      // -crf 28: 质量等级（0-63，28为平衡质量与文件大小）
+      // -b:v 0: 让crf控制比特率
       // -c:a libopus: 音频编码器
       // -b:a 128k: 音频比特率
+      // 使用WebM容器格式（.webm）而不是.webp，因为.webp只支持WebP视频编码
+      const webmPath = outputPath.replace(/\.webp$/, '.webm');
 
       await execAsync(
-        `ffmpeg -i "${inputPath}" -c:v libwebp_aom -q:v 80 -pix_fmt yuva420p -c:a libopus -b:a 128k "${outputPath}"`,
+        `ffmpeg -i "${inputPath}" -c:v libvpx-vp9 -crf 28 -b:v 0 -c:a libopus -b:a 128k "${webmPath}"`,
       );
     } catch (error) {
       throw new BadRequestException(
-        `Failed to convert video to WebP format. Make sure FFmpeg is installed. Error: ${error.message}`,
+        `Failed to convert video to WebM format. Make sure FFmpeg is installed. Error: ${error.message}`,
       );
     }
   }
@@ -322,6 +328,8 @@ export class BannersService {
 
   /**
    * 将Banner Entity映射为Response DTO
+   * 动态生成URL：从存储的文件键 + 配置的域名拼接完整URL
+   * 这样可以随时更改域名而无需更新数据库
    */
   private mapToResponseDto(banner: Banner): BannerResponseDto {
     return {
@@ -330,9 +338,12 @@ export class BannersService {
       subtitle: banner.subtitle,
       description: banner.description,
       type: banner.type,
-      imageUrl: banner.imageUrl,
-      videoUrl: banner.videoUrl,
-      videoThumbnailUrl: banner.videoThumbnailUrl,
+      // 动态生成URL：优先使用文件键生成（支持域名替换）
+      imageUrl: banner.imageKey ? this.urlHelper.generateUrl(banner.imageKey) : banner.imageUrl,
+      videoUrl: banner.videoKey ? this.urlHelper.generateUrl(banner.videoKey) : banner.videoUrl,
+      videoThumbnailUrl: banner.videoThumbnailKey
+        ? this.urlHelper.generateUrl(banner.videoThumbnailKey)
+        : banner.videoThumbnailUrl,
       isActive: banner.isActive,
       sortOrder: banner.sortOrder,
       linkType: banner.linkType,

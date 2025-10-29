@@ -51,6 +51,7 @@ interface CreateBannerPayload {
   mainTitle: string
   subtitle?: string
   description?: string
+  type?: 'image' | 'video'
   sortOrder?: number
   isActive?: boolean
   linkType?: 'none' | 'product' | 'category' | 'collection' | 'url'
@@ -423,11 +424,27 @@ export default function BannerManager() {
           layout="vertical"
           onFinish={handleSaveBanner}
           initialValues={{
+            type: 'image',
             sortOrder: 0,
             isActive: true,
             linkType: 'none',
           }}
         >
+          <Form.Item
+            label="类型"
+            name="type"
+            rules={[{ required: true, message: '请选择类型' }]}
+          >
+            <Select>
+              <Select.Option value="image">
+                <PictureOutlined /> 图片
+              </Select.Option>
+              <Select.Option value="video">
+                <VideoCameraOutlined /> 视频
+              </Select.Option>
+            </Select>
+          </Form.Item>
+
           <Form.Item
             label="大标题"
             name="mainTitle"

@@ -6,27 +6,27 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:30
 
 export const API_ENDPOINTS = {
   // Banner endpoints
-  BANNERS: '/api/v1/banners',
-  BANNERS_HOME: '/api/v1/banners/home',
-  BANNER_DETAIL: (id: number) => `/api/v1/banners/${id}`,
-  BANNER_UPLOAD_IMAGE: (id: number) => `/api/v1/banners/${id}/upload-image`,
-  BANNER_UPLOAD_VIDEO: (id: number) => `/api/v1/banners/${id}/upload-video`,
+  BANNERS: '/banners',
+  BANNERS_HOME: '/banners/home',
+  BANNER_DETAIL: (id: number) => `/banners/${id}`,
+  BANNER_UPLOAD_IMAGE: (id: number) => `/banners/${id}/upload-image`,
+  BANNER_UPLOAD_VIDEO: (id: number) => `/banners/${id}/upload-video`,
 
   // Product endpoints
-  PRODUCTS: '/api/v1/products',
-  PRODUCT_DETAIL: (id: number) => `/api/v1/products/${id}`,
+  PRODUCTS: '/products',
+  PRODUCT_DETAIL: (id: number) => `/products/${id}`,
 
   // Collection endpoints
-  COLLECTIONS: '/api/v1/collections',
-  COLLECTION_DETAIL: (id: number) => `/api/v1/collections/${id}`,
+  COLLECTIONS: '/collections',
+  COLLECTION_DETAIL: (id: number) => `/collections/${id}`,
 
   // Order endpoints
-  ORDERS: '/api/v1/orders',
-  ORDER_DETAIL: (id: number) => `/api/v1/orders/${id}`,
+  ORDERS: '/orders',
+  ORDER_DETAIL: (id: number) => `/orders/${id}`,
 
   // User endpoints
-  USERS: '/api/v1/users',
-  USER_DETAIL: (id: number) => `/api/v1/users/${id}`,
+  USERS: '/users',
+  USER_DETAIL: (id: number) => `/users/${id}`,
 }
 
 export default {

@@ -4,9 +4,9 @@ import { ConfigService } from '@nestjs/config';
 const COS = require('cos-nodejs-sdk-v5');
 
 export interface CosUploadResult {
-  url: string;
-  key: string;
+  key: string; // 文件键，用于数据库存储（如：products/1234-abc.jpg）
   size: number;
+  domain?: string; // 可选：返回配置的域名（如果配置了自定义域名）
 }
 
 /**
@@ -79,13 +79,12 @@ export class CosService {
         await this.uploadFileToCOS(fileKey, buffer, this.getMimeType(originalname));
       }
 
-      // 生成访问URL
-      const url = this.generateUrl(fileKey);
-
+      // 返回分离的文件键和域名信息
+      // 数据库只需要存储 key，前端或API调用时动态拼接域名
       return {
-        url,
         key: fileKey,
         size: buffer.length,
+        domain: this.customDomain || this.cosHost, // 返回配置的域名供后续使用
       };
     } catch (error) {
       console.error('COS upload error:', error);
@@ -130,6 +129,14 @@ export class CosService {
     }
     // 默认使用COS标准URL
     return `${this.cosHost}/${fileKey}`;
+  }
+
+  /**
+   * 获取当前配置的访问域名
+   * 返回自定义域名（如果配置了）或COS默认域名
+   */
+  getAccessDomain(): string {
+    return this.customDomain || this.cosHost;
   }
 
   /**
