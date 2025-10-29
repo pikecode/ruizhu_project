@@ -17,6 +17,9 @@ export class ProductDetailResponseDto {
   isSoldOut: boolean;
   isVipOnly: boolean;
 
+  // 新的库存状态字段（单选）
+  stockStatus?: 'normal' | 'outOfStock' | 'soldOut';
+
   // 库存信息
   stockQuantity: number;
   lowStockThreshold: number;
@@ -86,6 +89,9 @@ export class ProductListItemDto {
   isOutOfStock: boolean;
   isVipOnly: boolean;
 
+  // 新的库存状态字段（单选）
+  stockStatus?: 'normal' | 'outOfStock' | 'soldOut';
+
   // 库存
   stockQuantity: number;
 
@@ -120,11 +126,13 @@ import { Type, Transform } from 'class-transformer';
  * - 所有字段都是可选的
  * - coverImageUrl 字段用于更新商品图片
  * - price 字段用于更新价格信息
+ * - 优先使用 stockStatus 字段而非 isOutOfStock/isSoldOut
  *
  * 示例请求体：
  * {
  *   "name": "更新后的商品名",
  *   "stockQuantity": 100,
+ *   "stockStatus": "normal",
  *   "coverImageUrl": "http://...",
  *   "price": {
  *     "originalPrice": 5000,
@@ -154,6 +162,34 @@ export class UpdateProductDto {
   @IsNumber()
   categoryId?: number;
 
+  // 新的库存状态字段（单选）- 优先使用这个字段
+  @IsOptional()
+  @IsIn(['normal', 'outOfStock', 'soldOut'], { message: '库存状态必须是 normal、outOfStock 或 soldOut 之一' })
+  stockStatus?: 'normal' | 'outOfStock' | 'soldOut';
+
+  // 旧的库存状态字段（向后兼容）
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') return value.toLowerCase() === 'true' || value === '1';
+    if (typeof value === 'number') return value === 1;
+    return value;
+  })
+  @IsBoolean()
+  isOutOfStock?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === null || value === undefined) return undefined;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') return value.toLowerCase() === 'true' || value === '1';
+    if (typeof value === 'number') return value === 1;
+    return value;
+  })
+  @IsBoolean()
+  isSoldOut?: boolean;
+
   // 状态信息
   @IsOptional()
   @Transform(({ value }) => {
@@ -176,28 +212,6 @@ export class UpdateProductDto {
   })
   @IsBoolean()
   isSaleOn?: boolean;
-
-  @IsOptional()
-  @Transform(({ value }) => {
-    if (value === null || value === undefined) return undefined;
-    if (typeof value === 'boolean') return value;
-    if (typeof value === 'string') return value.toLowerCase() === 'true' || value === '1';
-    if (typeof value === 'number') return value === 1;
-    return value;
-  })
-  @IsBoolean()
-  isOutOfStock?: boolean;
-
-  @IsOptional()
-  @Transform(({ value }) => {
-    if (value === null || value === undefined) return undefined;
-    if (typeof value === 'boolean') return value;
-    if (typeof value === 'string') return value.toLowerCase() === 'true' || value === '1';
-    if (typeof value === 'number') return value === 1;
-    return value;
-  })
-  @IsBoolean()
-  isSoldOut?: boolean;
 
   @IsOptional()
   @Transform(({ value }) => {

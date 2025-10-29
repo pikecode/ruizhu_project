@@ -22,7 +22,8 @@ import {
  */
 @Entity('products')
 @Index(['category'])
-@Index(['isSaleOn', 'isOutOfStock'])
+@Index(['isSaleOn', 'stockStatus'])
+@Index(['stockStatus'])
 @Index(['createdAt'])
 export class Product {
   @PrimaryGeneratedColumn()
@@ -54,6 +55,14 @@ export class Product {
 
   @Column({ type: 'tinyint', default: 0, name: 'is_sold_out' })
   isSoldOut: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: ['normal', 'outOfStock', 'soldOut'],
+    default: 'normal',
+    name: 'stock_status',
+  })
+  stockStatus: 'normal' | 'outOfStock' | 'soldOut';
 
   @Column({ type: 'tinyint', default: 0, name: 'is_vip_only' })
   isVipOnly: boolean;

@@ -35,6 +35,35 @@ export class ProductsService {
   ) {}
 
   /**
+   * 将 stockStatus 转换为 isOutOfStock 和 isSoldOut
+   */
+  private convertStockStatusToFlags(
+    stockStatus?: 'normal' | 'outOfStock' | 'soldOut',
+  ): { isOutOfStock: boolean; isSoldOut: boolean } {
+    if (stockStatus === 'outOfStock') {
+      return { isOutOfStock: true, isSoldOut: false };
+    } else if (stockStatus === 'soldOut') {
+      return { isOutOfStock: false, isSoldOut: true };
+    }
+    return { isOutOfStock: false, isSoldOut: false };
+  }
+
+  /**
+   * 将 isOutOfStock 和 isSoldOut 转换为 stockStatus
+   */
+  private convertFlagsToStockStatus(
+    isOutOfStock: boolean,
+    isSoldOut: boolean,
+  ): 'normal' | 'outOfStock' | 'soldOut' {
+    if (isSoldOut) {
+      return 'soldOut';
+    } else if (isOutOfStock) {
+      return 'outOfStock';
+    }
+    return 'normal';
+  }
+
+  /**
    * 创建商品（完整信息）
    */
   async createProduct(
@@ -58,6 +87,16 @@ export class ProductsService {
       }
     }
 
+    // 处理库存状态：优先使用 stockStatus，如果没有提供则使用旧字段
+    let isOutOfStock = createDto.isOutOfStock || false;
+    let isSoldOut = createDto.isSoldOut || false;
+
+    if (createDto.stockStatus) {
+      const converted = this.convertStockStatusToFlags(createDto.stockStatus);
+      isOutOfStock = converted.isOutOfStock;
+      isSoldOut = converted.isSoldOut;
+    }
+
     // 创建商品
     const product = this.productRepository.create({
       name: createDto.name,
@@ -67,8 +106,8 @@ export class ProductsService {
       categoryId: createDto.categoryId,
       isNew: createDto.isNew || false,
       isSaleOn: createDto.isSaleOn !== false,
-      isOutOfStock: createDto.isOutOfStock || false,
-      isSoldOut: createDto.isSoldOut || false,
+      isOutOfStock,
+      isSoldOut,
       isVipOnly: createDto.isVipOnly || false,
       stockQuantity: createDto.stockQuantity || 0,
       lowStockThreshold: createDto.lowStockThreshold || 10,
@@ -141,6 +180,9 @@ export class ProductsService {
       await this.statsRepository.save(stats);
     }
 
+    // 计算 stockStatus
+    const stockStatus = this.convertFlagsToStockStatus(product.isOutOfStock, product.isSoldOut);
+
     return {
       id: product.id,
       name: product.name,
@@ -154,6 +196,7 @@ export class ProductsService {
       isOutOfStock: product.isOutOfStock,
       isSoldOut: product.isSoldOut,
       isVipOnly: product.isVipOnly,
+      stockStatus,
       stockQuantity: product.stockQuantity,
       lowStockThreshold: product.lowStockThreshold,
       weight: product.weight,
@@ -289,28 +332,32 @@ export class ProductsService {
     const [products, total] = await query_obj.getManyAndCount();
 
     // 转换为列表 DTO
-    const items: ProductListItemDto[] = products.map((product) => ({
-      id: product.id,
-      name: product.name,
-      subtitle: product.subtitle,
-      sku: product.sku,
-      categoryId: product.categoryId,
-      currentPrice: product.price?.currentPrice || 0,
-      originalPrice: product.price?.originalPrice || 0,
-      discountRate: product.price?.discountRate || 100,
-      salesCount: product.stats?.salesCount || 0,
-      averageRating: product.stats?.averageRating || 0,
-      reviewsCount: product.stats?.reviewsCount || 0,
-      isNew: product.isNew,
-      isSaleOn: product.isSaleOn,
-      isOutOfStock: product.isOutOfStock,
-      isVipOnly: product.isVipOnly,
-      stockQuantity: product.stockQuantity,
-      coverImageUrl: product.coverImageUrl,
-      coverImageId: product.coverImageId,
-      tags: product.tags?.map((tag) => tag.tagName),
-      createdAt: product.createdAt,
-    }));
+    const items: ProductListItemDto[] = products.map((product) => {
+      const stockStatus = this.convertFlagsToStockStatus(product.isOutOfStock, product.isSoldOut);
+      return {
+        id: product.id,
+        name: product.name,
+        subtitle: product.subtitle,
+        sku: product.sku,
+        categoryId: product.categoryId,
+        currentPrice: product.price?.currentPrice || 0,
+        originalPrice: product.price?.originalPrice || 0,
+        discountRate: product.price?.discountRate || 100,
+        salesCount: product.stats?.salesCount || 0,
+        averageRating: product.stats?.averageRating || 0,
+        reviewsCount: product.stats?.reviewsCount || 0,
+        isNew: product.isNew,
+        isSaleOn: product.isSaleOn,
+        isOutOfStock: product.isOutOfStock,
+        isVipOnly: product.isVipOnly,
+        stockStatus,
+        stockQuantity: product.stockQuantity,
+        coverImageUrl: product.coverImageUrl,
+        coverImageId: product.coverImageId,
+        tags: product.tags?.map((tag) => tag.tagName),
+        createdAt: product.createdAt,
+      };
+    });
 
     return {
       items,
@@ -347,7 +394,14 @@ export class ProductsService {
     }
 
     // 分离特殊字段（url 和 coverImageUrl 都可以用来更新图片）
-    const { url, coverImageUrl, ...otherUpdateData } = updateDto as any;
+    const { url, coverImageUrl, stockStatus, ...otherUpdateData } = updateDto as any;
+
+    // 处理库存状态：优先使用 stockStatus，如果没有提供则使用旧字段
+    if (stockStatus) {
+      const converted = this.convertStockStatusToFlags(stockStatus);
+      otherUpdateData.isOutOfStock = converted.isOutOfStock;
+      otherUpdateData.isSoldOut = converted.isSoldOut;
+    }
 
     // 过滤掉不允许直接更新的字段
     const allowedFields = [
@@ -428,28 +482,32 @@ export class ProductsService {
       .take(limit)
       .getMany();
 
-    return products.map((product) => ({
-      id: product.id,
-      name: product.name,
-      subtitle: product.subtitle,
-      sku: product.sku,
-      categoryId: product.categoryId,
-      currentPrice: product.price?.currentPrice || 0,
-      originalPrice: product.price?.originalPrice || 0,
-      discountRate: product.price?.discountRate || 100,
-      salesCount: product.stats?.salesCount || 0,
-      averageRating: product.stats?.averageRating || 0,
-      reviewsCount: product.stats?.reviewsCount || 0,
-      isNew: product.isNew,
-      isSaleOn: product.isSaleOn,
-      isOutOfStock: product.isOutOfStock,
-      isVipOnly: product.isVipOnly,
-      stockQuantity: product.stockQuantity,
-      coverImageUrl: product.coverImageUrl,
-      coverImageId: product.coverImageId,
-      tags: product.tags?.map((tag) => tag.tagName),
-      createdAt: product.createdAt,
-    }));
+    return products.map((product) => {
+      const stockStatus = this.convertFlagsToStockStatus(product.isOutOfStock, product.isSoldOut);
+      return {
+        id: product.id,
+        name: product.name,
+        subtitle: product.subtitle,
+        sku: product.sku,
+        categoryId: product.categoryId,
+        currentPrice: product.price?.currentPrice || 0,
+        originalPrice: product.price?.originalPrice || 0,
+        discountRate: product.price?.discountRate || 100,
+        salesCount: product.stats?.salesCount || 0,
+        averageRating: product.stats?.averageRating || 0,
+        reviewsCount: product.stats?.reviewsCount || 0,
+        isNew: product.isNew,
+        isSaleOn: product.isSaleOn,
+        isOutOfStock: product.isOutOfStock,
+        isVipOnly: product.isVipOnly,
+        stockStatus,
+        stockQuantity: product.stockQuantity,
+        coverImageUrl: product.coverImageUrl,
+        coverImageId: product.coverImageId,
+        tags: product.tags?.map((tag) => tag.tagName),
+        createdAt: product.createdAt,
+      };
+    });
   }
 
   /**
@@ -465,27 +523,31 @@ export class ProductsService {
       .take(limit)
       .getMany();
 
-    return products.map((product) => ({
-      id: product.id,
-      name: product.name,
-      subtitle: product.subtitle,
-      sku: product.sku,
-      categoryId: product.categoryId,
-      currentPrice: product.price?.currentPrice || 0,
-      originalPrice: product.price?.originalPrice || 0,
-      discountRate: product.price?.discountRate || 100,
-      salesCount: product.stats?.salesCount || 0,
-      averageRating: product.stats?.averageRating || 0,
-      reviewsCount: product.stats?.reviewsCount || 0,
-      isNew: product.isNew,
-      isSaleOn: product.isSaleOn,
-      isOutOfStock: product.isOutOfStock,
-      isVipOnly: product.isVipOnly,
-      stockQuantity: product.stockQuantity,
-      coverImageUrl: product.coverImageUrl,
-      coverImageId: product.coverImageId,
-      createdAt: product.createdAt,
-    }));
+    return products.map((product) => {
+      const stockStatus = this.convertFlagsToStockStatus(product.isOutOfStock, product.isSoldOut);
+      return {
+        id: product.id,
+        name: product.name,
+        subtitle: product.subtitle,
+        sku: product.sku,
+        categoryId: product.categoryId,
+        currentPrice: product.price?.currentPrice || 0,
+        originalPrice: product.price?.originalPrice || 0,
+        discountRate: product.price?.discountRate || 100,
+        salesCount: product.stats?.salesCount || 0,
+        averageRating: product.stats?.averageRating || 0,
+        reviewsCount: product.stats?.reviewsCount || 0,
+        isNew: product.isNew,
+        isSaleOn: product.isSaleOn,
+        isOutOfStock: product.isOutOfStock,
+        isVipOnly: product.isVipOnly,
+        stockStatus,
+        stockQuantity: product.stockQuantity,
+        coverImageUrl: product.coverImageUrl,
+        coverImageId: product.coverImageId,
+        createdAt: product.createdAt,
+      };
+    });
   }
 
   /**
@@ -504,26 +566,30 @@ export class ProductsService {
       .take(limit)
       .getMany();
 
-    return products.map((product) => ({
-      id: product.id,
-      name: product.name,
-      subtitle: product.subtitle,
-      sku: product.sku,
-      categoryId: product.categoryId,
-      currentPrice: product.price?.currentPrice || 0,
-      originalPrice: product.price?.originalPrice || 0,
-      discountRate: product.price?.discountRate || 100,
-      salesCount: product.stats?.salesCount || 0,
-      averageRating: product.stats?.averageRating || 0,
-      reviewsCount: product.stats?.reviewsCount || 0,
-      isNew: product.isNew,
-      isSaleOn: product.isSaleOn,
-      isOutOfStock: product.isOutOfStock,
-      isVipOnly: product.isVipOnly,
-      stockQuantity: product.stockQuantity,
-      coverImageUrl: product.coverImageUrl,
-      coverImageId: product.coverImageId,
-      createdAt: product.createdAt,
-    }));
+    return products.map((product) => {
+      const stockStatus = this.convertFlagsToStockStatus(product.isOutOfStock, product.isSoldOut);
+      return {
+        id: product.id,
+        name: product.name,
+        subtitle: product.subtitle,
+        sku: product.sku,
+        categoryId: product.categoryId,
+        currentPrice: product.price?.currentPrice || 0,
+        originalPrice: product.price?.originalPrice || 0,
+        discountRate: product.price?.discountRate || 100,
+        salesCount: product.stats?.salesCount || 0,
+        averageRating: product.stats?.averageRating || 0,
+        reviewsCount: product.stats?.reviewsCount || 0,
+        isNew: product.isNew,
+        isSaleOn: product.isSaleOn,
+        isOutOfStock: product.isOutOfStock,
+        isVipOnly: product.isVipOnly,
+        stockStatus,
+        stockQuantity: product.stockQuantity,
+        coverImageUrl: product.coverImageUrl,
+        coverImageId: product.coverImageId,
+        createdAt: product.createdAt,
+      };
+    });
   }
 }

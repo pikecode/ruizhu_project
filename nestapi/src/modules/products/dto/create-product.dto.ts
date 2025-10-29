@@ -38,14 +38,12 @@ export class CreateProductDto {
   @IsInt()
   categoryId: number;
 
+  // 新的库存状态字段（单选）- 优先使用这个字段
   @IsOptional()
-  @IsBoolean()
-  isNew?: boolean = false;
+  @IsIn(['normal', 'outOfStock', 'soldOut'], { message: '库存状态必须是 normal、outOfStock 或 soldOut 之一' })
+  stockStatus?: 'normal' | 'outOfStock' | 'soldOut';
 
-  @IsOptional()
-  @IsBoolean()
-  isSaleOn?: boolean = true;
-
+  // 旧的库存状态字段（向后兼容）
   @IsOptional()
   @IsBoolean()
   isOutOfStock?: boolean = false;
@@ -53,6 +51,14 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   isSoldOut?: boolean = false;
+
+  @IsOptional()
+  @IsBoolean()
+  isNew?: boolean = false;
+
+  @IsOptional()
+  @IsBoolean()
+  isSaleOn?: boolean = true;
 
   @IsOptional()
   @IsBoolean()
