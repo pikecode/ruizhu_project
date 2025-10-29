@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   UploadedFile,
   ParseIntPipe,
+  HttpCode,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { BannersService } from './banners.service';
@@ -123,6 +124,7 @@ export class BannersController {
    * File field: file (image/jpeg, image/png, image/webp)
    */
   @Post(':id/upload-image')
+  @HttpCode(200)
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(
     @Param('id', ParseIntPipe) id: number,
@@ -153,6 +155,7 @@ export class BannersController {
    * 安装命令：brew install ffmpeg (macOS) 或 apt-get install ffmpeg (Linux)
    */
   @Post(':id/upload-video')
+  @HttpCode(200)
   @UseInterceptors(FileInterceptor('file'))
   async uploadVideo(
     @Param('id', ParseIntPipe) id: number,
