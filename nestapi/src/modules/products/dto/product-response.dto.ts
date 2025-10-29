@@ -124,7 +124,8 @@ import { Type, Transform } from 'class-transformer';
  *
  * 说明：
  * - 所有字段都是可选的
- * - coverImageUrl 字段用于更新商品图片
+ * - 图片缓存字段（url 或 coverImageUrl）：这是产品表中的缓存字段，用于快速显示列表，无需 JOIN product_images 表
+ * - images 数组（product_images 表）和 coverImageUrl（产品缓存）是完全独立的字段，各自有各自的逻辑
  * - price 字段用于更新价格信息
  * - 优先使用 stockStatus 字段而非 isOutOfStock/isSoldOut
  *
@@ -133,7 +134,7 @@ import { Type, Transform } from 'class-transformer';
  *   "name": "更新后的商品名",
  *   "stockQuantity": 100,
  *   "stockStatus": "normal",
- *   "coverImageUrl": "http://...",
+ *   "coverImageUrl": "http://example.com/cover.jpg",
  *   "price": {
  *     "originalPrice": 5000,
  *     "currentPrice": 3999

@@ -140,12 +140,19 @@ export class ProductsService {
     });
     await this.statsRepository.save(stats);
 
-    // 保存图片URL（优先使用 url，其次 coverImageUrl）
+    // 保存图片URL缓存字段（仅处理直接提供的 url 或 coverImageUrl）
+    // 这个缓存字段用于快速显示产品列表，避免JOIN product_images表
+    // 注意：images 数组和 coverImageUrl 是完全独立的字段，各自有各自的逻辑
+    let coverImageUrl: string | undefined;
+
     if (createDto.url) {
-      savedProduct.coverImageUrl = createDto.url;
-      await this.productRepository.save(savedProduct);
+      coverImageUrl = createDto.url;
     } else if (createDto.coverImageUrl) {
-      savedProduct.coverImageUrl = createDto.coverImageUrl;
+      coverImageUrl = createDto.coverImageUrl;
+    }
+
+    if (coverImageUrl) {
+      savedProduct.coverImageUrl = coverImageUrl;
       await this.productRepository.save(savedProduct);
     }
 
@@ -421,7 +428,9 @@ export class ProductsService {
     // 更新商品基本信息
     Object.assign(product, filteredUpdateData);
 
-    // 处理图片更新（优先使用 url，其次 coverImageUrl）
+    // 处理图片缓存字段更新（仅处理直接提供的 url 或 coverImageUrl）
+    // 只有在提供了新的图片信息时才更新
+    // 注意：images 数组和 coverImageUrl 是完全独立的字段，各自有各自的逻辑
     if (url) {
       product.coverImageUrl = url;
     } else if (coverImageUrl) {

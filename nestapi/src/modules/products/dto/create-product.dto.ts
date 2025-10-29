@@ -119,17 +119,21 @@ export class CreateProductPriceDto {
 }
 
 /**
- * 创建商品完整信息 DTO（包含价格、图片等）
+ * 创建商品完整信息 DTO（包含价格等）
  *
- * 注意：图片 URL 支持两个字段：
- * - url: 与上传接口返回格式保持一致（推荐）
- * - coverImageUrl: 向后兼容
+ * 注意：
+ * - 价格信息在 price 字段中提供
+ * - 图片 URL 支持两种方式：url 或 coverImageUrl（这是产品缓存字段，用于快速显示列表）
+ * - images 数组（存储在 product_images 表）和 coverImageUrl（产品封面缓存）是完全独立的字段，各自有各自的逻辑
+ * - 这个 DTO 只处理产品基本信息和价格，不处理 images 数组
  */
 export class CreateCompleteProductDto extends CreateProductDto {
   @ValidateNested()
   @Type(() => CreateProductPriceDto)
   price: CreateProductPriceDto;
 
+  // 图片 URL（缓存字段，用于快速显示产品列表）
+  // 支持两种格式：url 或 coverImageUrl
   @IsOptional()
   @IsString()
   url?: string;
