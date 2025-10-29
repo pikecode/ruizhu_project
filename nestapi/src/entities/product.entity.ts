@@ -88,6 +88,22 @@ export class Product {
   @Column({ type: 'int', nullable: true, name: 'cover_image_id' })
   coverImageId: number | null; // 第一张图片ID
 
+  // 价格信息（合并到 products 表，简化架构）
+  @Column({ type: 'int', nullable: true, name: 'original_price' })
+  originalPrice: number | null; // 原价（分为单位）
+
+  @Column({ type: 'int', nullable: true, name: 'current_price' })
+  currentPrice: number | null; // 现价（分为单位）
+
+  @Column({ type: 'tinyint', default: 100, name: 'discount_rate' })
+  discountRate: number; // 0-100: 78表示78折
+
+  @Column({ type: 'char', length: 3, default: 'CNY', name: 'currency' })
+  currency: string; // 货币代码
+
+  @Column({ type: 'tinyint', nullable: true, name: 'vip_discount_rate' })
+  vipDiscountRate: number | null; // VIP折扣率
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
@@ -100,9 +116,6 @@ export class Product {
   })
   @JoinColumn({ name: 'category_id' })
   category: any;
-
-  @OneToOne('ProductPrice', (price: any) => price.product, { eager: true })
-  price: any;
 
   @OneToMany('ProductImage', (image: any) => image.product, { eager: true })
   images: any[];

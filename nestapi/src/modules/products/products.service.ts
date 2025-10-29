@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
 import {
   Product,
-  ProductPrice,
   ProductStats,
   ProductTag,
 } from '../../entities/product.entity';
@@ -24,8 +23,6 @@ export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
-    @InjectRepository(ProductPrice)
-    private readonly priceRepository: Repository<ProductPrice>,
     @InjectRepository(ProductStats)
     private readonly statsRepository: Repository<ProductStats>,
     @InjectRepository(ProductTag)
@@ -97,7 +94,7 @@ export class ProductsService {
       isSoldOut = converted.isSoldOut;
     }
 
-    // 创建商品
+    // 创建商品（包含价格字段）
     const product = this.productRepository.create({
       name: createDto.name,
       subtitle: createDto.subtitle,
@@ -114,20 +111,17 @@ export class ProductsService {
       weight: createDto.weight,
       shippingTemplateId: createDto.shippingTemplateId,
       freeShippingThreshold: createDto.freeShippingThreshold,
-    });
-
-    const savedProduct = await this.productRepository.save(product);
-
-    // 创建价格信息
-    const price = this.priceRepository.create({
-      productId: savedProduct.id,
+      // 价格信息直接保存到 products 表
       originalPrice: createDto.price.originalPrice,
       currentPrice: createDto.price.currentPrice,
       discountRate: createDto.price.discountRate || 100,
       currency: createDto.price.currency || 'CNY',
       vipDiscountRate: createDto.price.vipDiscountRate,
+      // 封面图片URL
+      coverImageUrl: createDto.url || createDto.coverImageUrl || null,
     });
-    await this.priceRepository.save(price);
+
+    const savedProduct = await this.productRepository.save(product);
 
     // 创建统计信息
     const stats = this.statsRepository.create({
@@ -139,22 +133,6 @@ export class ProductsService {
       favoritesCount: 0,
     });
     await this.statsRepository.save(stats);
-
-    // 保存图片URL缓存字段（仅处理直接提供的 url 或 coverImageUrl）
-    // 这个缓存字段用于快速显示产品列表，避免JOIN product_images表
-    // 注意：images 数组和 coverImageUrl 是完全独立的字段，各自有各自的逻辑
-    let coverImageUrl: string | undefined;
-
-    if (createDto.url) {
-      coverImageUrl = createDto.url;
-    } else if (createDto.coverImageUrl) {
-      coverImageUrl = createDto.coverImageUrl;
-    }
-
-    if (coverImageUrl) {
-      savedProduct.coverImageUrl = coverImageUrl;
-      await this.productRepository.save(savedProduct);
-    }
 
     return this.getProductDetail(savedProduct.id);
   }
@@ -171,8 +149,7 @@ export class ProductsService {
       throw new NotFoundException(`商品 ID ${productId} 不存在`);
     }
 
-    const [price, stats, tags] = await Promise.all([
-      this.priceRepository.findOne({ where: { productId } }),
+    const [stats, tags] = await Promise.all([
       this.statsRepository.findOne({ where: { productId } }),
       this.tagRepository.find({ where: { productId } }),
     ]);
@@ -210,14 +187,14 @@ export class ProductsService {
       shippingTemplateId: product.shippingTemplateId,
       freeShippingThreshold: product.freeShippingThreshold,
       coverImageUrl: product.coverImageUrl,
-      price: price ? {
-        id: price.id,
-        originalPrice: price.originalPrice,
-        currentPrice: price.currentPrice,
-        discountRate: price.discountRate,
-        currency: price.currency,
-        vipDiscountRate: price.vipDiscountRate,
-      } : undefined,
+      // 价格信息直接从 product 对象获取
+      price: {
+        originalPrice: product.originalPrice,
+        currentPrice: product.currentPrice,
+        discountRate: product.discountRate,
+        currency: product.currency,
+        vipDiscountRate: product.vipDiscountRate,
+      },
       stats: stats ? {
         salesCount: stats.salesCount,
         viewsCount: stats.viewsCount,
@@ -274,9 +251,8 @@ export class ProductsService {
 
     const skip = (page - 1) * limit;
 
-    // 查询商品（不再关联 images，直接使用 coverImageUrl 缓存字段）
+    // 查询商品（价格字段现在直接在 products 表中）
     let query_obj = this.productRepository.createQueryBuilder('product')
-      .leftJoinAndSelect('product.price', 'price')
       .leftJoinAndSelect('product.stats', 'stats')
       .leftJoinAndSelect('product.tags', 'tags');
 
@@ -288,14 +264,14 @@ export class ProductsService {
     // 价格范围筛选
     if (minPrice || maxPrice) {
       if (minPrice && maxPrice) {
-        query_obj = query_obj.andWhere('price.currentPrice BETWEEN :minPrice AND :maxPrice', {
+        query_obj = query_obj.andWhere('product.currentPrice BETWEEN :minPrice AND :maxPrice', {
           minPrice,
           maxPrice,
         });
       } else if (minPrice) {
-        query_obj = query_obj.andWhere('price.currentPrice >= :minPrice', { minPrice });
+        query_obj = query_obj.andWhere('product.currentPrice >= :minPrice', { minPrice });
       } else if (maxPrice) {
-        query_obj = query_obj.andWhere('price.currentPrice <= :maxPrice', { maxPrice });
+        query_obj = query_obj.andWhere('product.currentPrice <= :maxPrice', { maxPrice });
       }
     }
 
@@ -309,10 +285,10 @@ export class ProductsService {
     let orderDir: 'ASC' | 'DESC' = 'DESC';
 
     if (sort === 'price') {
-      orderBy = 'price.currentPrice';
+      orderBy = 'product.currentPrice';
       orderDir = 'ASC';
     } else if (sort === '-price') {
-      orderBy = 'price.currentPrice';
+      orderBy = 'product.currentPrice';
       orderDir = 'DESC';
     } else if (sort === 'sales') {
       orderBy = 'stats.salesCount';
@@ -347,9 +323,9 @@ export class ProductsService {
         subtitle: product.subtitle,
         sku: product.sku,
         categoryId: product.categoryId,
-        currentPrice: product.price?.currentPrice || 0,
-        originalPrice: product.price?.originalPrice || 0,
-        discountRate: product.price?.discountRate || 100,
+        currentPrice: product.currentPrice || 0,
+        originalPrice: product.originalPrice || 0,
+        discountRate: product.discountRate || 100,
         salesCount: product.stats?.salesCount || 0,
         averageRating: product.stats?.averageRating || 0,
         reviewsCount: product.stats?.reviewsCount || 0,
@@ -437,25 +413,16 @@ export class ProductsService {
       product.coverImageUrl = coverImageUrl;
     }
 
-    await this.productRepository.save(product);
-
-    // 处理价格更新
+    // 处理价格更新（价格字段现在直接在 products 表中）
     if (updateDto.price) {
-      let price = await this.priceRepository.findOne({ where: { productId } });
-      if (!price) {
-        price = this.priceRepository.create({
-          productId,
-          originalPrice: updateDto.price.originalPrice,
-          currentPrice: updateDto.price.currentPrice,
-          discountRate: updateDto.price.discountRate || 100,
-          currency: updateDto.price.currency || 'CNY',
-          vipDiscountRate: updateDto.price.vipDiscountRate,
-        });
-      } else {
-        Object.assign(price, updateDto.price);
-      }
-      await this.priceRepository.save(price);
+      product.originalPrice = updateDto.price.originalPrice;
+      product.currentPrice = updateDto.price.currentPrice;
+      product.discountRate = updateDto.price.discountRate || 100;
+      product.currency = updateDto.price.currency || 'CNY';
+      product.vipDiscountRate = updateDto.price.vipDiscountRate;
     }
+
+    await this.productRepository.save(product);
 
     return this.getProductDetail(productId);
   }
@@ -482,7 +449,6 @@ export class ProductsService {
   async getProductsByCategory(categoryId: number, limit = 12): Promise<ProductListItemDto[]> {
     const products = await this.productRepository
       .createQueryBuilder('product')
-      .leftJoinAndSelect('product.price', 'price')
       .leftJoinAndSelect('product.stats', 'stats')
       .leftJoinAndSelect('product.tags', 'tags')
       .where('product.categoryId = :categoryId', { categoryId })
@@ -499,9 +465,9 @@ export class ProductsService {
         subtitle: product.subtitle,
         sku: product.sku,
         categoryId: product.categoryId,
-        currentPrice: product.price?.currentPrice || 0,
-        originalPrice: product.price?.originalPrice || 0,
-        discountRate: product.price?.discountRate || 100,
+        currentPrice: product.currentPrice || 0,
+        originalPrice: product.originalPrice || 0,
+        discountRate: product.discountRate || 100,
         salesCount: product.stats?.salesCount || 0,
         averageRating: product.stats?.averageRating || 0,
         reviewsCount: product.stats?.reviewsCount || 0,
@@ -525,7 +491,6 @@ export class ProductsService {
   async getHotProducts(limit = 10): Promise<ProductListItemDto[]> {
     const products = await this.productRepository
       .createQueryBuilder('product')
-      .leftJoinAndSelect('product.price', 'price')
       .leftJoinAndSelect('product.stats', 'stats')
       .where('product.isSaleOn = :isSaleOn', { isSaleOn: true })
       .orderBy('stats.salesCount', 'DESC')
@@ -540,9 +505,9 @@ export class ProductsService {
         subtitle: product.subtitle,
         sku: product.sku,
         categoryId: product.categoryId,
-        currentPrice: product.price?.currentPrice || 0,
-        originalPrice: product.price?.originalPrice || 0,
-        discountRate: product.price?.discountRate || 100,
+        currentPrice: product.currentPrice || 0,
+        originalPrice: product.originalPrice || 0,
+        discountRate: product.discountRate || 100,
         salesCount: product.stats?.salesCount || 0,
         averageRating: product.stats?.averageRating || 0,
         reviewsCount: product.stats?.reviewsCount || 0,
@@ -565,7 +530,6 @@ export class ProductsService {
   async searchProducts(keyword: string, limit = 20): Promise<ProductListItemDto[]> {
     const products = await this.productRepository
       .createQueryBuilder('product')
-      .leftJoinAndSelect('product.price', 'price')
       .leftJoinAndSelect('product.stats', 'stats')
       .where('product.name LIKE :keyword OR product.description LIKE :keyword', {
         keyword: `%${keyword}%`,
@@ -583,9 +547,9 @@ export class ProductsService {
         subtitle: product.subtitle,
         sku: product.sku,
         categoryId: product.categoryId,
-        currentPrice: product.price?.currentPrice || 0,
-        originalPrice: product.price?.originalPrice || 0,
-        discountRate: product.price?.discountRate || 100,
+        currentPrice: product.currentPrice || 0,
+        originalPrice: product.originalPrice || 0,
+        discountRate: product.discountRate || 100,
         salesCount: product.stats?.salesCount || 0,
         averageRating: product.stats?.averageRating || 0,
         reviewsCount: product.stats?.reviewsCount || 0,
