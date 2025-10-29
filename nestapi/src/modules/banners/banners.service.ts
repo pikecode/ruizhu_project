@@ -4,8 +4,6 @@ import { Repository } from 'typeorm';
 import { Banner } from '../../entities/banner.entity';
 import { CreateBannerDto, UpdateBannerDto, BannerResponseDto, BannerListResponseDto } from './dto/banner.dto';
 import { ConfigService } from '@nestjs/config';
-import axios from 'axios';
-import FormData from 'form-data';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -222,7 +220,7 @@ export class BannersService {
         filename: 'video.webp',
         path: webpPath,
         buffer: webpBuffer,
-      };
+      } as any;
 
       const videoResult = await this.uploadFileToCos(webpFile, 'banners/videos');
 
@@ -237,7 +235,7 @@ export class BannersService {
         filename: 'thumbnail.jpg',
         path: thumbnailPath,
         buffer: thumbnailBuffer,
-      };
+      } as any;
 
       const thumbnailResult = await this.uploadFileToCos(thumbnailFile, 'banners/thumbnails');
 

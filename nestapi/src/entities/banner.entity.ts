@@ -12,6 +12,7 @@ export class Banner {
   @Column({
     type: 'varchar',
     length: 255,
+    name: 'main_title',
     comment: '大标题',
   })
   mainTitle: string;
@@ -44,6 +45,7 @@ export class Banner {
     type: 'varchar',
     length: 500,
     nullable: true,
+    name: 'image_url',
     comment: '图片URL (COS)',
   })
   imageUrl: string | null;
@@ -52,6 +54,7 @@ export class Banner {
     type: 'varchar',
     length: 255,
     nullable: true,
+    name: 'image_key',
     comment: '图片文件Key (COS)',
   })
   imageKey: string | null;
@@ -60,6 +63,7 @@ export class Banner {
     type: 'varchar',
     length: 500,
     nullable: true,
+    name: 'video_url',
     comment: '视频URL (COS) - webp格式',
   })
   videoUrl: string | null;
@@ -68,6 +72,7 @@ export class Banner {
     type: 'varchar',
     length: 255,
     nullable: true,
+    name: 'video_key',
     comment: '视频文件Key (COS)',
   })
   videoKey: string | null;
@@ -76,6 +81,7 @@ export class Banner {
     type: 'varchar',
     length: 500,
     nullable: true,
+    name: 'video_thumbnail_url',
     comment: '视频封面图URL',
   })
   videoThumbnailUrl: string | null;
@@ -84,6 +90,7 @@ export class Banner {
     type: 'varchar',
     length: 255,
     nullable: true,
+    name: 'video_thumbnail_key',
     comment: '视频封面文件Key',
   })
   videoThumbnailKey: string | null;
@@ -92,6 +99,7 @@ export class Banner {
   @Column({
     type: 'boolean',
     default: true,
+    name: 'is_active',
     comment: '是否启用',
   })
   isActive: boolean;
@@ -99,6 +107,7 @@ export class Banner {
   @Column({
     type: 'int',
     default: 0,
+    name: 'sort_order',
     comment: '排序顺序',
   })
   sortOrder: number;
@@ -108,6 +117,7 @@ export class Banner {
     type: 'enum',
     enum: ['none', 'product', 'category', 'collection', 'url'],
     default: 'none',
+    name: 'link_type',
     comment: '链接类型',
   })
   linkType: 'none' | 'product' | 'category' | 'collection' | 'url';
@@ -116,14 +126,19 @@ export class Banner {
     type: 'varchar',
     length: 500,
     nullable: true,
+    name: 'link_value',
     comment: '链接值（产品ID、分类ID、URL等）',
   })
   linkValue: string | null;
 
   // 时间戳
-  @CreateDateColumn()
+  @CreateDateColumn({
+    name: 'created_at',
+  })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({
+    name: 'updated_at',
+  })
   updatedAt: Date;
 }

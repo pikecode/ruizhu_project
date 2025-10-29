@@ -15,7 +15,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { BannersService } from './banners.service';
 import { CreateBannerDto, UpdateBannerDto, BannerResponseDto, BannerListResponseDto } from './dto/banner.dto';
 
-@Controller('api/v1/banners')
+@Controller('banners')
 export class BannersController {
   constructor(private bannersService: BannersService) {}
 
