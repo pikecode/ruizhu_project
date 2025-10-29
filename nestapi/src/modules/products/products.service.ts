@@ -109,11 +109,11 @@ export class ProductsService {
       shippingTemplateId: createDto.shippingTemplateId,
       freeShippingThreshold: createDto.freeShippingThreshold,
       // 价格信息直接保存到 products 表
-      originalPrice: createDto.price.originalPrice,
-      currentPrice: createDto.price.currentPrice,
+      originalPrice: createDto.price.originalPrice ?? null,
+      currentPrice: createDto.price.currentPrice ?? null,
       discountRate: createDto.price.discountRate || 100,
       currency: createDto.price.currency || 'CNY',
-      vipDiscountRate: createDto.price.vipDiscountRate,
+      vipDiscountRate: createDto.price.vipDiscountRate ?? null,
       // 封面图片URL
       coverImageUrl: createDto.url || createDto.coverImageUrl || null,
     });
@@ -170,11 +170,11 @@ export class ProductsService {
       coverImageUrl: product.coverImageUrl,
       // 价格信息直接从 product 对象获取
       price: {
-        originalPrice: product.originalPrice,
-        currentPrice: product.currentPrice,
+        originalPrice: product.originalPrice ?? undefined,
+        currentPrice: product.currentPrice ?? undefined,
         discountRate: product.discountRate,
         currency: product.currency,
-        vipDiscountRate: product.vipDiscountRate,
+        vipDiscountRate: product.vipDiscountRate ?? undefined,
       },
       stats: {
         salesCount: product.salesCount,
@@ -182,7 +182,7 @@ export class ProductsService {
         averageRating: product.averageRating,
         reviewsCount: product.reviewsCount,
         favoritesCount: product.favoritesCount,
-        conversionRate: product.conversionRate,
+        conversionRate: product.conversionRate ?? undefined,
       },
       tags: tags.map((tag) => ({
         id: tag.id,
@@ -395,11 +395,11 @@ export class ProductsService {
 
     // 处理价格更新（价格字段现在直接在 products 表中）
     if (updateDto.price) {
-      product.originalPrice = updateDto.price.originalPrice;
-      product.currentPrice = updateDto.price.currentPrice;
+      product.originalPrice = updateDto.price.originalPrice ?? null;
+      product.currentPrice = updateDto.price.currentPrice ?? null;
       product.discountRate = updateDto.price.discountRate || 100;
       product.currency = updateDto.price.currency || 'CNY';
-      product.vipDiscountRate = updateDto.price.vipDiscountRate;
+      product.vipDiscountRate = updateDto.price.vipDiscountRate ?? null;
     }
 
     await this.productRepository.save(product);

@@ -34,11 +34,11 @@ export class ProductDetailResponseDto {
 
   // 价格信息
   price?: {
-    id: number;
-    originalPrice: number;
-    currentPrice: number;
-    discountRate: number;
-    currency: string;
+    id?: number;
+    originalPrice?: number;
+    currentPrice?: number;
+    discountRate?: number;
+    currency?: string;
     vipDiscountRate?: number;
   };
 
