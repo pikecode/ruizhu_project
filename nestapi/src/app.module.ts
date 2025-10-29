@@ -11,6 +11,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { MediaModule } from './modules/media/media.module';
 import { CollectionsModule } from './modules/collections/collections.module';
 import { ArrayCollectionsModule } from './modules/array-collections/array-collections.module';
+import { BannersModule } from './modules/banners/banners.module';
 import { getDatabaseConfig } from './database/database.config';
 
 @Module({
@@ -33,6 +34,7 @@ import { getDatabaseConfig } from './database/database.config';
     MediaModule,
     CollectionsModule,
     ArrayCollectionsModule,
+    BannersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

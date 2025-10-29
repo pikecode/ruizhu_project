@@ -44,6 +44,11 @@ export default function Layout({ children }: LayoutProps) {
       onClick: () => navigate('/array-collections'),
     },
     {
+      key: '/banners',
+      label: '首页Banner',
+      onClick: () => navigate('/banners'),
+    },
+    {
       key: '/orders',
       label: '订单',
       onClick: () => navigate('/orders'),
