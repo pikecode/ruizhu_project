@@ -1,4 +1,5 @@
 import React from 'react'
+import Layout from '@/components/Layout'
 import BannerManager from '@/components/BannerManager'
 
 /**
@@ -6,5 +7,9 @@ import BannerManager from '@/components/BannerManager'
  * Banner管理页面
  */
 export default function BannersPage() {
-  return <BannerManager />
+  return (
+    <Layout>
+      <BannerManager />
+    </Layout>
+  )
 }
