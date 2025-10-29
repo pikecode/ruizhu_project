@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
   Product,
-  ProductPrice,
   ProductImage,
   ProductAttribute,
   ProductDetails,
@@ -17,7 +16,6 @@ import { ProductsController } from './products.controller';
   imports: [
     TypeOrmModule.forFeature([
       Product,
-      ProductPrice,
       ProductImage,
       ProductAttribute,
       ProductDetails,

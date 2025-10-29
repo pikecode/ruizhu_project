@@ -8,7 +8,6 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import {
   Product,
-  ProductPrice,
   ProductImage,
   ProductAttribute,
   ProductDetails,
@@ -81,7 +80,6 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
     entities: [
       Category,
       Product,
-      ProductPrice,
       ProductImage,
       ProductAttribute,
       ProductDetails,

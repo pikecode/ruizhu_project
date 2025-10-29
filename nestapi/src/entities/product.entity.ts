@@ -156,47 +156,6 @@ export class Product {
 }
 
 /**
- * 商品价格实体
- */
-@Entity('product_prices')
-@Index(['productId'], { unique: true })
-@Index(['currentPrice'])
-export class ProductPrice {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column({ type: 'int', unique: true, name: 'product_id' })
-  productId: number;
-
-  @Column({ type: 'int', name: 'original_price' })
-  originalPrice: number; // 分为单位
-
-  @Column({ type: 'int', name: 'current_price' })
-  currentPrice: number; // 分为单位
-
-  @Column({ type: 'tinyint', default: 100, name: 'discount_rate' })
-  discountRate: number; // 0-100: 78表示78折
-
-  @Column({ type: 'char', length: 3, default: 'CNY' })
-  currency: string;
-
-  @Column({ type: 'tinyint', nullable: true, name: 'vip_discount_rate' })
-  vipDiscountRate: number;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
-
-  @OneToOne('Product', (product: any) => product.price, {
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'product_id' })
-  product: any;
-}
-
-/**
  * 商品图片实体
  */
 @Entity('product_images')
