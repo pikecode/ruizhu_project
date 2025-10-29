@@ -115,14 +115,14 @@ export class UsersService {
    * @param userData 用户数据（来自微信）
    */
   async createOrUpdateByPhone(
-    phone: string,
+    phone: string | null,
     openId: string,
     userData?: Partial<User>,
   ): Promise<User> {
     // 先查找是否存在该手机号的用户
-    let user = await this.usersRepository.findOne({
+    let user = phone ? await this.usersRepository.findOne({
       where: { phone },
-    });
+    }) : null;
 
     if (user) {
       // 更新现有用户
@@ -132,7 +132,11 @@ export class UsersService {
         isPhoneAuthorized: true,
         status: 'active',
       });
-      return this.usersRepository.findOne({ where: { id: user.id } });
+      const updatedUser = await this.usersRepository.findOne({ where: { id: user.id } });
+      if (!updatedUser) {
+        throw new NotFoundException('用户不存在');
+      }
+      return updatedUser;
     }
 
     // 创建新用户
@@ -173,7 +177,11 @@ export class UsersService {
       isPhoneAuthorized: true,
     });
 
-    return this.usersRepository.findOne({ where: { id: user.id } });
+    const updatedUser = await this.usersRepository.findOne({ where: { id: user.id } });
+    if (!updatedUser) {
+      throw new NotFoundException('用户不存在');
+    }
+    return updatedUser;
   }
 
   /**

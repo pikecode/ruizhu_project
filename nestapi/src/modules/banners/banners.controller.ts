@@ -13,9 +13,11 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { BannersService } from './banners.service';
 import { CreateBannerDto, UpdateBannerDto, BannerResponseDto, BannerListResponseDto } from './dto/banner.dto';
 
+@ApiTags('Banners')
 @Controller('banners')
 export class BannersController {
   constructor(private bannersService: BannersService) {}
@@ -26,6 +28,11 @@ export class BannersController {
    * pageType: 'home' | 'custom' (default: 'home')
    */
   @Get()
+  @ApiOperation({ summary: 'Get banners list with pagination' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+  @ApiQuery({ name: 'pageType', required: false, enum: ['home', 'custom'], description: 'Banner page type' })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved banner list' })
   async getBannerList(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
@@ -45,6 +52,9 @@ export class BannersController {
    * pageType: 'home' | 'custom' (default: 'home')
    */
   @Get('home')
+  @ApiOperation({ summary: 'Get home banners (active only)' })
+  @ApiQuery({ name: 'pageType', required: false, enum: ['home', 'custom'], description: 'Banner page type' })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved home banners' })
   async getHomeBanners(
     @Query('pageType') pageType: 'home' | 'custom' = 'home',
   ): Promise<{ code: number; message: string; data: BannerResponseDto[] }> {
@@ -61,6 +71,9 @@ export class BannersController {
    * GET /api/v1/banners/:id
    */
   @Get(':id')
+  @ApiOperation({ summary: 'Get banner by ID' })
+  @ApiParam({ name: 'id', type: Number, description: 'Banner ID' })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved banner' })
   async getBannerById(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<{ code: number; message: string; data: BannerResponseDto }> {
@@ -78,6 +91,8 @@ export class BannersController {
    * Body: { mainTitle, subtitle?, description?, sortOrder?, isActive?, linkType?, linkValue? }
    */
   @Post()
+  @ApiOperation({ summary: 'Create a new banner' })
+  @ApiResponse({ status: 201, description: 'Banner created successfully' })
   async createBanner(
     @Body() createBannerDto: CreateBannerDto,
   ): Promise<{ code: number; message: string; data: BannerResponseDto }> {
@@ -95,6 +110,9 @@ export class BannersController {
    * Body: { mainTitle?, subtitle?, description?, sortOrder?, isActive?, linkType?, linkValue? }
    */
   @Put(':id')
+  @ApiOperation({ summary: 'Update banner' })
+  @ApiParam({ name: 'id', type: Number, description: 'Banner ID' })
+  @ApiResponse({ status: 200, description: 'Banner updated successfully' })
   async updateBanner(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateBannerDto: UpdateBannerDto,
@@ -112,6 +130,9 @@ export class BannersController {
    * DELETE /api/v1/banners/:id
    */
   @Delete(':id')
+  @ApiOperation({ summary: 'Delete banner' })
+  @ApiParam({ name: 'id', type: Number, description: 'Banner ID' })
+  @ApiResponse({ status: 200, description: 'Banner deleted successfully' })
   async deleteBanner(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<{ code: number; message: string }> {

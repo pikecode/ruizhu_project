@@ -16,7 +16,7 @@ export class AuthService {
    */
   async validateUser(username: string, password: string): Promise<any> {
     const user = await this.usersService.findByUsername(username);
-    if (user && await bcrypt.compare(password, user.password)) {
+    if (user && user.password && await bcrypt.compare(password, user.password)) {
       const { password, ...result } = user;
       return result;
     }
@@ -185,7 +185,7 @@ export class AuthService {
       );
     } else {
       // 更新现有用户信息
-      if (userData) {
+      if (userData && user.phone) {
         user = await this.usersService.bindPhoneToOpenId(openId, user.phone);
       }
     }
