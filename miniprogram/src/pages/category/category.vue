@@ -97,6 +97,8 @@
 </template>
 
 <script>
+import { getCategories, getProducts, searchProducts } from '../../services/products'
+
 export default {
   data() {
     return {
@@ -104,13 +106,7 @@ export default {
       activeCategory: 0,
       activeSortIndex: 0,
       isLoading: true,
-      categories: [
-        { id: 'all', name: '全部' },
-        { id: 'clothing', name: '服装' },
-        { id: 'jewelry', name: '珠宝' },
-        { id: 'shoes', name: '鞋履' },
-        { id: 'perfume', name: '香水' }
-      ],
+      categories: [],
       sortOptions: [
         { label: '推荐', value: 'recommend' },
         { label: '新品', value: 'new' },
@@ -118,151 +114,22 @@ export default {
         { label: '价格↓', value: 'price_desc' },
         { label: '价格↑', value: 'price_asc' }
       ],
-      allProducts: [
-        // 服装系列
-        {
-          id: 1,
-          name: '经典黑色T恤',
-          category: '服装',
-          categoryId: 'clothing',
-          price: '2800',
-          image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&q=80',
-          isNew: false,
-          isSold: false
-        },
-        {
-          id: 2,
-          name: '优雅连衣裙',
-          category: '服装',
-          categoryId: 'clothing',
-          price: '4800',
-          image: 'https://images.unsplash.com/photo-1595777707802-41d339d60280?w=400&q=80',
-          isNew: true,
-          isSold: false
-        },
-        {
-          id: 3,
-          name: '商务夹克',
-          category: '服装',
-          categoryId: 'clothing',
-          price: '5600',
-          image: 'https://images.unsplash.com/photo-1551028719-00167b16ebc5?w=400&q=80',
-          isNew: false,
-          isSold: false
-        },
-        // 珠宝系列
-        {
-          id: 4,
-          name: '黄金项链',
-          category: '珠宝',
-          categoryId: 'jewelry',
-          price: '18600',
-          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80',
-          isNew: true,
-          isSold: false
-        },
-        {
-          id: 5,
-          name: '钻石手镯',
-          category: '珠宝',
-          categoryId: 'jewelry',
-          price: '32000',
-          image: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=400&q=80',
-          isNew: false,
-          isSold: false
-        },
-        {
-          id: 6,
-          name: '珍珠耳环',
-          category: '珠宝',
-          categoryId: 'jewelry',
-          price: '8800',
-          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80',
-          isNew: false,
-          isSold: false
-        },
-        // 鞋履系列
-        {
-          id: 7,
-          name: '高跟鞋',
-          category: '鞋履',
-          categoryId: 'shoes',
-          price: '3200',
-          image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400&q=80',
-          isNew: false,
-          isSold: false
-        },
-        {
-          id: 8,
-          name: '运动鞋',
-          category: '鞋履',
-          categoryId: 'shoes',
-          price: '1200',
-          image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80',
-          isNew: true,
-          isSold: false
-        },
-        {
-          id: 9,
-          name: '皮革靴子',
-          category: '鞋履',
-          categoryId: 'shoes',
-          price: '2800',
-          image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400&q=80',
-          isNew: false,
-          isSold: false
-        },
-        // 香水系列
-        {
-          id: 10,
-          name: '玫瑰香水',
-          category: '香水',
-          categoryId: 'perfume',
-          price: '1800',
-          image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&q=80',
-          isNew: false,
-          isSold: false
-        },
-        {
-          id: 11,
-          name: '柑橘香氛',
-          category: '香水',
-          categoryId: 'perfume',
-          price: '1500',
-          image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&q=80',
-          isNew: true,
-          isSold: false
-        },
-        {
-          id: 12,
-          name: '木质香水',
-          category: '香水',
-          categoryId: 'perfume',
-          price: '2200',
-          image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&q=80',
-          isNew: false,
-          isSold: false
-        }
-      ]
+      allProducts: [],
+      searchTimer: null
     }
   },
-  onLoad() {
-    // 模拟数据加载，500ms后隐藏骨架屏
-    setTimeout(() => {
-      this.isLoading = false
-    }, 500)
+  async onLoad() {
+    // 初始化分类
+    this.categories = getCategories()
+
+    // 加载默认商品列表
+    this.loadProducts()
   },
   computed: {
     filteredProducts() {
       let products = this.allProducts
 
-      // 按分类过滤
-      if (this.activeCategory !== 0) {
-        const categoryId = this.categories[this.activeCategory].id
-        products = products.filter(p => p.categoryId === categoryId)
-      }
-
-      // 按搜索关键词过滤
+      // 按搜索关键词过滤（本地搜索）
       if (this.searchKeyword) {
         products = products.filter(p =>
           p.name.toLowerCase().includes(this.searchKeyword.toLowerCase()) ||
@@ -277,17 +144,16 @@ export default {
           products.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0))
           break
         case 'hot':
-          // 可根据销量或浏览量排序，这里简单示例
-          products.sort((a, b) => b.id - a.id)
+          // 后端已按销量排序，此处只做本地补充排序
           break
         case 'price_desc':
-          products.sort((a, b) => parseInt(b.price) - parseInt(a.price))
+          products.sort((a, b) => parseFloat(b.price) - parseFloat(a.price))
           break
         case 'price_asc':
-          products.sort((a, b) => parseInt(a.price) - parseInt(b.price))
+          products.sort((a, b) => parseFloat(a.price) - parseFloat(b.price))
           break
         default:
-          // 推荐顺序
+          // 推荐顺序（后端默认）
           break
       }
 
@@ -295,21 +161,104 @@ export default {
     }
   },
   methods: {
+    /**
+     * 加载商品列表
+     */
+    async loadProducts() {
+      this.isLoading = true
+      try {
+        const sortValue = this.sortOptions[this.activeSortIndex].value
+        const categoryId = this.activeCategory === 0 ? 0 : this.categories[this.activeCategory].id
+
+        const products = await getProducts({
+          page: 1,
+          limit: 50,
+          categoryId: categoryId === 0 ? undefined : categoryId,
+          sortBy: sortValue
+        })
+
+        this.allProducts = products
+      } catch (error) {
+        console.error('Failed to load products:', error)
+        uni.showToast({
+          title: '加载失败',
+          icon: 'none'
+        })
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    /**
+     * 搜索输入（防抖）
+     */
     onSearchInput(e) {
       this.searchKeyword = e.detail.value
+
+      // 清除之前的定时器
+      if (this.searchTimer) {
+        clearTimeout(this.searchTimer)
+      }
+
+      // 如果搜索关键词为空，加载当前分类商品
+      if (!this.searchKeyword.trim()) {
+        this.loadProducts()
+        return
+      }
+
+      // 防抖：300ms后执行搜索
+      this.searchTimer = setTimeout(async () => {
+        this.isLoading = true
+        try {
+          const products = await searchProducts(this.searchKeyword)
+          this.allProducts = products
+        } catch (error) {
+          console.error('Search failed:', error)
+        } finally {
+          this.isLoading = false
+        }
+      }, 300)
     },
+
+    /**
+     * 清空搜索
+     */
     clearSearch() {
       this.searchKeyword = ''
+      if (this.searchTimer) {
+        clearTimeout(this.searchTimer)
+      }
+      this.loadProducts()
     },
+
+    /**
+     * 图片加载完成
+     */
     onImageLoad() {
       // 图片加载完成，可在此处添加加载计数逻辑
     },
-    onCategoryChange(index) {
+
+    /**
+     * 分类切换
+     */
+    async onCategoryChange(index) {
       this.activeCategory = index
+      this.activeSortIndex = 0
+      this.searchKeyword = ''
+      await this.loadProducts()
     },
-    onSortChange(index) {
+
+    /**
+     * 排序方式切换
+     */
+    async onSortChange(index) {
       this.activeSortIndex = index
+      await this.loadProducts()
     },
+
+    /**
+     * 商品点击
+     */
     onProductTap(product) {
       uni.navigateTo({
         url: '/pages/product/detail'

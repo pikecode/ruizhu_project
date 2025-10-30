@@ -8,10 +8,11 @@
  * 根据环境切换不同的后端地址
  * 修改这里来切换开发/生产环境
  */
-const BASE_URL = 'http://localhost:8888/api/v1'
+// 开发环境配置（本地测试）
+// const BASE_URL = 'http://localhost:8888/api/v1'
 
-// 生产环境配置（需要时取消注释）
-// const BASE_URL = 'http://api.ruizhu.com/api/v1'
+// 生产环境配置
+const BASE_URL = 'https://yunjie.online/api'
 
 interface RequestOptions {
   method?: string
