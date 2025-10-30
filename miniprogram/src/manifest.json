@@ -1,6 +1,6 @@
 {
   "name": "ruizhu-miniprogram",
-  "appid": "wxf2a1defe4093ab24",
+  "appid": "wxf53b935bb88efd56",
   "description": "Ruizhu小程序",
   "versionName": "1.0.0",
   "versionCode": "100",
@@ -26,7 +26,7 @@
   },
   "quickapp": {},
   "mp-weixin": {
-    "appid": "wxf2a1defe4093ab24",
+    "appid": "wxf53b935bb88efd56",
     "setting": {
       "urlCheck": false,
       "es6": true,
