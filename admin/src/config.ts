@@ -1,35 +1,19 @@
 /**
- * Application Configuration
+ * 应用配置文件
+ * 支持通过环境变量动态配置 API 地址
  */
 
-export const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000') + '/api'
+const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
-export const API_ENDPOINTS = {
-  // Banner endpoints
-  BANNERS: '/banners',
-  BANNERS_HOME: '/banners/home',
-  BANNER_DETAIL: (id: number) => `/banners/${id}`,
-  BANNER_UPLOAD_IMAGE: (id: number) => `/banners/${id}/upload-image`,
-  BANNER_UPLOAD_VIDEO: (id: number) => `/banners/${id}/upload-video`,
+// 为了向后兼容 banner.ts 和其他服务，导出 API_BASE_URL
+export const API_BASE_URL = apiUrl
 
-  // Product endpoints
-  PRODUCTS: '/products',
-  PRODUCT_DETAIL: (id: number) => `/products/${id}`,
+export const config = {
+  // API 服务地址
+  apiUrl,
 
-  // Collection endpoints
-  COLLECTIONS: '/collections',
-  COLLECTION_DETAIL: (id: number) => `/collections/${id}`,
-
-  // Order endpoints
-  ORDERS: '/orders',
-  ORDER_DETAIL: (id: number) => `/orders/${id}`,
-
-  // User endpoints
-  USERS: '/users',
-  USER_DETAIL: (id: number) => `/users/${id}`,
+  // 应用名称
+  appName: import.meta.env.VITE_APP_NAME || 'Ruizhu Admin',
 }
 
-export default {
-  API_BASE_URL,
-  API_ENDPOINTS,
-}
+export default config
