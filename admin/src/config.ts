@@ -1,19 +1,22 @@
 /**
  * 应用配置文件
- * 支持通过环境变量动态配置 API 地址
+ * 统一管理所有配置，通过环境变量 VITE_API_URL 动态配置
+ *
+ * 注意：VITE_API_URL 应该包含完整的 API 地址，例如：
+ * - 本地开发: http://localhost:3000/api
+ * - 线上环境: https://yunjie.online/api
  */
 
-const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+// API 服务基础地址（包含 /api 前缀）
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
-// 为了向后兼容 banner.ts 和其他服务，导出 API_BASE_URL
-export const API_BASE_URL = apiUrl
+// 应用名称
+export const APP_NAME = import.meta.env.VITE_APP_NAME || 'Ruizhu Admin'
 
+// 导出完整配置对象供应用使用
 export const config = {
-  // API 服务地址
-  apiUrl,
-
-  // 应用名称
-  appName: import.meta.env.VITE_APP_NAME || 'Ruizhu Admin',
+  apiUrl: API_BASE_URL,
+  appName: APP_NAME,
 }
 
 export default config
