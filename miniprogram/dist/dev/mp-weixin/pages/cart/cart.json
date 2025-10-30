@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "购物袋",
+  "usingComponents": {
+    "phone-auth-modal": "../../components/PhoneAuthModal"
+  }
+}
