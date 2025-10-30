@@ -1,0 +1,20 @@
+node_modules/
+unpackage/
+dist/
+.DS_Store
+*.log
+package-lock.json
+.hbuilderx/
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.env.local
+.env.*.local
+
+# uniapp
+/src/manifest.json.bak
+/src/pages.json.bak

@@ -2,12 +2,16 @@
   <view class="page">
     <!-- 搜索栏 -->
     <view class="search-bar">
-      <input
-        type="text"
-        placeholder="搜索商品"
-        class="search-input"
-        @input="onSearchInput"
-      />
+      <view class="search-wrapper">
+        <input
+          type="text"
+          placeholder="搜索商品"
+          class="search-input"
+          v-model="searchKeyword"
+          @input="onSearchInput"
+        />
+        <view v-if="searchKeyword" class="clear-btn" @tap="clearSearch">✕</view>
+      </view>
     </view>
 
     <!-- 分类和排序筛选 -->
@@ -39,7 +43,26 @@
 
     <!-- 商品网格 -->
     <view class="products-section">
-      <view class="product-grid">
+      <!-- 骨架屏加载状态 -->
+      <view v-if="isLoading" class="product-grid">
+        <view
+          v-for="(_, index) in 4"
+          :key="'skeleton-' + index"
+          class="product-item skeleton-item"
+        >
+          <view class="product-image-wrapper">
+            <view class="skeleton-image"></view>
+          </view>
+          <view class="product-info">
+            <view class="skeleton-text skeleton-title"></view>
+            <view class="skeleton-text skeleton-category"></view>
+            <view class="skeleton-text skeleton-price"></view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 实际内容 -->
+      <view v-else class="product-grid">
         <view
           v-for="(product, index) in filteredProducts"
           :key="index"
@@ -51,6 +74,7 @@
               class="product-image"
               :src="product.image"
               mode="aspectFill"
+              @load="onImageLoad"
             ></image>
             <view v-if="product.isNew" class="product-badge">新品</view>
           </view>
@@ -65,7 +89,7 @@
       </view>
 
       <!-- 空状态 -->
-      <view v-if="filteredProducts.length === 0" class="empty-state">
+      <view v-if="!isLoading && filteredProducts.length === 0" class="empty-state">
         <text class="empty-text">未找到相关商品</text>
       </view>
     </view>
@@ -79,12 +103,13 @@ export default {
       searchKeyword: '',
       activeCategory: 0,
       activeSortIndex: 0,
+      isLoading: true,
       categories: [
         { id: 'all', name: '全部' },
-        { id: 'bags', name: '手袋' },
-        { id: 'backpacks', name: '背包' },
-        { id: 'wallets', name: '钱包' },
-        { id: 'accessories', name: '配件' }
+        { id: 'clothing', name: '服装' },
+        { id: 'jewelry', name: '珠宝' },
+        { id: 'shoes', name: '鞋履' },
+        { id: 'perfume', name: '香水' }
       ],
       sortOptions: [
         { label: '推荐', value: 'recommend' },
@@ -94,132 +119,138 @@ export default {
         { label: '价格↑', value: 'price_asc' }
       ],
       allProducts: [
-        // 手袋系列
+        // 服装系列
         {
           id: 1,
-          name: '经典皮质手袋',
-          category: '手袋',
-          categoryId: 'bags',
-          price: '12800',
-          image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400&q=80',
+          name: '经典黑色T恤',
+          category: '服装',
+          categoryId: 'clothing',
+          price: '2800',
+          image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&q=80',
           isNew: false,
           isSold: false
         },
         {
           id: 2,
-          name: '优雅肩挎包',
-          category: '手袋',
-          categoryId: 'bags',
-          price: '9800',
-          image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&q=80',
+          name: '优雅连衣裙',
+          category: '服装',
+          categoryId: 'clothing',
+          price: '4800',
+          image: 'https://images.unsplash.com/photo-1595777707802-41d339d60280?w=400&q=80',
           isNew: true,
           isSold: false
         },
         {
           id: 3,
-          name: '简约公文包',
-          category: '手袋',
-          categoryId: 'bags',
-          price: '15600',
-          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80',
+          name: '商务夹克',
+          category: '服装',
+          categoryId: 'clothing',
+          price: '5600',
+          image: 'https://images.unsplash.com/photo-1551028719-00167b16ebc5?w=400&q=80',
           isNew: false,
           isSold: false
         },
-        // 背包系列
+        // 珠宝系列
         {
           id: 4,
-          name: '高端旅行背包',
-          category: '背包',
-          categoryId: 'backpacks',
-          price: '8600',
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80',
+          name: '黄金项链',
+          category: '珠宝',
+          categoryId: 'jewelry',
+          price: '18600',
+          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80',
           isNew: true,
           isSold: false
         },
         {
           id: 5,
-          name: '商务双肩包',
-          category: '背包',
-          categoryId: 'backpacks',
-          price: '7200',
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80',
+          name: '钻石手镯',
+          category: '珠宝',
+          categoryId: 'jewelry',
+          price: '32000',
+          image: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=400&q=80',
           isNew: false,
           isSold: false
         },
         {
           id: 6,
-          name: '户外探险背包',
-          category: '背包',
-          categoryId: 'backpacks',
-          price: '6800',
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80',
+          name: '珍珠耳环',
+          category: '珠宝',
+          categoryId: 'jewelry',
+          price: '8800',
+          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80',
           isNew: false,
           isSold: false
         },
-        // 钱包系列
+        // 鞋履系列
         {
           id: 7,
-          name: '优雅钱包',
-          category: '钱包',
-          categoryId: 'wallets',
+          name: '高跟鞋',
+          category: '鞋履',
+          categoryId: 'shoes',
           price: '3200',
-          image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=400&q=80',
+          image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400&q=80',
           isNew: false,
           isSold: false
         },
         {
           id: 8,
-          name: '长款皮夹',
-          category: '钱包',
-          categoryId: 'wallets',
-          price: '4200',
-          image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=400&q=80',
+          name: '运动鞋',
+          category: '鞋履',
+          categoryId: 'shoes',
+          price: '1200',
+          image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80',
           isNew: true,
           isSold: false
         },
         {
           id: 9,
-          name: '卡片夹',
-          category: '钱包',
-          categoryId: 'wallets',
-          price: '1800',
-          image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=400&q=80',
+          name: '皮革靴子',
+          category: '鞋履',
+          categoryId: 'shoes',
+          price: '2800',
+          image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400&q=80',
           isNew: false,
           isSold: false
         },
-        // 配件系列
+        // 香水系列
         {
           id: 10,
-          name: '皮质腰带',
-          category: '配件',
-          categoryId: 'accessories',
-          price: '2800',
-          image: 'https://images.unsplash.com/photo-1624526267942-ab67cb38a25f?w=400&q=80',
+          name: '玫瑰香水',
+          category: '香水',
+          categoryId: 'perfume',
+          price: '1800',
+          image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&q=80',
           isNew: false,
           isSold: false
         },
         {
           id: 11,
-          name: '丝巾',
-          category: '配件',
-          categoryId: 'accessories',
-          price: '1200',
-          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80',
+          name: '柑橘香氛',
+          category: '香水',
+          categoryId: 'perfume',
+          price: '1500',
+          image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&q=80',
           isNew: true,
           isSold: false
         },
         {
           id: 12,
-          name: '钥匙扣',
-          category: '配件',
-          categoryId: 'accessories',
-          price: '680',
-          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80',
+          name: '木质香水',
+          category: '香水',
+          categoryId: 'perfume',
+          price: '2200',
+          image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&q=80',
           isNew: false,
           isSold: false
         }
       ]
     }
+  },
+  onLoad() {
+    // 模拟数据加载，500ms后隐藏骨架屏
+    setTimeout(() => {
+      this.isLoading = false
+    }, 500)
   },
   computed: {
     filteredProducts() {
@@ -267,6 +298,12 @@ export default {
     onSearchInput(e) {
       this.searchKeyword = e.detail.value
     },
+    clearSearch() {
+      this.searchKeyword = ''
+    },
+    onImageLoad() {
+      // 图片加载完成，可在此处添加加载计数逻辑
+    },
     onCategoryChange(index) {
       this.activeCategory = index
     },
@@ -274,15 +311,9 @@ export default {
       this.activeSortIndex = index
     },
     onProductTap(product) {
-      uni.showToast({
-        title: product.name,
-        icon: 'none',
-        duration: 1500
+      uni.navigateTo({
+        url: '/pages/product/detail'
       })
-      // 可以导航到商品详情页
-      // uni.navigateTo({
-      //   url: `/pages/product-detail/product-detail?id=${product.id}`
-      // })
     }
   }
 }
@@ -304,15 +335,42 @@ export default {
   background: #ffffff;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 
+  .search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
   .search-input {
-    width: 100%;
+    flex: 1;
     height: 72rpx;
     padding: 0 24rpx;
+    padding-right: 60rpx;
     background: #f5f5f5;
     border-radius: 36rpx;
     font-size: 28rpx;
     color: #333333;
     border: none;
+
+    &:focus {
+      background: #f0f0f0;
+    }
+  }
+
+  .clear-btn {
+    position: absolute;
+    right: 20rpx;
+    width: 40rpx;
+    height: 40rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32rpx;
+    color: #999999;
+
+    &:active {
+      color: #333333;
+    }
   }
 }
 
@@ -401,10 +459,10 @@ export default {
     border-radius: 8rpx;
     overflow: hidden;
     cursor: pointer;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
 
     &:active {
-      transform: scale(0.98);
+      opacity: 0.9;
     }
 
     .product-image-wrapper {
@@ -460,6 +518,71 @@ export default {
         font-weight: 600;
       }
     }
+  }
+}
+
+/* 骨架屏加载动画 */
+.skeleton-item {
+  pointer-events: none;
+
+  .skeleton-image {
+    width: 100%;
+    height: 340rpx;
+    background: linear-gradient(
+      90deg,
+      #f0f0f0 0%,
+      #f8f8f8 50%,
+      #f0f0f0 100%
+    );
+    background-size: 200% 100%;
+    animation: skeletonLoading 1.5s infinite;
+    border-radius: 8rpx;
+  }
+
+  .skeleton-text {
+    height: 16rpx;
+    background: linear-gradient(
+      90deg,
+      #f0f0f0 0%,
+      #f8f8f8 50%,
+      #f0f0f0 100%
+    );
+    background-size: 200% 100%;
+    animation: skeletonLoading 1.5s infinite;
+    border-radius: 4rpx;
+    margin-bottom: 12rpx;
+
+    &.skeleton-title {
+      width: 90%;
+      height: 24rpx;
+    }
+
+    &.skeleton-category {
+      width: 60%;
+      height: 16rpx;
+    }
+
+    &.skeleton-price {
+      width: 50%;
+      height: 20rpx;
+    }
+  }
+
+  .product-info {
+    padding: 24rpx;
+
+    .skeleton-text:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+@keyframes skeletonLoading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
   }
 }
 
