@@ -8,7 +8,8 @@
 deploy/
 ├── README.md                    # 本文件
 ├── admin-deploy.sh             # Admin 前端部署脚本
-└── nestapi-deploy.sh           # NestAPI 后端部署脚本（包装器）
+├── nestapi-deploy.sh           # NestAPI 后端部署脚本（包装器）
+└── config-update.sh            # 配置文件更新脚本
 ```
 
 ## 快速开始
@@ -37,6 +38,19 @@ deploy/
 
 # 显示帮助信息
 ./deploy/nestapi-deploy.sh --help
+```
+
+### 更新配置文件
+
+```bash
+# 更新 NestAPI 配置（仅上传，不重启）
+./deploy/config-update.sh nestapi
+
+# 更新 NestAPI 配置并重启服务
+./deploy/config-update.sh nestapi --restart
+
+# 显示帮助信息
+./deploy/config-update.sh --help
 ```
 
 ## 脚本说明
@@ -81,6 +95,38 @@ REMOTE_ADMIN_PATH="/opt/ruizhu-app/admin"  # 远程路径
 - 统一的入口点：用户只需从 `deploy/` 目录执行脚本
 - 保持模块独立性：`nestapi/deploy/` 中的脚本独立完整
 - 便于维护：每个模块有自己的部署脚本，修改不影响其他模块
+
+### config-update.sh
+
+**功能**: 自动化配置文件更新脚本，快速推送 `.env` 变更到生产服务器
+
+**支持的模块**:
+- `nestapi` - NestAPI 后端配置
+
+**步骤**:
+1. ✅ 校验本地 `.env` 文件存在
+2. ✅ 显示配置文件内容预览
+3. ✅ 交互式确认上传
+4. ✅ 创建远程备份（带时间戳）
+5. ✅ 使用 SCP 上传配置文件
+6. ✅ 验证远程文件上传成功
+7. ✅ 可选：自动重启 PM2 服务
+
+**配置项**:
+```bash
+SERVER_HOST="123.207.14.67"           # 服务器 IP
+SERVER_USER="root"                    # SSH 用户
+SERVER_PASS="Pp123456"                # SSH 密码
+REMOTE_NESTAPI_PATH="/opt/ruizhu-app/nestapi-dist"  # 远程路径
+```
+
+**使用场景**:
+- 更新环境变量（数据库连接、API 密钥、自定义域名等）
+- 不需要重新构建或完整部署时的快速配置更新
+- 保留备份以便快速回滚
+
+**备份文件**:
+远程备份保存在: `/opt/ruizhu-app/nestapi-dist/.env.backup.YYYYMMDD_HHMMSS`
 
 ## 部署流程概览
 
@@ -259,6 +305,7 @@ ssh-copy-id -i ~/.ssh/id_rsa.pub root@123.207.14.67
 |------|------|---------|
 | `deploy/admin-deploy.sh` | Admin 前端部署 | [DEPLOY_SCRIPT_README.md](../DEPLOY_SCRIPT_README.md) |
 | `deploy/nestapi-deploy.sh` | NestAPI 后端部署（包装器） | [nestapi/deploy/DEPLOY_GUIDE.md](../nestapi/deploy/DEPLOY_GUIDE.md) |
+| `deploy/config-update.sh` | 配置文件更新 | 本 README（见快速开始及脚本说明）|
 
 ## 下一步
 
