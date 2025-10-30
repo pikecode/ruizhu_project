@@ -171,7 +171,7 @@ build_locally() {
     cd "$LOCAL_ADMIN_DIR"
 
     print_info "安装依赖..."
-    npm install --omit=dev > /tmp/npm-install.log 2>&1 || {
+    npm install > /tmp/npm-install.log 2>&1 || {
         print_error "npm install 失败，查看日志: /tmp/npm-install.log"
         cat /tmp/npm-install.log
         exit 1
