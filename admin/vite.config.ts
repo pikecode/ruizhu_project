@@ -2,8 +2,11 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
+// 获取 API 地址，默认为本地开发
+const apiUrl = process.env.VITE_API_URL || 'http://localhost:3000'
+
 export default defineConfig({
-  base: '/admin/',
+  base: '/',
   plugins: [react()],
   resolve: {
     alias: {
@@ -14,7 +17,7 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: apiUrl,
         changeOrigin: true,
         rewrite: (path) => path,
       },
@@ -23,7 +26,7 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        additionalData: `@import "@/styles/variables.scss";`,
+        additionalData: `@use "@/styles/variables" as *;`,
       },
     },
   },
