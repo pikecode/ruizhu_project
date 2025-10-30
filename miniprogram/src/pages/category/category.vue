@@ -261,7 +261,7 @@ export default {
      */
     onProductTap(product) {
       uni.navigateTo({
-        url: '/pages/product/detail'
+        url: `/pages/product/detail?id=${product.id}`
       })
     }
   }

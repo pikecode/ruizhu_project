@@ -229,3 +229,108 @@ export async function getHotProducts(limit: number = 10): Promise<Product[]> {
     return []
   }
 }
+
+/**
+ * 商品详情响应数据类型（后端返回）
+ */
+export interface ProductDetailResponse {
+  id: number
+  name: string
+  subtitle?: string
+  categoryId: number
+  currentPrice: number // 单位：分
+  originalPrice: number // 单位：分
+  discountRate: number
+  description?: string
+  images?: string[] // 商品图片数组
+  coverImageUrl?: string
+  colors?: string[] // 商品颜色选项
+  specs?: Record<string, string[]> // 其他规格
+  salesCount: number
+  averageRating: number
+  reviewsCount: number
+  isNew: boolean
+  isSaleOn: boolean
+  stockStatus?: 'normal' | 'outOfStock' | 'soldOut'
+  skuCode?: string
+  [key: string]: any
+}
+
+/**
+ * 前端商品详情格式
+ */
+export interface ProductDetail {
+  id: number
+  name: string
+  category: string
+  price: string // 元为单位
+  originalPrice?: string
+  description: string
+  images: string[] // 轮播图片
+  colors: string[] // 颜色选项
+  skuCode: string
+  isNew: boolean
+  salesCount: number
+  rating: number
+  reviewCount: number
+}
+
+/**
+ * 将后端商品详情数据转换为前端格式
+ *
+ * 注意：当前后端暂时只返回 coverImageUrl（单张图片）
+ * 前端将其转换为数组以适配轮播组件
+ * 后续后端支持多张图片后，可直接使用 images 数组
+ */
+function mapProductDetailToFrontend(
+  backendProduct: ProductDetailResponse
+): ProductDetail {
+  // 获取图片列表
+  // 优先使用 images 数组（后端支持多张图时）
+  // 否则使用 coverImageUrl 创建单项数组
+  let images: string[] = []
+
+  if (backendProduct.images && backendProduct.images.length > 0) {
+    images = backendProduct.images
+  } else if (backendProduct.coverImageUrl) {
+    // 后端暂时只返回单张封面图，包装为数组供轮播组件使用
+    images = [backendProduct.coverImageUrl]
+  }
+
+  // 颜色列表（如果后端没有颜色信息，使用默认选项）
+  const colors = backendProduct.colors && backendProduct.colors.length > 0
+    ? backendProduct.colors
+    : ['颜色选项']
+
+  return {
+    id: backendProduct.id,
+    name: backendProduct.name,
+    category: CATEGORY_MAP[backendProduct.categoryId] || '其他',
+    price: formatPrice(backendProduct.currentPrice),
+    originalPrice: formatPrice(backendProduct.originalPrice),
+    description: backendProduct.description || '暂无描述',
+    images, // 轮播图片数组（当前通常只有一张）
+    colors,
+    skuCode: backendProduct.skuCode || `SKU${backendProduct.id}`,
+    isNew: backendProduct.isNew,
+    salesCount: backendProduct.salesCount || 0,
+    rating: backendProduct.averageRating || 0,
+    reviewCount: backendProduct.reviewsCount || 0
+  }
+}
+
+/**
+ * 获取商品详情
+ */
+export async function getProductDetail(productId: number): Promise<ProductDetail | null> {
+  try {
+    const response = await api.get<{ data: ProductDetailResponse }>(
+      `/products/${productId}`
+    )
+
+    return mapProductDetailToFrontend(response.data)
+  } catch (error) {
+    console.error('Failed to fetch product detail:', error)
+    return null
+  }
+}

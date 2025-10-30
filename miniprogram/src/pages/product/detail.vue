@@ -102,6 +102,8 @@
 </template>
 
 <script>
+import { getProductDetail } from '../../services/products'
+
 export default {
   data() {
     return {
@@ -111,24 +113,53 @@ export default {
       selectedColor: 0,
       quantity: 1,
       isFavorite: false,
-      productImages: [
-        'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&q=80',
-        'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=600&q=80',
-        'https://images.unsplash.com/photo-1548062407-f961713e6786?w=600&q=80',
-        'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600&q=80'
-      ],
+      isLoading: true,
+      productImages: [],
       productData: {
-        name: 'Prada Dada 小号Nappa羊皮革手袋',
-        price: '21,700',
-        skuCode: '1BG586_2DX8_F073X_V_OOO',
-        description: '这款优雅的Prada Dada手袋采用精选Nappa羊皮革制作，具有柔软的质感和精致的外观。手袋设计简洁而时尚，适合日常和正式场合使用。配备可调节的肩带，提供舒适的携带体验。',
-        colors: ['灰色', '黑色', '棕色', '白色']
+        name: '加载中...',
+        price: '0',
+        skuCode: '加载中',
+        description: '加载中...',
+        colors: ['颜色选项']
       }
     }
   },
-  onLoad(options) {
-    // 从路由参数获取商品ID或信息
-    console.log('商品详情页加载', options)
+  async onLoad(options) {
+    try {
+      // 从路由参数获取商品ID
+      const productId = options?.id || 1
+
+      console.log('商品详情页加载，商品ID:', productId)
+
+      // 获取商品详情
+      const productDetail = await getProductDetail(parseInt(productId))
+
+      if (productDetail) {
+        // 绑定产品数据
+        this.productImages = productDetail.images || []
+        this.productData = {
+          name: productDetail.name,
+          price: productDetail.price,
+          skuCode: productDetail.skuCode,
+          description: productDetail.description,
+          colors: productDetail.colors || ['颜色选项']
+        }
+      } else {
+        // 获取失败，显示错误提示
+        uni.showToast({
+          title: '商品加载失败',
+          icon: 'none'
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load product detail:', error)
+      uni.showToast({
+        title: '商品加载失败',
+        icon: 'none'
+      })
+    } finally {
+      this.isLoading = false
+    }
   },
   methods: {
     onImageChange(e) {
