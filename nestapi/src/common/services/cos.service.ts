@@ -36,6 +36,9 @@ export class CosService {
     this.region = this.configService.get<string>('COS_REGION', 'ap-guangzhou');
     this.customDomain = this.configService.get<string>('COS_CUSTOM_DOMAIN') || null; // e.g., https://yunjie.online
 
+    // 构建COS标准URL (必须在凭证检查之前初始化)
+    this.cosHost = `https://${this.bucket}.cos.${this.region}.myqcloud.com`;
+
     if (!secretId || !secretKey) {
       console.warn('COS credentials not configured');
       return;
@@ -45,9 +48,6 @@ export class CosService {
       SecretId: secretId,
       SecretKey: secretKey,
     });
-
-    // 构建COS标准URL
-    this.cosHost = `https://${this.bucket}.cos.${this.region}.myqcloud.com`;
   }
 
   /**
