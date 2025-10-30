@@ -1,5 +1,13 @@
 <template>
   <view class="detail-page">
+    <!-- 手机号授权弹窗 -->
+    <phone-auth-modal
+      :visible="showPhoneAuthModal"
+      :on-success="handlePhoneAuthSuccess"
+      :on-cancel="handlePhoneAuthCancel"
+      @close="showPhoneAuthModal = false"
+    ></phone-auth-modal>
+
     <!-- 商品图片轮播 -->
     <swiper
       class="product-swiper"
@@ -103,8 +111,13 @@
 
 <script>
 import { getProductDetail } from '../../services/products'
+import { authService } from '../../services/auth'
+import PhoneAuthModal from '../../components/PhoneAuthModal.vue'
 
 export default {
+  components: {
+    PhoneAuthModal
+  },
   data() {
     return {
       indicatorColor: 'rgba(0, 0, 0, 0.3)',
@@ -121,7 +134,10 @@ export default {
         skuCode: '加载中',
         description: '加载中...',
         colors: ['颜色选项']
-      }
+      },
+      // 授权相关
+      showPhoneAuthModal: false,
+      pendingAction: null // 'addToCart' or 'buyNow'
     }
   },
   async onLoad(options) {
@@ -162,6 +178,50 @@ export default {
     }
   },
   methods: {
+    /**
+     * 检查用户是否已授权
+     * 如果未授权，显示手机号授权弹窗
+     * @param action 待执行的操作 ('addToCart' 或 'buyNow')
+     * @returns 如果已授权返回 true，否则显示弹窗并返回 false
+     */
+    checkUserAuthorization(action) {
+      if (authService.isLoggedIn()) {
+        return true
+      }
+
+      // 用户未登录，显示手机号授权弹窗
+      this.pendingAction = action
+      this.showPhoneAuthModal = true
+      return false
+    },
+
+    /**
+     * 手机号授权成功回调
+     */
+    handlePhoneAuthSuccess() {
+      // 授权成功，继续执行之前的操作
+      const action = this.pendingAction
+      this.pendingAction = null
+
+      if (action === 'addToCart') {
+        this.proceedAddToCart()
+      } else if (action === 'buyNow') {
+        this.proceedBuyNow()
+      }
+    },
+
+    /**
+     * 手机号授权取消回调
+     */
+    handlePhoneAuthCancel() {
+      this.pendingAction = null
+      uni.showToast({
+        title: '已取消授权',
+        icon: 'none',
+        duration: 1500
+      })
+    },
+
     onImageChange(e) {
       this.currentImageIndex = e.detail.current
     },
@@ -189,6 +249,19 @@ export default {
       }
     },
     addToCart() {
+      // 检查用户是否已授权
+      if (!this.checkUserAuthorization('addToCart')) {
+        return
+      }
+
+      // 用户已授权，执行添加购物车操作
+      this.proceedAddToCart()
+    },
+
+    /**
+     * 执行添加购物车操作
+     */
+    proceedAddToCart() {
       // 构建购物车项
       const cartItem = {
         id: Date.now(),
@@ -241,6 +314,19 @@ export default {
       }
     },
     buyNow() {
+      // 检查用户是否已授权
+      if (!this.checkUserAuthorization('buyNow')) {
+        return
+      }
+
+      // 用户已授权，执行立即购买操作
+      this.proceedBuyNow()
+    },
+
+    /**
+     * 执行立即购买操作
+     */
+    proceedBuyNow() {
       // 直接生成订单并跳转到支付
       const cartItem = {
         id: Date.now(),

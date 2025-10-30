@@ -203,4 +203,60 @@ export class AuthService {
       user: userWithoutPassword,
     };
   }
+
+  /**
+   * 微信登录 - 使用授权码获取 openId 和 sessionKey
+   * 小程序调用 uni.login() 后获取 code，前端通过此接口获取 openId 和 sessionKey
+   *
+   * @param code 微信授权码（来自 uni.login()）
+   * @returns { openId, sessionKey }
+   */
+  async wechatLoginWithCode(code: string) {
+    if (!code) {
+      throw new BadRequestException('授权码不能为空');
+    }
+
+    try {
+      // 调用微信 API 接口
+      const appId = process.env.WECHAT_APP_ID || '';
+      const appSecret = process.env.WECHAT_APP_SECRET || '';
+
+      if (!appId || !appSecret) {
+        throw new BadRequestException('微信配置不完整');
+      }
+
+      const wechatUrl = 'https://api.weixin.qq.com/sns/jscode2session';
+      const params = new URLSearchParams();
+      params.append('appid', appId);
+      params.append('secret', appSecret);
+      params.append('js_code', code);
+      params.append('grant_type', 'authorization_code');
+
+      const response = await fetch(`${wechatUrl}?${params.toString()}`);
+      const data = await response.json();
+
+      // 检查响应
+      if (data.errcode) {
+        throw new BadRequestException(
+          `微信登录失败: ${data.errmsg || '未知错误'}`,
+        );
+      }
+
+      if (!data.openid || !data.session_key) {
+        throw new BadRequestException('微信返回数据不完整');
+      }
+
+      return {
+        openId: data.openid,
+        sessionKey: data.session_key,
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        `微信登录失败: ${error?.message || '网络错误'}`,
+      );
+    }
+  }
 }

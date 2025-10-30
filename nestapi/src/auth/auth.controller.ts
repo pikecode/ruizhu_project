@@ -85,4 +85,25 @@ export class AuthController {
       country: dto.country,
     });
   }
+
+  /**
+   * 微信登录 - 使用授权码获取 openId 和 sessionKey
+   * 小程序调用 uni.login() 后，通过此接口获取 openId 和 sessionKey
+   *
+   * 请求体:
+   * {
+   *   "code": "微信授权码 (来自 uni.login())"
+   * }
+   *
+   * 响应:
+   * {
+   *   "openId": "微信openId",
+   *   "sessionKey": "微信会话密钥"
+   * }
+   */
+  @Post('wechat/login-code')
+  @HttpCode(HttpStatus.OK)
+  async wechatLoginWithCode(@Body() dto: { code: string }) {
+    return this.authService.wechatLoginWithCode(dto.code);
+  }
 }

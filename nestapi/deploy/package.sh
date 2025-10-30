@@ -10,9 +10,9 @@ echo "   📦 NestAPI 打包脚本"
 echo "═══════════════════════════════════════════════════"
 echo ""
 
-# 获取项目根目录
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$PROJECT_ROOT"
+# 获取项目根目录（上升两级：deploy → nestapi → 项目根目录）
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$PROJECT_ROOT/nestapi"  # 进入 nestapi 目录以便找到 dist
 
 # 检查 dist 目录是否存在
 if [ ! -d "dist" ]; then
@@ -25,13 +25,13 @@ echo "📍 项目目录: $PROJECT_ROOT"
 echo ""
 
 # 创建 deploy 目录（如果不存在）
-mkdir -p "$PROJECT_ROOT/deploy/releases"
+mkdir -p "$PROJECT_ROOT/nestapi/deploy/releases"
 
 # 生成版本号 (YYYYMMDD-HHMMSS)
 RELEASE_VERSION=$(date +%Y%m%d-%H%M%S)
 RELEASE_NAME="nestapi-${RELEASE_VERSION}"
 RELEASE_TAR="${RELEASE_NAME}.tar.gz"
-RELEASE_PATH="$PROJECT_ROOT/deploy/releases/$RELEASE_TAR"
+RELEASE_PATH="$PROJECT_ROOT/nestapi/deploy/releases/$RELEASE_TAR"
 
 echo "📦 打包配置:"
 echo "   • 版本号: $RELEASE_VERSION"
@@ -41,13 +41,13 @@ echo ""
 
 # 清理旧的打包文件（保留最近5个）
 echo "🧹 清理旧的发布文件..."
-cd "$PROJECT_ROOT/deploy/releases"
+cd "$PROJECT_ROOT/nestapi/deploy/releases"
 ls -t nestapi-*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm
 echo "✅ 旧文件清理完成"
 echo ""
 
-# 回到项目目录
-cd "$PROJECT_ROOT"
+# 回到 nestapi 目录
+cd "$PROJECT_ROOT/nestapi"
 
 # 创建临时目录
 TEMP_DIR=$(mktemp -d)

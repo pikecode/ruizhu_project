@@ -9,6 +9,7 @@
 #  选项:                                                                     #
 #    --skip-build      跳过本地构建（仅重新打包和部署）                        #
 #    --skip-pack       跳过打包（使用最新包部署）                             #
+#    --skip-migration  跳过数据库迁移（数据库无更新时使用）                   #
 #    --dry-run         测试运行（不实际部署）                                #
 #                                                                            #
 ##############################################################################
@@ -30,18 +31,20 @@ REMOTE_APP_DIR="/opt/ruizhu-app/nestapi-dist"
 REMOTE_BACKUP_DIR="/opt/ruizhu-app/backups"
 
 # 本地配置
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RELEASE_DIR="$PROJECT_ROOT/deploy/releases"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"  # 上升两级到项目根目录
+RELEASE_DIR="$PROJECT_ROOT/nestapi/deploy/releases"  # 指向 nestapi/deploy/releases
 
 # 解析选项
 SKIP_BUILD=false
 SKIP_PACK=false
+SKIP_MIGRATION=false
 DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
     --skip-build) SKIP_BUILD=true; shift ;;
     --skip-pack) SKIP_PACK=true; shift ;;
+    --skip-migration) SKIP_MIGRATION=true; shift ;;
     --dry-run) DRY_RUN=true; shift ;;
     *) echo "未知选项: $1"; exit 1 ;;
   esac
@@ -100,10 +103,9 @@ if [ "$SKIP_BUILD" = true ]; then
 else
   log_step "阶段 1️⃣ : 本地构建"
 
-  log_info "执行: ./deploy/build.sh"
+  log_info "执行: $PROJECT_ROOT/nestapi/deploy/build.sh"
   if [ "$DRY_RUN" = false ]; then
-    cd "$PROJECT_ROOT"
-    ./deploy/build.sh || handle_error
+    "$PROJECT_ROOT/nestapi/deploy/build.sh" || handle_error
     log_success "本地构建完成"
   else
     log_warning "[测试模式] 跳过实际构建"
@@ -120,7 +122,7 @@ if [ "$SKIP_PACK" = true ]; then
   # 获取最新的发布包
   RELEASE_FILE=$(ls -t "$RELEASE_DIR"/nestapi-*.tar.gz 2>/dev/null | head -1)
   if [ -z "$RELEASE_FILE" ]; then
-    log_error "找不到发布包！请先运行: ./deploy/build.sh && ./deploy/package.sh"
+    log_error "找不到发布包！请先运行: $PROJECT_ROOT/nestapi/deploy/build.sh && $PROJECT_ROOT/nestapi/deploy/package.sh"
     exit 1
   fi
   RELEASE_NAME=$(basename "$RELEASE_FILE")
@@ -128,10 +130,9 @@ if [ "$SKIP_PACK" = true ]; then
 else
   log_step "阶段 2️⃣ : 本地打包"
 
-  log_info "执行: ./deploy/package.sh"
+  log_info "执行: $PROJECT_ROOT/nestapi/deploy/package.sh"
   if [ "$DRY_RUN" = false ]; then
-    cd "$PROJECT_ROOT"
-    ./deploy/package.sh || handle_error
+    "$PROJECT_ROOT/nestapi/deploy/package.sh" || handle_error
 
     # 获取刚生成的包
     RELEASE_FILE=$(ls -t "$RELEASE_DIR"/nestapi-*.tar.gz 2>/dev/null | head -1)
@@ -263,23 +264,20 @@ fi
 # 阶段 6: 数据库迁移
 # ============================================================================
 
-log_step "阶段 6️⃣ : 数据库迁移"
-
-if [ "$DRY_RUN" = false ]; then
-  log_info "运行数据库迁移..."
-
-  sshpass -p "$REMOTE_PASSWORD" ssh -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" << MIGRATION_SCRIPT
-cd $REMOTE_APP_DIR
-
-echo "📊 运行 TypeORM 迁移..."
-npm run typeorm migration:run 2>&1 || true
-
-echo "✅ 迁移完成"
-MIGRATION_SCRIPT
-
-  log_success "数据库迁移完成"
+if [ "$SKIP_MIGRATION" = true ]; then
+  log_warning "跳过数据库迁移"
 else
-  log_warning "[测试模式] 跳过迁移"
+  log_step "阶段 6️⃣ : 数据库迁移"
+
+  if [ "$DRY_RUN" = false ]; then
+    log_info "运行数据库迁移..."
+
+    sshpass -p "$REMOTE_PASSWORD" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_APP_DIR && echo '📊 运行 TypeORM 迁移...' && npm run typeorm migration:run 2>&1 || true && echo '✅ 迁移完成'"
+
+    log_success "数据库迁移完成"
+  else
+    log_warning "[测试模式] 跳过迁移"
+  fi
 fi
 
 # ============================================================================

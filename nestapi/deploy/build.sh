@@ -10,9 +10,9 @@ echo "   📦 NestAPI 本地构建脚本"
 echo "═══════════════════════════════════════════════════"
 echo ""
 
-# 获取项目根目录
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$PROJECT_ROOT"
+# 获取项目根目录（上升两级：deploy → nestapi → 项目根目录）
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$PROJECT_ROOT/nestapi"  # 进入 nestapi 目录执行构建
 
 echo "📍 项目目录: $PROJECT_ROOT"
 echo ""
