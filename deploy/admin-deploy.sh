@@ -3,9 +3,9 @@
 ###############################################################################
 # Ruizhu Admin 一键部署脚本
 # 功能：本地打包 -> 上传 -> 部署到服务器
-# 用法: ./deploy-admin.sh [环境] [选项]
-# 例子: ./deploy-admin.sh prod
-#      ./deploy-admin.sh prod --no-verify
+# 用法: ./admin-deploy.sh [环境] [选项]
+# 例子: ./admin-deploy.sh prod
+#      ./admin-deploy.sh prod --no-verify
 ###############################################################################
 
 set -e
@@ -27,8 +27,10 @@ SERVER_USER="root"
 SERVER_PASS="Pp123456"
 REMOTE_ADMIN_PATH="/opt/ruizhu-app/admin"
 
-# 本地配置
-LOCAL_ADMIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/admin" && pwd)"
+# 本地配置（相对于项目根目录）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+LOCAL_ADMIN_DIR="$PROJECT_ROOT/admin"
 LOCAL_DIST_DIR="${LOCAL_ADMIN_DIR}/dist"
 
 # 脚本配置

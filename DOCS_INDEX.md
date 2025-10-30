@@ -12,8 +12,9 @@
 
 ### 部署相关
 - **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - 完整的部署架构和步骤
-- **[DEPLOY_SCRIPT_README.md](./DEPLOY_SCRIPT_README.md)** - Admin 前端一键部署脚本使用说明
-- **[nestapi/deploy/DEPLOY_GUIDE.md](./nestapi/deploy/DEPLOY_GUIDE.md)** - NestAPI 后端一键部署脚本使用说明
+- **[deploy/README.md](./deploy/README.md)** - 统一的部署脚本使用指南
+- **[DEPLOY_SCRIPT_README.md](./DEPLOY_SCRIPT_README.md)** - Admin 前端详细配置说明
+- **[nestapi/deploy/DEPLOY_GUIDE.md](./nestapi/deploy/DEPLOY_GUIDE.md)** - NestAPI 后端详细配置说明
 
 ### 参考文档
 - **[DATABASE_SCHEMA_DESIGN.md](./DATABASE_SCHEMA_DESIGN.md)** - 数据库设计和表结构参考
@@ -30,7 +31,7 @@
 
 ```bash
 # 编辑代码后，直接执行部署脚本
-./deploy-admin.sh prod
+./deploy/admin-deploy.sh prod
 
 # 脚本将自动执行：
 # 1. npm install
@@ -40,13 +41,13 @@
 # 5. 验证部署
 ```
 
-更多详情见 [DEPLOY_SCRIPT_README.md](./DEPLOY_SCRIPT_README.md)
+更多详情见 [deploy/README.md](./deploy/README.md)
 
 ### 后端部署 (NestAPI)
 
 ```bash
 # 编辑代码后，直接执行部署脚本
-./nestapi/deploy/auto-deploy.sh
+./deploy/nestapi-deploy.sh
 
 # 脚本将自动执行：
 # 1. npm install
@@ -57,7 +58,7 @@
 # 6. 验证部署
 ```
 
-更多详情见 [nestapi/deploy/DEPLOY_GUIDE.md](./nestapi/deploy/DEPLOY_GUIDE.md)
+更多详情见 [deploy/README.md](./deploy/README.md)
 
 ---
 
@@ -68,10 +69,14 @@ ruizhu_project/
 ├── README.md                    # 项目总览
 ├── QUICK_START.md              # 快速开始
 ├── DEPLOYMENT_GUIDE.md         # 部署指南
-├── DEPLOY_SCRIPT_README.md     # Admin 部署脚本说明
+├── DEPLOY_SCRIPT_README.md     # Admin 脚本详细配置
 ├── DATABASE_SCHEMA_DESIGN.md   # 数据库设计
 ├── DOCS_INDEX.md               # 本文件
-├── deploy-admin.sh             # Admin 前端部署脚本
+│
+├── deploy/                     # 统一的部署脚本目录
+│   ├── README.md               # 部署脚本使用指南
+│   ├── admin-deploy.sh         # Admin 前端部署脚本
+│   └── nestapi-deploy.sh       # NestAPI 后端部署脚本（包装器）
 │
 ├── admin/                      # React 前端项目
 │   ├── README.md
@@ -83,7 +88,14 @@ ruizhu_project/
 │   ├── README.md
 │   ├── src/
 │   ├── package.json
-│   └── tsconfig.json
+│   ├── tsconfig.json
+│   └── deploy/                 # 后端部署脚本（内部使用）
+│       ├── auto-deploy.sh
+│       ├── build.sh
+│       ├── deploy.sh
+│       ├── package.sh
+│       ├── DEPLOY_GUIDE.md
+│       └── .deployignore
 │
 └── miniprogram/                # 微信小程序项目
     ├── README.md
