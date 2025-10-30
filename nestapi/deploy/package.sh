@@ -55,8 +55,8 @@ trap "rm -rf $TEMP_DIR" EXIT
 
 echo "📋 准备文件..."
 
-# 复制 dist 目录
-cp -r dist "$TEMP_DIR/dist"
+# 复制 dist 目录内容到根目录
+cp -r dist/* "$TEMP_DIR/"
 
 # 复制 package.json 和 package-lock.json
 if [ -f "package.json" ]; then

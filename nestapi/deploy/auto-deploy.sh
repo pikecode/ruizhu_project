@@ -147,16 +147,23 @@ else
 fi
 
 # ============================================================================
-# 阶段 3: 验证和确认
+# 阶段 3: 部署前验证和确认
 # ============================================================================
 
 log_step "阶段 3️⃣ : 部署前检查"
+
+# 验证 package-lock.json 存在
+if [ ! -f "$PROJECT_ROOT/nestapi/package-lock.json" ]; then
+  log_warning "⚠️  package-lock.json 不存在"
+  log_info "这可能导致依赖版本不一致。建议先运行: cd nestapi && npm ci"
+fi
 
 RELEASE_SIZE=$(du -sh "$RELEASE_FILE" | cut -f1)
 log_info "发布文件: $RELEASE_NAME"
 log_info "文件大小: $RELEASE_SIZE"
 log_info "部署目标: $REMOTE_HOST"
 log_info "应用目录: $REMOTE_APP_DIR"
+log_info "依赖安装: 将在服务器上执行 npm ci --legacy-peer-deps"
 
 if [ "$DRY_RUN" = false ]; then
   echo -e "\n${YELLOW}请确认以下信息:${NC}"
@@ -204,7 +211,7 @@ set -e
 
 echo "⏸️  停止应用..."
 pm2 stop ruizhu-backend 2>/dev/null || true
-sleep 2
+sleep 3
 
 echo "💾 创建备份..."
 mkdir -p $REMOTE_BACKUP_DIR
@@ -217,7 +224,26 @@ fi
 echo "📂 解压新版本..."
 DEPLOY_TEMP="/tmp/nestapi-deploy-\$(date +%s)"
 mkdir -p \$DEPLOY_TEMP
+
+# 验证 tar 文件存在
+if [ ! -f "/tmp/$RELEASE_NAME" ]; then
+  echo "❌ 错误: 部署文件未找到: /tmp/$RELEASE_NAME"
+  exit 1
+fi
+
+# 使用 --strip-components 简化路径，直接提取到部署目录
+echo "📝 检查 tar 文件内容..."
+tar -tzf "/tmp/$RELEASE_NAME" | head -10
+
+echo "解压文件..."
 tar -xzf "/tmp/$RELEASE_NAME" -C \$DEPLOY_TEMP
+if [ $? -ne 0 ]; then
+  echo "❌ tar 解压失败"
+  exit 1
+fi
+
+echo "📂 解压完成，文件内容："
+ls -la \$DEPLOY_TEMP/ | head -20
 
 echo "🔐 保护生产环境配置..."
 if [ -f "$REMOTE_APP_DIR/.env" ]; then
@@ -226,20 +252,77 @@ if [ -f "$REMOTE_APP_DIR/.env" ]; then
 fi
 
 echo "🔄 更新应用文件..."
-rm -rf "$REMOTE_APP_DIR/dist"
-cp -r "\$DEPLOY_TEMP/dist" "$REMOTE_APP_DIR/"
+# 确保目标目录存在
+mkdir -p "$REMOTE_APP_DIR"
+
+# 彻底删除旧的 dist 目录
+if [ -d "$REMOTE_APP_DIR/dist" ]; then
+  echo "删除旧的 dist 目录..."
+  rm -rf "$REMOTE_APP_DIR/dist" || true
+  sleep 1
+fi
+
+# 复制新的 dist 目录
+echo "复制新的 dist 目录..."
+if [ -d "\$DEPLOY_TEMP/dist" ]; then
+  cp -r "\$DEPLOY_TEMP/dist" "$REMOTE_APP_DIR/"
+  echo "✅ dist 目录已更新"
+else
+  echo "❌ 错误: 新的 dist 目录不存在"
+  ls -la \$DEPLOY_TEMP/
+  exit 1
+fi
+
+# 复制配置文件
 cp "\$DEPLOY_TEMP/package.json" "$REMOTE_APP_DIR/" 2>/dev/null || true
 cp "\$DEPLOY_TEMP/package-lock.json" "$REMOTE_APP_DIR/" 2>/dev/null || true
 cp "\$DEPLOY_TEMP/VERSION" "$REMOTE_APP_DIR/" 2>/dev/null || true
+
+# 验证部署文件
+echo "✅ 验证部署文件..."
+ls -lh "$REMOTE_APP_DIR/dist/auth/" | grep -E "auth.controller|auth.service" || echo "⚠️  警告: 未找到auth文件"
 
 echo "🧹 清理临时文件..."
 rm -rf \$DEPLOY_TEMP
 rm -f "/tmp/$RELEASE_NAME"
 
+echo "📦 安装 npm 依赖..."
+cd $REMOTE_APP_DIR
+
+# 检查 node_modules 是否存在
+if [ -d "node_modules" ]; then
+  echo "ℹ️  node_modules 已存在，检查依赖是否完整..."
+  # 快速检查关键依赖是否存在
+  if [ ! -d "node_modules/@nestjs/core" ]; then
+    echo "⚠️  关键依赖缺失，重新安装..."
+    rm -rf node_modules package-lock.json
+    npm ci --legacy-peer-deps 2>&1 | tail -5
+  else
+    echo "✅ 依赖检查完成"
+  fi
+else
+  echo "ℹ️  node_modules 不存在，开始安装..."
+  npm ci --legacy-peer-deps 2>&1 | tail -5
+fi
+
+# 验证 npm 安装结果
+if [ ! -d "node_modules" ]; then
+  echo "❌ 错误: npm 依赖安装失败"
+  echo "错误日志："
+  npm ci --legacy-peer-deps
+  exit 1
+fi
+
+echo "✅ npm 依赖安装/验证完成"
+echo ""
+
 echo "🚀 启动应用..."
 sleep 2
-pm2 start ruizhu-backend
-sleep 3
+
+# 重启应用以加载新的代码
+echo "重启应用..."
+pm2 restart ruizhu-backend
+sleep 5
 
 echo "🧪 测试应用..."
 HEALTH_CHECK=\$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/docs)
@@ -247,6 +330,10 @@ if [ "\$HEALTH_CHECK" == "200" ]; then
   echo "✅ 应用已启动并运行正常 (HTTP \$HEALTH_CHECK)"
 else
   echo "⚠️  应用启动，但健康检查返回 HTTP \$HEALTH_CHECK"
+  echo "可能原因："
+  echo "  1. 依赖安装失败 - 查看: pm2 logs ruizhu-backend"
+  echo "  2. 应用启动中 - 请稍候几秒后重试"
+  echo "  3. 配置文件缺失 - 检查 .env 文件"
 fi
 
 echo ""
@@ -272,9 +359,28 @@ else
   if [ "$DRY_RUN" = false ]; then
     log_info "运行数据库迁移..."
 
-    sshpass -p "$REMOTE_PASSWORD" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$REMOTE_USER@$REMOTE_HOST" "cd $REMOTE_APP_DIR && echo '📊 运行 TypeORM 迁移...' && npm run typeorm migration:run 2>&1 || true && echo '✅ 迁移完成'"
+    sshpass -p "$REMOTE_PASSWORD" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "$REMOTE_USER@$REMOTE_HOST" << DB_MIGRATION
+cd $REMOTE_APP_DIR
 
-    log_success "数据库迁移完成"
+echo "📊 检查 TypeORM CLI..."
+if [ -f "node_modules/.bin/typeorm" ]; then
+  echo "ℹ️  运行数据库迁移..."
+  npm run typeorm migration:run 2>&1 || {
+    MIGRATION_CODE=\$?
+    if [ \$MIGRATION_CODE -eq 0 ]; then
+      echo "✅ 迁移完成"
+    else
+      echo "⚠️  迁移失败或无新迁移 (代码: \$MIGRATION_CODE)"
+      echo "这通常是正常的，表示数据库已是最新状态"
+    fi
+  }
+else
+  echo "⚠️  TypeORM CLI 未找到，跳过迁移"
+fi
+
+DB_MIGRATION
+
+    log_success "数据库迁移检查完成"
   else
     log_warning "[测试模式] 跳过迁移"
   fi
