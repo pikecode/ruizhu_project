@@ -11,28 +11,28 @@ export class CartItem {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column('int')
+  @Column('int', { name: 'user_id' })
   userId: number;
 
-  @Column('int')
+  @Column('int', { name: 'product_id' })
   productId: number;
 
   @Column('int', { default: 1 })
   quantity: number;
 
-  @Column('json', { nullable: true })
+  @Column('json', { nullable: true, name: 'selected_attributes' })
   selectedAttributes: Record<string, any>;
 
   /**
    * Price snapshot in cents
    * Stores the product price at the time of adding to cart
    */
-  @Column('int', { nullable: true })
+  @Column('int', { nullable: true, name: 'price_snapshot' })
   priceSnapshot: number;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }

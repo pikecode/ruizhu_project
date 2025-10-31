@@ -5,10 +5,18 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Order } from '../entities/order.entity';
+import { Order } from '../../../entities/product.entity';
 import { CreateOrderDto, UpdateOrderDto } from '../dto';
-import { IOrderItem } from '../entities/order.entity';
 import { AddressesService } from '../../addresses/services/addresses.service';
+
+// OrderItem interface for order items stored as JSON
+export interface IOrderItem {
+  productId: number;
+  productName?: string;
+  quantity: number;
+  price: number;
+  selectedAttributes?: Record<string, any>;
+}
 
 @Injectable()
 export class OrdersService {
@@ -81,14 +89,13 @@ export class OrdersService {
     // Create order
     const order = this.orderRepository.create({
       userId,
-      orderNumber: this.generateOrderNumber(),
-      addressId: createDto.addressId,
-      items: createDto.items as IOrderItem[],
-      totalAmount: createDto.totalAmount,
-      shippingAmount: createDto.shippingAmount || 0,
+      orderNo: this.generateOrderNumber(),
+      subtotal: createDto.totalAmount,
+      shippingCost: createDto.shippingAmount || 0,
       discountAmount: createDto.discountAmount || 0,
-      finalAmount: createDto.finalAmount,
-      remark: createDto.remark,
+      totalAmount: createDto.finalAmount,
+      paymentStatus: 'unpaid',
+      notes: createDto.remark,
       status: 'pending',
     });
 
@@ -226,23 +233,11 @@ export class OrdersService {
         order.shippedAt = new Date();
       } else if (updateDto.status === 'delivered') {
         order.deliveredAt = new Date();
-      } else if (updateDto.status === 'cancelled') {
-        order.cancelledAt = new Date();
       }
     }
 
     if (updateDto.remark !== undefined) {
-      order.remark = updateDto.remark;
-    }
-
-    if (updateDto.refundAmount !== undefined) {
-      if (updateDto.refundAmount < 0) {
-        throw new BadRequestException('Refund amount must be non-negative');
-      }
-      if (updateDto.refundAmount > order.finalAmount) {
-        throw new BadRequestException('Refund amount exceeds order total');
-      }
-      order.refundAmount = updateDto.refundAmount;
+      order.notes = updateDto.remark;
     }
 
     return await this.orderRepository.save(order);
@@ -261,7 +256,6 @@ export class OrdersService {
     }
 
     order.status = 'cancelled';
-    order.cancelledAt = new Date();
 
     return await this.orderRepository.save(order);
   }
@@ -281,7 +275,7 @@ export class OrdersService {
 
     return {
       totalOrders: orders.length,
-      totalSpent: orders.reduce((sum, order) => sum + order.finalAmount, 0),
+      totalSpent: orders.reduce((sum, order) => sum + order.totalAmount, 0),
       pendingOrders: orders.filter((o) => o.status === 'pending').length,
       completedOrders: orders.filter((o) => o.status === 'delivered').length,
     };
@@ -324,8 +318,9 @@ export class OrdersService {
     }
 
     order.status = 'paid';
+    order.paymentStatus = 'paid';
     if (paymentId) {
-      order.paymentId = paymentId;
+      order.paidAt = new Date();
     }
 
     return await this.orderRepository.save(order);
@@ -336,7 +331,7 @@ export class OrdersService {
    */
   async getOrderByNumber(orderNumber: string): Promise<Order> {
     const order = await this.orderRepository.findOne({
-      where: { orderNumber },
+      where: { orderNo: orderNumber },
     });
 
     if (!order) {

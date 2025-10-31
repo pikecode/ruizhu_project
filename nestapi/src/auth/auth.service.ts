@@ -66,10 +66,32 @@ export class AuthService {
     sessionKey: string,
   ): any {
     try {
+      // 验证输入参数
+      if (!encryptedData || !iv || !sessionKey) {
+        throw new Error('缺少必需的解密参数');
+      }
+
       // 转换为 Buffer
-      const encryptedDataBuf = Buffer.from(encryptedData, 'base64');
-      const ivBuf = Buffer.from(iv, 'base64');
-      const sessionKeyBuf = Buffer.from(sessionKey, 'base64');
+      let encryptedDataBuf: Buffer;
+      let ivBuf: Buffer;
+      let sessionKeyBuf: Buffer;
+
+      try {
+        encryptedDataBuf = Buffer.from(encryptedData, 'base64');
+        ivBuf = Buffer.from(iv, 'base64');
+        sessionKeyBuf = Buffer.from(sessionKey, 'base64');
+      } catch (e) {
+        throw new Error('Base64 解码失败：请确保数据格式正确');
+      }
+
+      // 验证 Buffer 长度
+      if (sessionKeyBuf.length !== 16) {
+        throw new Error(`sessionKey 长度错误: 期望 16 字节，实际 ${sessionKeyBuf.length} 字节`);
+      }
+
+      if (ivBuf.length !== 16) {
+        throw new Error(`iv 长度错误: 期望 16 字节，实际 ${ivBuf.length} 字节`);
+      }
 
       // 使用 AES-128-CBC 解密
       const decipher = crypto.createDecipheriv('aes-128-cbc', sessionKeyBuf, ivBuf);
@@ -77,20 +99,36 @@ export class AuthService {
       // 关键：禁用自动填充，以便手动处理
       decipher.setAutoPadding(false);
 
-      let decoded = decipher.update(encryptedDataBuf, undefined, 'utf8');
-      decoded += decipher.final('utf8');
+      // 使用 Buffer 进行解密，避免字符编码问题
+      let decrypted = decipher.update(encryptedDataBuf);
+      decrypted = Buffer.concat([decrypted, decipher.final()]);
 
-      // 移除 PKCS#7 填充
-      const pad = decoded.charCodeAt(decoded.length - 1);
-      if (pad < 1 || pad > 16) {
-        throw new Error('Invalid padding');
+      // 移除 PKCS#7 填充（使用 Buffer 方式）
+      const padLength = decrypted[decrypted.length - 1];
+
+      // 验证填充是否有效
+      if (padLength < 1 || padLength > 16) {
+        throw new Error(`无效的 PKCS#7 填充: ${padLength}`);
       }
 
-      decoded = decoded.slice(0, -pad);
+      // 验证所有填充字节是否相同
+      for (let i = 0; i < padLength; i++) {
+        if (decrypted[decrypted.length - 1 - i] !== padLength) {
+          throw new Error('填充验证失败：填充字节不一致');
+        }
+      }
 
-      // 解析 JSON
+      // 移除填充
+      const unpadded = decrypted.slice(0, decrypted.length - padLength);
+
+      // 转换为 UTF-8 字符串并解析 JSON
+      const decoded = unpadded.toString('utf8');
       return JSON.parse(decoded);
     } catch (error) {
+      console.error('[decryptWechatData] Decryption error:', {
+        message: error.message,
+        stack: error.stack,
+      });
       throw new BadRequestException(`手机号解密失败: ${error.message}`);
     }
   }

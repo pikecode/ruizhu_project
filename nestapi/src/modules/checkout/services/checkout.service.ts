@@ -12,7 +12,7 @@ import { CartService } from '../../cart/services/cart.service';
 import { AddressesService } from '../../addresses/services/addresses.service';
 import { WechatPaymentService } from '../../wechat/services/wechat-payment.service';
 import { UsersService } from '../../../users/users.service';
-import { Order } from '../../orders/entities/order.entity';
+import { Order } from '../../../entities/product.entity';
 import { CreateUnifiedOrderDto, CreatePaymentResponseDto, OrderStatusResponseDto, QueryOrderStatusDto } from '../../wechat/dto/wechat-payment.dto';
 
 /**
@@ -106,8 +106,8 @@ export class CheckoutService {
 
     const paymentInfo = await this.wechatPaymentService.createUnifiedOrder({
       openid: user.openId,
-      outTradeNo: order.orderNumber,
-      totalFee: order.finalAmount,
+      outTradeNo: order.orderNo,
+      totalFee: order.totalAmount * 100, // 转换为分（元 -> 分）
       body: '购物订单',
       detail: checkoutDto.items
         .map((item) => `商品ID:${item.productId} 数量:${item.quantity}`)

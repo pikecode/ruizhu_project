@@ -62,15 +62,33 @@ export class WechatPaymentService {
       const nonceStr = this.generateNonceStr();
       const timeStamp = Math.floor(Date.now() / 1000).toString();
 
-      // 构建下单请求参数
-      const orderData = {
+      // 确保 totalFee 是数字类型 (以分为单位)
+      const totalFeeString = String(dto.totalFee);
+      let totalFeeNumber = 0;
+
+      // 支持两种格式: 分 (整数) 或 元/美元 (小数)
+      if (totalFeeString.includes('.')) {
+        // 如果包含小数点，假设是元/美元，转换为分
+        const yuan = parseFloat(totalFeeString);
+        totalFeeNumber = Math.round(yuan * 100);
+      } else {
+        // 否则假设已经是分
+        totalFeeNumber = parseInt(totalFeeString, 10);
+      }
+
+      if (isNaN(totalFeeNumber) || totalFeeNumber <= 0) {
+        throw new BadRequestException(`无效的支付金额: ${dto.totalFee} (转换后: ${totalFeeNumber}分)`);
+      }
+
+      // 构建下单请求参数 - 所有值都是字符串用于签名计算
+      const orderData: Record<string, any> = {
         appid: this.appId,
         mch_id: this.mchId,
         nonce_str: nonceStr,
         body: dto.body,
         detail: dto.detail || '',
         out_trade_no: dto.outTradeNo,
-        total_fee: dto.totalFee,
+        total_fee: String(totalFeeNumber), // 签名计算时使用字符串
         spbill_create_ip: '127.0.0.1', // 实际应该获取客户端IP
         notify_url: this.notifyUrl,
         trade_type: 'JSAPI',
@@ -80,6 +98,9 @@ export class WechatPaymentService {
       // 生成签名
       const sign = this.generateSign(orderData);
       orderData['sign'] = sign;
+
+      // 转换 total_fee 回数字用于XML输出
+      orderData.total_fee = totalFeeNumber;
 
       // 将请求参数转换为XML格式
       const xmlData = this.jsonToXml(orderData);
@@ -107,7 +128,7 @@ export class WechatPaymentService {
         openid: dto.openid,
         outTradeNo: dto.outTradeNo,
         prepayId: result.prepay_id,
-        totalFee: dto.totalFee,
+        totalFee: totalFeeNumber,
         body: dto.body,
         detail: dto.detail,
         status: 'pending',
@@ -127,7 +148,7 @@ export class WechatPaymentService {
         nonceStr,
         signType: 'MD5',
         paySign,
-        totalFee: dto.totalFee,
+        totalFee: totalFeeNumber,
         body: dto.body,
       };
     } catch (error) {
@@ -274,7 +295,30 @@ export class WechatPaymentService {
 
       // 生成退款单号
       const refundNo = `REF${Date.now()}`;
-      const refundFee = dto.refundFee || payment.totalFee;
+
+      // 转换总金额
+      let totalFeeNumber = 0;
+      const totalFeeString = String(payment.totalFee);
+      if (totalFeeString.includes('.')) {
+        const yuan = parseFloat(totalFeeString);
+        totalFeeNumber = Math.round(yuan * 100);
+      } else {
+        totalFeeNumber = parseInt(totalFeeString, 10);
+      }
+
+      // 转换退款金额
+      let refundFeeNumber = 0;
+      const refundFeeString = String(dto.refundFee || payment.totalFee);
+      if (refundFeeString.includes('.')) {
+        const yuan = parseFloat(refundFeeString);
+        refundFeeNumber = Math.round(yuan * 100);
+      } else {
+        refundFeeNumber = parseInt(refundFeeString, 10);
+      }
+
+      if (isNaN(totalFeeNumber) || isNaN(refundFeeNumber) || totalFeeNumber <= 0 || refundFeeNumber <= 0) {
+        throw new BadRequestException('无效的金额信息');
+      }
 
       // 构建退款请求
       const nonceStr = this.generateNonceStr();
@@ -285,8 +329,8 @@ export class WechatPaymentService {
         transaction_id: payment.transactionId || '',
         out_trade_no: dto.outTradeNo,
         out_refund_no: refundNo,
-        total_fee: payment.totalFee,
-        refund_fee: refundFee,
+        total_fee: totalFeeNumber,
+        refund_fee: refundFeeNumber,
         refund_desc: dto.reason,
       };
 
@@ -318,7 +362,7 @@ export class WechatPaymentService {
       return {
         outTradeNo: dto.outTradeNo,
         status: 'processing',
-        refundFee,
+        refundFee: refundFeeNumber,
         refundId: result.refund_id,
       };
     } catch (error) {
@@ -396,12 +440,19 @@ export class WechatPaymentService {
 
   /**
    * JSON转XML
+   * 数字字段不使用CDATA，字符串字段使用CDATA
    */
   private jsonToXml(data: Record<string, any>): string {
     let xml = '<xml>';
     for (const key in data) {
       if (data.hasOwnProperty(key)) {
-        xml += `<${key}><![CDATA[${data[key]}]]></${key}>`;
+        const value = data[key];
+        // 数字字段不使用CDATA
+        if (typeof value === 'number') {
+          xml += `<${key}>${value}</${key}>`;
+        } else {
+          xml += `<${key}><![CDATA[${value}]]></${key}>`;
+        }
       }
     }
     xml += '</xml>';

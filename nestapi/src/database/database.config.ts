@@ -13,10 +13,10 @@ import {
   ProductDetails,
   ProductTag,
   ProductReview,
-  CartItem,
   Order,
   OrderItem,
   OrderRefund,
+  ProductStats,
 } from '../entities/product.entity';
 import { Category } from '../entities/category.entity';
 import { Collection } from '../entities/collection.entity';
@@ -28,6 +28,10 @@ import { Banner } from '../entities/banner.entity';
 import { User } from '../entities/user.entity';
 import { Role } from '../entities/role.entity';
 import { Permission } from '../entities/permission.entity';
+import { UserAddress } from '../modules/addresses/entities/user-address.entity';
+import { CartItem } from '../modules/cart/entities/cart-item.entity';
+import { WechatPaymentEntity } from '../modules/wechat/entities/wechat-payment.entity';
+import { WechatNotificationEntity } from '../modules/wechat/entities/wechat-notification.entity';
 
 /**
  * 获取 TypeORM 数据库配置
@@ -83,6 +87,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
     // 实体配置
     entities: [
       User,
+      UserAddress,
       Role,
       Permission,
       Category,
@@ -92,6 +97,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
       ProductDetails,
       ProductTag,
       ProductReview,
+      ProductStats,
       CartItem,
       Order,
       OrderItem,
@@ -102,9 +108,11 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
       ArrayCollectionItem,
       ArrayCollectionItemProduct,
       Banner,
+      WechatPaymentEntity,
+      WechatNotificationEntity,
     ],
 
-    // 禁用自动同步 - 使用 migration
+    // 禁用自动同步 - 使用 migration 或手动创建表
     synchronize: false,
 
     // 根据环境配置日志

@@ -12,13 +12,13 @@ export class UserAddress {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column('int')
+  @Column('int', { name: 'user_id' })
   userId: number;
 
-  @Column('varchar', { length: 100 })
+  @Column('varchar', { length: 100, name: 'receiver_name' })
   receiverName: string;
 
-  @Column('varchar', { length: 20 })
+  @Column('varchar', { length: 20, name: 'receiver_phone' })
   receiverPhone: string;
 
   @Column('varchar', { length: 100 })
@@ -30,24 +30,24 @@ export class UserAddress {
   @Column('varchar', { length: 100, nullable: true })
   district: string;
 
-  @Column('text')
+  @Column('text', { name: 'address_detail' })
   addressDetail: string;
 
-  @Column('varchar', { length: 20, nullable: true })
+  @Column('varchar', { length: 20, nullable: true, name: 'postal_code' })
   postalCode: string;
 
-  @Column('tinyint', { default: 0 })
+  @Column('tinyint', { default: 0, name: 'is_default' })
   isDefault: number;
 
   @Column('varchar', { length: 50, nullable: true })
   label: string;
 
-  @Column('tinyint', { default: 0 })
+  @Column('tinyint', { default: 0, name: 'is_deleted' })
   isDeleted: number;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }

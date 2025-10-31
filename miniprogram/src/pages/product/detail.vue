@@ -429,7 +429,7 @@ export default {
               {
                 productId: 1,
                 quantity: 1,
-                price: 0.01  // 测试金额：0.01 元
+                price: 0.01  // 测试金额：0.01 元 (1分)
               }
             ],
             addressId: 1,
@@ -439,68 +439,48 @@ export default {
 
         uni.hideLoading()
 
-        if (createOrderResponse[1].statusCode === 200 || createOrderResponse[1].statusCode === 201) {
-          const orderData = createOrderResponse[1].data
+        console.log('API 响应:', createOrderResponse)
+
+        if (createOrderResponse && (createOrderResponse.statusCode === 200 || createOrderResponse.statusCode === 201)) {
+          const responseData = createOrderResponse.data
+          const orderData = responseData.order
+          const paymentData = responseData.payment
 
           console.log('订单创建成功:', orderData)
+          console.log('支付参数获取成功:', paymentData)
 
-          // 获取支付参数
-          const paymentResponse = await uni.request({
-            url: `https://yunjie.online/api/wechat/payment/create-order`,
-            method: 'POST',
-            header: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
+          // 调用微信支付（使用后端直接返回的支付参数）
+          wx.requestPayment({
+            timeStamp: paymentData.timeStamp,
+            nonceStr: paymentData.nonceStr,
+            package: `prepay_id=${paymentData.prepayId}`,
+            signType: paymentData.signType || 'MD5',
+            paySign: paymentData.paySign,
+            success: (res) => {
+              console.log('支付成功:', res)
+              uni.showToast({
+                title: '支付成功！',
+                icon: 'success',
+                duration: 2000
+              })
+
+              // 查询支付状态 - 使用订单号（orderNo）而不是 ID
+              setTimeout(() => {
+                this.queryPaymentStatus(orderData.orderNo, token)
+              }, 500)
             },
-            data: {
-              orderId: orderData.orderId,
-              totalFee: 1  // 1 分 = 0.01 元
+            fail: (err) => {
+              console.log('支付失败:', err)
+              uni.showToast({
+                title: '支付已取消',
+                icon: 'none',
+                duration: 1500
+              })
             }
           })
-
-          if (paymentResponse[1].statusCode === 200) {
-            const paymentData = paymentResponse[1].data
-
-            console.log('支付参数获取成功:', paymentData)
-
-            // 调用微信支付
-            wx.requestPayment({
-              timeStamp: paymentData.timeStamp,
-              nonceStr: paymentData.nonceStr,
-              package: paymentData.package,
-              signType: 'MD5',
-              paySign: paymentData.paySign,
-              success: (res) => {
-                console.log('支付成功:', res)
-                uni.showToast({
-                  title: '支付成功！',
-                  icon: 'success',
-                  duration: 2000
-                })
-
-                // 查询支付状态
-                setTimeout(() => {
-                  this.queryPaymentStatus(orderData.orderId, token)
-                }, 500)
-              },
-              fail: (err) => {
-                console.log('支付失败:', err)
-                uni.showToast({
-                  title: '支付已取消',
-                  icon: 'none',
-                  duration: 1500
-                })
-              }
-            })
-          } else {
-            uni.showToast({
-              title: '获取支付参数失败',
-              icon: 'none'
-            })
-          }
         } else {
           uni.showToast({
-            title: '创建订单失败',
+            title: `创建订单失败: ${createOrderResponse?.statusCode || '未知错误'}`,
             icon: 'none'
           })
         }
@@ -515,20 +495,22 @@ export default {
     },
 
     /**
-     * 查询支付状态
+     * 查询支付状态 - 使用订单号查询
      */
-    async queryPaymentStatus(orderId, token) {
+    async queryPaymentStatus(orderNumber, token) {
       try {
         const response = await uni.request({
-          url: `https://yunjie.online/api/checkout/payment-status?orderNumber=${orderId}`,
+          url: `https://yunjie.online/api/checkout/payment-status?orderNumber=${orderNumber}`,
           method: 'GET',
           header: {
             'Authorization': `Bearer ${token}`
           }
         })
 
-        if (response[1].statusCode === 200) {
-          const result = response[1].data
+        console.log('支付状态查询响应:', response)
+
+        if (response && response.statusCode === 200) {
+          const result = response.data
           console.log('支付状态查询结果:', result)
 
           if (result.status === 'paid' || result.paymentStatus === 'completed') {
@@ -543,9 +525,11 @@ export default {
               icon: 'none'
             })
           }
+        } else {
+          console.warn('支付状态查询失败:', response?.statusCode)
         }
       } catch (error) {
-        console.error('查询支付状态失败:', error)
+        console.error('查询支付状态异常:', error)
       }
     }
   }

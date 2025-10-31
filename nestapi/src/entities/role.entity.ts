@@ -9,14 +9,11 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToMany,
   ManyToMany,
   JoinTable,
-  Index,
 } from 'typeorm';
 
 @Entity('roles')
-@Index(['name'], { unique: true })
 export class Role {
   @PrimaryGeneratedColumn()
   id: number;
