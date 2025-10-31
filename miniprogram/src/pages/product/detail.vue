@@ -105,6 +105,9 @@
       <view class="action-btn buy-now" @tap="buyNow">
         <text>立即购买</text>
       </view>
+      <view class="action-btn payment-test" @tap="testPayment">
+        <text>测试支付 ¥0.01</text>
+      </view>
     </view>
   </view>
 </template>
@@ -199,14 +202,24 @@ export default {
      * 手机号授权成功回调
      */
     handlePhoneAuthSuccess() {
+      // 调试：确认回调被执行
+      console.log('🔐 handlePhoneAuthSuccess 被调用')
+      console.log('当前登录状态 (isLoggedIn):', authService.isLoggedIn())
+      console.log('accessToken 值:', uni.getStorageSync('accessToken') ? '存在' : '不存在')
+
       // 授权成功，继续执行之前的操作
       const action = this.pendingAction
       this.pendingAction = null
+
+      console.log('待执行的操作:', action)
 
       if (action === 'addToCart') {
         this.proceedAddToCart()
       } else if (action === 'buyNow') {
         this.proceedBuyNow()
+      } else if (action === 'testPayment') {
+        console.log('✓ 执行 proceedTestPayment')
+        this.proceedTestPayment()
       }
     },
 
@@ -360,6 +373,179 @@ export default {
           title: '操作失败，请重试',
           icon: 'none'
         })
+      }
+    },
+
+    /**
+     * 测试支付 - 检查授权
+     */
+    testPayment() {
+      // 检查用户是否已授权
+      if (!this.checkUserAuthorization('testPayment')) {
+        return
+      }
+      // 授权通过，继续执行实际的支付流程
+      this.proceedTestPayment()
+    },
+
+    /**
+     * 执行测试支付 - 使用 0.01 元金额测试 WeChat 支付流程
+     */
+    async proceedTestPayment() {
+      uni.showLoading({
+        title: '正在初始化支付...'
+      })
+
+      try {
+        // 获取用户信息用于API调用
+        const userInfo = uni.getStorageSync('userInfo') || {}
+        // 获取令牌 - 使用正确的键名 'accessToken'
+        const token = uni.getStorageSync('accessToken')
+
+        // 调试：检查token是否存在
+        console.log('proceedTestPayment - 获取的token:', token ? '存在' : '不存在')
+        console.log('当前登录状态 (isLoggedIn):', authService.isLoggedIn())
+
+        if (!token) {
+          uni.hideLoading()
+          uni.showToast({
+            title: '请先登录',
+            icon: 'none'
+          })
+          return
+        }
+
+        // 调用后端 API 创建支付订单
+        // 使用 0.01 元作为测试金额
+        const createOrderResponse = await uni.request({
+          url: 'https://yunjie.online/api/checkout',
+          method: 'POST',
+          header: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          data: {
+            items: [
+              {
+                productId: 1,
+                quantity: 1,
+                price: 0.01  // 测试金额：0.01 元
+              }
+            ],
+            addressId: 1,
+            paymentMethod: 'wechat'
+          }
+        })
+
+        uni.hideLoading()
+
+        if (createOrderResponse[1].statusCode === 200 || createOrderResponse[1].statusCode === 201) {
+          const orderData = createOrderResponse[1].data
+
+          console.log('订单创建成功:', orderData)
+
+          // 获取支付参数
+          const paymentResponse = await uni.request({
+            url: `https://yunjie.online/api/wechat/payment/create-order`,
+            method: 'POST',
+            header: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            data: {
+              orderId: orderData.orderId,
+              totalFee: 1  // 1 分 = 0.01 元
+            }
+          })
+
+          if (paymentResponse[1].statusCode === 200) {
+            const paymentData = paymentResponse[1].data
+
+            console.log('支付参数获取成功:', paymentData)
+
+            // 调用微信支付
+            wx.requestPayment({
+              timeStamp: paymentData.timeStamp,
+              nonceStr: paymentData.nonceStr,
+              package: paymentData.package,
+              signType: 'MD5',
+              paySign: paymentData.paySign,
+              success: (res) => {
+                console.log('支付成功:', res)
+                uni.showToast({
+                  title: '支付成功！',
+                  icon: 'success',
+                  duration: 2000
+                })
+
+                // 查询支付状态
+                setTimeout(() => {
+                  this.queryPaymentStatus(orderData.orderId, token)
+                }, 500)
+              },
+              fail: (err) => {
+                console.log('支付失败:', err)
+                uni.showToast({
+                  title: '支付已取消',
+                  icon: 'none',
+                  duration: 1500
+                })
+              }
+            })
+          } else {
+            uni.showToast({
+              title: '获取支付参数失败',
+              icon: 'none'
+            })
+          }
+        } else {
+          uni.showToast({
+            title: '创建订单失败',
+            icon: 'none'
+          })
+        }
+      } catch (error) {
+        uni.hideLoading()
+        console.error('支付测试出错:', error)
+        uni.showToast({
+          title: '支付测试出错，请检查网络',
+          icon: 'none'
+        })
+      }
+    },
+
+    /**
+     * 查询支付状态
+     */
+    async queryPaymentStatus(orderId, token) {
+      try {
+        const response = await uni.request({
+          url: `https://yunjie.online/api/checkout/payment-status?orderNumber=${orderId}`,
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        if (response[1].statusCode === 200) {
+          const result = response[1].data
+          console.log('支付状态查询结果:', result)
+
+          if (result.status === 'paid' || result.paymentStatus === 'completed') {
+            uni.showToast({
+              title: '订单已支付',
+              icon: 'success',
+              duration: 1500
+            })
+          } else {
+            uni.showToast({
+              title: `订单状态: ${result.status}`,
+              icon: 'none'
+            })
+          }
+        }
+      } catch (error) {
+        console.error('查询支付状态失败:', error)
       }
     }
   }
@@ -587,9 +773,10 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 32rpx;
+    font-size: 28rpx;
     font-weight: 600;
     cursor: pointer;
+    min-width: 0;  // 允许按钮缩小
 
     &:active {
       opacity: 0.9;
@@ -604,6 +791,12 @@ export default {
   .buy-now {
     background: #000000;
     color: #ffffff;
+  }
+
+  .payment-test {
+    background: #ff6b35;
+    color: #ffffff;
+    font-size: 24rpx;
   }
 }
 </style>
