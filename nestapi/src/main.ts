@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -10,7 +10,10 @@ async function bootstrap() {
   // Set global API prefix (excluding Swagger docs)
   app.setGlobalPrefix('api', { exclude: ['docs', 'docs/json'] });
 
-  // Apply global exception filter
+  // Apply global exception filters
+  // 捕获所有未处理的异常（包括非HTTP异常）
+  app.useGlobalFilters(new AllExceptionsFilter());
+  // 捕获HTTP异常
   app.useGlobalFilters(new HttpExceptionFilter());
 
   // Enable global validation

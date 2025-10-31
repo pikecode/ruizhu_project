@@ -13,6 +13,10 @@ import { CollectionsModule } from './modules/collections/collections.module';
 import { ArrayCollectionsModule } from './modules/array-collections/array-collections.module';
 import { BannersModule } from './modules/banners/banners.module';
 import { WechatModule } from './modules/wechat/wechat.module';
+import { CartModule } from './modules/cart/cart.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { AddressesModule } from './modules/addresses/addresses.module';
+import { CheckoutModule } from './modules/checkout/checkout.module';
 import { getDatabaseConfig } from './database/database.config';
 
 @Module({
@@ -37,6 +41,10 @@ import { getDatabaseConfig } from './database/database.config';
     ArrayCollectionsModule,
     BannersModule,
     WechatModule, // 微信集成模块（支付、通知、登录）
+    CartModule, // 购物车模块
+    OrdersModule, // 订单模块
+    AddressesModule, // 地址管理模块
+    CheckoutModule, // 结账模块（集成购物车、订单、地址）
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -269,6 +269,7 @@ export const authService = {
         sessionKey = loginInfo.sessionKey
       }
 
+      console.log('📱 调用 /auth/wechat/phone-login 接口...')
       // 调用后端接口进行手机号登录/注册
       const response = await api.post<AuthResponse>('/auth/wechat/phone-login', {
         openId,
@@ -277,16 +278,33 @@ export const authService = {
         sessionKey
       })
 
+      console.log('✅ API 响应:', {
+        hasAccessToken: !!response.access_token,
+        user: response.user?.id,
+        responseKeys: Object.keys(response)
+      })
+
       // 保存 Token 和用户信息
-      if (response.accessToken) {
-        uni.setStorageSync('accessToken', response.accessToken)
-        uni.setStorageSync('refreshToken', response.refreshToken)
+      // 注意：API 返回的是 access_token (下划线)，不是 accessToken (驼峰式)
+      const accessToken = response.access_token
+      if (accessToken) {
+        console.log('💾 保存 accessToken 到存储...')
+        uni.setStorageSync('accessToken', accessToken)
+        // refreshToken 在 WeChat 流程中可能不返回，这里处理可选值
+        if (response.refresh_token) {
+          uni.setStorageSync('refreshToken', response.refresh_token)
+        }
         uni.setStorageSync('user', JSON.stringify(response.user))
         uni.setStorageSync('loginTime', Date.now())
+        console.log('✓ Token 已保存，isLoggedIn():', this.isLoggedIn())
+        console.log('✓ 保存的 accessToken:', accessToken.substring(0, 20) + '...')
+      } else {
+        console.warn('⚠️ API 响应中没有 access_token，响应:', response)
       }
 
       return response.user
     } catch (error: any) {
+      console.error('❌ 手机号授权失败:', error)
       const message = error?.message || '手机号授权失败'
       throw new Error(message)
     }

@@ -12,6 +12,8 @@ import {
   UpdateDateColumn,
   Index,
   Unique,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 
 @Entity('users')
@@ -163,4 +165,20 @@ export class User {
    */
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  /**
+   * 用户角色ID - 关联到Role表
+   * 管理员用户通过此字段分配角色
+   * 普通用户可为null
+   */
+  @Column({ type: 'int', nullable: true, name: 'role_id' })
+  roleId: number | null;
+
+  /**
+   * 用户角色 - 多对一关系
+   * 管理员通过角色获取对应的权限
+   */
+  @ManyToOne('Role', { nullable: true, eager: true })
+  @JoinColumn({ name: 'role_id' })
+  role: any;
 }

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, BadRequestException, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -16,6 +16,7 @@ import {
   RefundRequestDto,
   RefundResponseDto,
 } from '../dto/wechat-payment.dto';
+import { OrdersService } from '../../orders/services/orders.service';
 
 /**
  * 微信支付服务
@@ -24,6 +25,8 @@ import {
  */
 @Injectable()
 export class WechatPaymentService {
+  private readonly logger = new Logger(WechatPaymentService.name);
+
   // 微信支付API基础URL
   private readonly WECHAT_PAY_API = 'https://api.mch.weixin.qq.com/pay';
   private readonly WECHAT_UNIFIED_ORDER = 'https://api.mch.weixin.qq.com/pay/unifiedorder';
@@ -39,6 +42,7 @@ export class WechatPaymentService {
     @InjectRepository(WechatPaymentEntity)
     private readonly paymentRepository: Repository<WechatPaymentEntity>,
     private configService: ConfigService,
+    private ordersService: OrdersService,
   ) {
     this.appId = configService.get<string>('WECHAT_APP_ID') || '';
     this.mchId = configService.get<string>('WECHAT_MCH_ID', '');
@@ -136,7 +140,7 @@ export class WechatPaymentService {
 
   /**
    * 处理微信支付回调
-   * 验证回调签名和数据完整性
+   * 验证回调签名、更新支付状态，并同步更新关联订单的状态
    */
   async handlePaymentCallback(
     callbackData: WechatPaymentCallbackDto,
@@ -168,13 +172,42 @@ export class WechatPaymentService {
             ),
           );
         }
+
+        // 从 metadata 中提取 orderId 和 userId
+        const metadata = payment.metadata as any;
+        if (metadata && metadata.orderId && metadata.userId) {
+          const orderId = metadata.orderId;
+          const userId = metadata.userId;
+
+          try {
+            // 更新订单状态为 paid
+            await this.ordersService.markOrderAsPaid(userId, orderId, payment.id);
+            this.logger.log(
+              `订单状态已更新为已支付: orderId=${orderId}, userId=${userId}, paymentId=${payment.id}`,
+            );
+          } catch (orderError) {
+            // 记录订单更新错误但不中断支付记录的保存
+            this.logger.error(
+              `更新订单状态失败: orderId=${orderId}, userId=${userId}, error=${orderError.message}`,
+            );
+          }
+        } else {
+          this.logger.warn(
+            `支付回调中缺少订单信息: outTradeNo=${callbackData.out_trade_no}`,
+          );
+        }
       } else {
         payment.status = 'failed';
+        this.logger.warn(
+          `支付失败: outTradeNo=${callbackData.out_trade_no}, resultCode=${callbackData.result_code}`,
+        );
       }
 
       payment.wechatCallback = callbackData;
       await this.paymentRepository.save(payment);
+      this.logger.log(`支付记录已保存: outTradeNo=${callbackData.out_trade_no}`);
     } catch (error) {
+      this.logger.error(`处理支付回调出错: ${error.message}`);
       throw new HttpException(
         `处理支付回调失败: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,

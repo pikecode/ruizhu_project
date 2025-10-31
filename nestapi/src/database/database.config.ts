@@ -26,6 +26,8 @@ import { ArrayCollectionItem } from '../entities/array-collection-item.entity';
 import { ArrayCollectionItemProduct } from '../entities/array-collection-item-product.entity';
 import { Banner } from '../entities/banner.entity';
 import { User } from '../entities/user.entity';
+import { Role } from '../entities/role.entity';
+import { Permission } from '../entities/permission.entity';
 
 /**
  * 获取 TypeORM 数据库配置
@@ -81,6 +83,8 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
     // 实体配置
     entities: [
       User,
+      Role,
+      Permission,
       Category,
       Product,
       ProductImage,

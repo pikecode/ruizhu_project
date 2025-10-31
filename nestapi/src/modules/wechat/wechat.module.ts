@@ -14,6 +14,9 @@ import { WechatNotificationService } from './services/wechat-notification.servic
 import { WechatPaymentController } from './controllers/wechat-payment.controller';
 import { WechatNotificationController } from './controllers/wechat-notification.controller';
 
+// Related modules
+import { OrdersModule } from '../orders/orders.module';
+
 /**
  * 微信集成模块
  *
@@ -81,6 +84,7 @@ import { WechatNotificationController } from './controllers/wechat-notification.
   imports: [
     ConfigModule,
     TypeOrmModule.forFeature([WechatPaymentEntity, WechatNotificationEntity]),
+    OrdersModule,
   ],
   providers: [WechatPaymentService, WechatNotificationService],
   controllers: [WechatPaymentController, WechatNotificationController],

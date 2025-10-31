@@ -78,6 +78,14 @@
       </view>
     </view>
 
+    <!-- 账户操作 -->
+    <view class="account-actions-section">
+      <button class="logout-button" @tap="handleLogout">
+        <text class="logout-icon">🚪</text>
+        <text class="logout-text">退出登录</text>
+      </button>
+    </view>
+
     <!-- 猜你喜欢推荐 -->
     <RecommendSection
       :items="recommendProducts"
@@ -90,6 +98,7 @@
 
 <script>
 import RecommendSection from '../../components/RecommendSection.vue'
+import { authService } from '../../services/auth'
 
 export default {
   components: {
@@ -217,6 +226,42 @@ export default {
     onEditProfile() {
       uni.navigateTo({
         url: '/pages/profile/edit'
+      })
+    },
+    async handleLogout() {
+      // Show confirmation dialog
+      uni.showModal({
+        title: '退出登录',
+        content: '确定要退出登录吗？退出后需要重新授权',
+        confirmText: '确定',
+        cancelText: '取消',
+        success: async (res) => {
+          if (res.confirm) {
+            // Perform logout
+            try {
+              await authService.logout()
+              uni.showToast({
+                title: '已退出登录',
+                icon: 'success',
+                duration: 1000
+              })
+
+              // Redirect to login page after logout
+              setTimeout(() => {
+                uni.redirectTo({
+                  url: '/pages/auth/login'
+                })
+              }, 1000)
+            } catch (error) {
+              console.error('Logout failed:', error)
+              uni.showToast({
+                title: '退出登录失败',
+                icon: 'none',
+                duration: 1000
+              })
+            }
+          }
+        }
       })
     }
   }
@@ -476,6 +521,47 @@ export default {
       color: #333333;
       font-weight: 400;
       text-align: center;
+    }
+  }
+}
+
+/* 账户操作区域 */
+.account-actions-section {
+  padding: 0 40rpx;
+  margin-top: 60rpx;
+  margin-bottom: 40rpx;
+
+  .logout-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12rpx;
+    width: 100%;
+    padding: 28rpx 24rpx;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
+    border: none;
+    border-radius: 8rpx;
+    cursor: pointer;
+    box-shadow: 0 4rpx 12rpx rgba(255, 107, 107, 0.2);
+    transition: all 0.3s ease;
+
+    &:active {
+      transform: scale(0.98);
+      box-shadow: 0 2rpx 6rpx rgba(255, 107, 107, 0.15);
+    }
+
+    .logout-icon {
+      display: block;
+      font-size: 32rpx;
+      line-height: 1;
+    }
+
+    .logout-text {
+      display: block;
+      font-size: 28rpx;
+      color: #ffffff;
+      font-weight: 500;
+      letter-spacing: 1rpx;
     }
   }
 }

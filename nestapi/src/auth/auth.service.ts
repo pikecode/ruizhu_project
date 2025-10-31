@@ -111,43 +111,77 @@ export class AuthService {
     iv: string,
     sessionKey: string,
   ) {
-    // 解密手机号数据
-    const phoneData = this.decryptWechatData(encryptedPhone, iv, sessionKey);
-
-    if (!phoneData.phoneNumber) {
-      throw new BadRequestException('无法获取手机号');
-    }
-
-    const phone = phoneData.phoneNumber;
-
-    // 查找或创建用户
-    let user = await this.usersService.findByPhone(phone);
-
-    if (user) {
-      // 更新现有用户的openId和授权状态
-      if (user.openId !== openId) {
-        user = await this.usersService.bindPhoneToOpenId(openId, phone);
-      }
-    } else {
-      // 创建新用户
-      user = await this.usersService.createOrUpdateByPhone(phone, openId, {
-        nickname: phoneData.name || `用户_${phone.slice(-4)}`,
+    try {
+      console.log('[phone-login] Starting phone login process', {
+        openId: openId.substring(0, 10) + '...',
+        encryptedPhoneLength: encryptedPhone?.length,
+        ivLength: iv?.length,
+        sessionKeyLength: sessionKey?.length,
       });
+
+      // 解密手机号数据
+      let phoneData;
+      try {
+        phoneData = this.decryptWechatData(encryptedPhone, iv, sessionKey);
+        console.log('[phone-login] Decryption successful', { phoneNumber: phoneData?.phoneNumber });
+      } catch (decryptError) {
+        console.error('[phone-login] Decryption failed', {
+          error: decryptError.message,
+          stack: decryptError.stack,
+        });
+        throw decryptError;
+      }
+
+      if (!phoneData.phoneNumber) {
+        throw new BadRequestException('无法获取手机号');
+      }
+
+      const phone = phoneData.phoneNumber;
+      console.log('[phone-login] Phone number extracted:', phone);
+
+      // 查找或创建用户
+      let user = await this.usersService.findByPhone(phone);
+      console.log('[phone-login] User lookup result:', { userId: user?.id, exists: !!user });
+
+      if (user) {
+        // 更新现有用户的openId和授权状态
+        if (user.openId !== openId) {
+          user = await this.usersService.bindPhoneToOpenId(openId, phone);
+          console.log('[phone-login] Bound phone to OpenId:', { userId: user.id });
+        }
+      } else {
+        // 创建新用户
+        user = await this.usersService.createOrUpdateByPhone(phone, openId, {
+          nickname: phoneData.name || `用户_${phone.slice(-4)}`,
+        });
+        console.log('[phone-login] New user created:', { userId: user.id });
+      }
+
+      // 更新最后登录信息
+      // 注意：这里需要客户端提供IP，或者在中间件中获取
+      const ip = '0.0.0.0'; // 实际应该从请求中获取
+      await this.usersService.updateLastLogin(user.id, ip);
+      console.log('[phone-login] Last login updated');
+
+      // 生成 JWT token
+      const payload = { phone: user.phone, sub: user.id, openId: user.openId };
+      const { password, ...userWithoutPassword } = user;
+
+      const token = this.jwtService.sign(payload);
+      console.log('[phone-login] JWT token generated successfully');
+
+      return {
+        access_token: token,
+        user: userWithoutPassword,
+      };
+    } catch (error) {
+      console.error('[phone-login] Unexpected error in phone login:', {
+        error: error.message,
+        stack: error.stack,
+        errorType: error.constructor.name,
+      });
+      throw error;
     }
-
-    // 更新最后登录信息
-    // 注意：这里需要客户端提供IP，或者在中间件中获取
-    const ip = '0.0.0.0'; // 实际应该从请求中获取
-    await this.usersService.updateLastLogin(user.id, ip);
-
-    // 生成 JWT token
-    const payload = { phone: user.phone, sub: user.id, openId: user.openId };
-    const { password, ...userWithoutPassword } = user;
-
-    return {
-      access_token: this.jwtService.sign(payload),
-      user: userWithoutPassword,
-    };
   }
 
   /**
