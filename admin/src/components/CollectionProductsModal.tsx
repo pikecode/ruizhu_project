@@ -57,7 +57,7 @@ export default function CollectionProductsModal({
       const productList = data.products || []
       setProducts(productList)
       setTempProducts(productList)
-      setSelectedProductIds(productList.map((p) => p.id))
+      setSelectedProductIds(productList.map((p: ProductListItem) => p.id))
     } catch (error) {
       message.error('加载集合产品失败')
       console.error(error)

@@ -40,7 +40,7 @@ interface Banner {
   videoThumbnailUrl?: string
   isActive: boolean
   sortOrder: number
-  linkType: 'product' | 'news'
+  linkType: 'url' | 'none' | 'product' | 'category' | 'collection'
   createdAt: string
   updatedAt: string
 }
