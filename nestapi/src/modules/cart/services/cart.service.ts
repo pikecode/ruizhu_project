@@ -25,8 +25,8 @@ export class CartService {
       // 优先使用快照价格，如果没有则使用当前产品价格
       price: cartItem.priceSnapshot || cartItem.product?.currentPrice || 0,
       quantity: cartItem.quantity,
-      color: selectedAttributes.color || '',
-      size: selectedAttributes.size || '',
+      color: selectedAttributes?.color || '',
+      size: selectedAttributes?.size || '',
       selected: false, // 初始化为未选中
     };
   }
