@@ -2,16 +2,21 @@ import { useState, useEffect } from 'react'
 import { Table, Button, Space, Card, Tag, message, Popconfirm } from 'antd'
 import { DeleteOutlined, ReloadOutlined, LockOutlined } from '@ant-design/icons'
 import Layout from '@/components/Layout'
+import { useAuthStore } from '@/store'
 import { consumerUsersService, ConsumerUser } from '@/services/consumer-users'
 
 export default function ConsumerUsersPage() {
   const [users, setUsers] = useState<ConsumerUser[]>([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
+  const { isHydrated } = useAuthStore()
 
   useEffect(() => {
-    loadUsers()
-  }, [pagination.current, pagination.pageSize])
+    // 等待认证状态完全恢复后再加载数据
+    if (isHydrated) {
+      loadUsers()
+    }
+  }, [pagination.current, pagination.pageSize, isHydrated])
 
   const loadUsers = async () => {
     setLoading(true)

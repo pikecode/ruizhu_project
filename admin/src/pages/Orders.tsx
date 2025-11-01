@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Table, Button, Space, Card, Tag, message } from 'antd'
 import { EyeOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
 import Layout from '@/components/Layout'
+import { useAuthStore } from '@/store'
 import { ordersService } from '@/services/orders'
 import { Order } from '@/types'
 
@@ -9,10 +10,14 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
+  const { isHydrated } = useAuthStore()
 
   useEffect(() => {
-    loadOrders()
-  }, [pagination.current, pagination.pageSize])
+    // 等待认证状态完全恢复后再加载数据
+    if (isHydrated) {
+      loadOrders()
+    }
+  }, [pagination.current, pagination.pageSize, isHydrated])
 
   const loadOrders = async () => {
     setLoading(true)

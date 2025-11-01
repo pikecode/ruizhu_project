@@ -3,16 +3,21 @@ import { Table, Button, Space, Card, Tag, message } from 'antd'
 import { EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
 import Layout from '@/components/Layout'
 import { usersService } from '@/services/users'
+import { useAuthStore } from '@/store'
 import { User } from '@/types'
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
+  const { isHydrated } = useAuthStore()
 
   useEffect(() => {
-    loadUsers()
-  }, [pagination.current, pagination.pageSize])
+    // 等待认证状态完全恢复后再加载数据
+    if (isHydrated) {
+      loadUsers()
+    }
+  }, [pagination.current, pagination.pageSize, isHydrated])
 
   const loadUsers = async () => {
     setLoading(true)

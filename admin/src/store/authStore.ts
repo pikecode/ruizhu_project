@@ -7,6 +7,7 @@ interface AuthStore {
   isLoading: boolean
   error: string | null
   isLoggedIn: boolean
+  isHydrated: boolean
 
   setUser: (user: User | null) => void
   setToken: (token: string | null) => void
@@ -22,6 +23,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   isLoading: false,
   error: null,
   isLoggedIn: false,
+  isHydrated: false,
 
   setUser: (user: User | null) => {
     set({ user })
@@ -69,7 +71,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
         token,
         user: JSON.parse(user),
         isLoggedIn: true,
+        isHydrated: true,
       })
+    } else {
+      set({ isHydrated: true })
     }
   },
 }))
