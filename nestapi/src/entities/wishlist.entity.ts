@@ -15,10 +15,10 @@ export class Wishlist {
   @PrimaryGeneratedColumn()
   id: number
 
-  @Column({ type: 'bigint' })
+  @Column({ type: 'int' })
   userId: number
 
-  @Column({ type: 'bigint' })
+  @Column({ type: 'int' })
   productId: number
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
