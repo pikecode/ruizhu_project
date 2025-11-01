@@ -86,12 +86,13 @@
 </template>
 
 <script>
+import { api } from '../../services/api'
+
 export default {
   data() {
     return {
       mode: 'add', // 'add' or 'edit'
       isLoading: false,
-      apiBaseUrl: 'https://yunjie.online/api',
       form: {
         id: null,
         name: '',
@@ -162,26 +163,18 @@ export default {
      */
     async loadAddressData(id) {
       try {
-        const token = uni.getStorageSync('accessToken')
-        const response = await uni.request({
-          url: `${this.apiBaseUrl}/addresses/${id}`,
-          method: 'GET',
-          header: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const response = await api.get(`/addresses/${id}`)
 
-        if (response && response.statusCode === 200) {
-          const data = response.data
+        if (response) {
           // 字段映射：后端返回 receiverName/receiverPhone/addressDetail，前端期望 name/phone/detail
           this.form = {
-            id: data.id,
-            name: data.receiverName || data.name,
-            phone: data.receiverPhone || data.phone,
-            province: data.province,
-            city: data.city,
-            district: data.district,
-            detail: data.addressDetail || data.detail
+            id: response.id,
+            name: response.receiverName || response.name,
+            phone: response.receiverPhone || response.phone,
+            province: response.province,
+            city: response.city,
+            district: response.district,
+            detail: response.addressDetail || response.detail
           }
 
           // 加载地址后，初始化当前城市列表
@@ -193,7 +186,7 @@ export default {
 
           console.log('加载的地址:', this.form, '当前城市:', this.currentCities, 'isDefault:', this.form.isDefault)
         } else {
-          console.warn('加载地址失败:', response?.statusCode)
+          console.warn('加载地址失败')
         }
       } catch (e) {
         console.error('Failed to load address:', e)
@@ -297,35 +290,15 @@ export default {
           addressDetail: this.form.detail
         }
 
-        let response
+        try {
+          if (this.mode === 'add') {
+            // 创建新地址
+            await api.post('/addresses', addressData)
+          } else {
+            // 编辑现有地址
+            await api.put(`/addresses/${this.form.id}`, addressData)
+          }
 
-        if (this.mode === 'add') {
-          // 创建新地址
-          response = await uni.request({
-            url: `${this.apiBaseUrl}/addresses`,
-            method: 'POST',
-            header: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            data: addressData
-          })
-        } else {
-          // 编辑现有地址
-          response = await uni.request({
-            url: `${this.apiBaseUrl}/addresses/${this.form.id}`,
-            method: 'PUT',
-            header: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            data: addressData
-          })
-        }
-
-        console.log('地址保存响应:', response)
-
-        if (response && (response.statusCode === 200 || response.statusCode === 201)) {
           // 保存地址成功提示
           uni.showToast({
             title: '地址保存成功',
@@ -337,14 +310,15 @@ export default {
           setTimeout(() => {
             uni.navigateBack()
           }, 1500)
-        } else {
+        } catch (error) {
+          console.error('Failed to save address:', error)
           uni.showToast({
             title: '保存失败，请重试',
             icon: 'none'
           })
         }
       } catch (e) {
-        console.error('Failed to save address:', e)
+        console.error('Failed to validate address:', e)
         uni.showToast({
           title: '保存失败，请检查网络',
           icon: 'none'

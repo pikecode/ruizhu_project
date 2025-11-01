@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CartItem } from '../entities/cart-item.entity';
-import { CreateCartItemDto, UpdateCartItemDto } from '../dto';
+import { CreateCartItemDto, UpdateCartItemDto, CartItemResponseDto } from '../dto';
 
 @Injectable()
 export class CartService {
@@ -12,10 +12,31 @@ export class CartService {
   ) {}
 
   /**
+   * 将 CartItem 转换为响应 DTO（包含产品信息）
+   */
+  private formatCartItemResponse(cartItem: CartItem): CartItemResponseDto {
+    const selectedAttributes = cartItem.selectedAttributes || {};
+
+    return {
+      id: cartItem.id,
+      productId: cartItem.productId,
+      name: cartItem.product?.name || '',
+      image: cartItem.product?.coverImageUrl || '',
+      // 优先使用快照价格，如果没有则使用当前产品价格
+      price: cartItem.priceSnapshot || cartItem.product?.currentPrice || 0,
+      quantity: cartItem.quantity,
+      color: selectedAttributes.color || '',
+      size: selectedAttributes.size || '',
+      selected: false, // 初始化为未选中
+    };
+  }
+
+  /**
    * Add item to user's shopping cart
    * If item already exists, update quantity
+   * Returns formatted cart item with product details
    */
-  async addToCart(userId: number, createDto: CreateCartItemDto): Promise<CartItem> {
+  async addToCart(userId: number, createDto: CreateCartItemDto): Promise<CartItemResponseDto> {
     if (!userId) {
       throw new BadRequestException('User ID is required');
     }
@@ -25,50 +46,63 @@ export class CartService {
     }
 
     // Check if item already exists in cart
-    const existingItem = await this.cartItemRepository.findOne({
+    let cartItem = await this.cartItemRepository.findOne({
       where: {
         userId,
         productId: createDto.productId,
       },
+      relations: ['product'],
     });
 
-    if (existingItem) {
+    if (cartItem) {
       // Update quantity if item already exists
-      existingItem.quantity += createDto.quantity;
+      cartItem.quantity += createDto.quantity;
       if (createDto.selectedAttributes) {
-        existingItem.selectedAttributes = createDto.selectedAttributes;
+        cartItem.selectedAttributes = createDto.selectedAttributes;
       }
       if (createDto.priceSnapshot) {
-        existingItem.priceSnapshot = createDto.priceSnapshot;
+        cartItem.priceSnapshot = createDto.priceSnapshot;
       }
-      return await this.cartItemRepository.save(existingItem);
+      cartItem = await this.cartItemRepository.save(cartItem);
+    } else {
+      // Create new cart item
+      cartItem = this.cartItemRepository.create({
+        userId,
+        productId: createDto.productId,
+        quantity: createDto.quantity,
+        selectedAttributes: createDto.selectedAttributes,
+        priceSnapshot: createDto.priceSnapshot,
+      });
+      cartItem = await this.cartItemRepository.save(cartItem);
+
+      // Reload with product relation
+      const reloadedItem = await this.cartItemRepository.findOne({
+        where: { id: cartItem.id },
+        relations: ['product'],
+      });
+      if (reloadedItem) {
+        cartItem = reloadedItem;
+      }
     }
 
-    // Create new cart item
-    const cartItem = this.cartItemRepository.create({
-      userId,
-      productId: createDto.productId,
-      quantity: createDto.quantity,
-      selectedAttributes: createDto.selectedAttributes,
-      priceSnapshot: createDto.priceSnapshot,
-    });
-
-    return await this.cartItemRepository.save(cartItem);
+    return this.formatCartItemResponse(cartItem);
   }
 
   /**
    * Update cart item quantity or attributes
+   * Returns formatted cart item with product details
    */
   async updateCartItem(
     userId: number,
     cartItemId: number,
     updateDto: UpdateCartItemDto,
-  ): Promise<CartItem> {
-    const cartItem = await this.cartItemRepository.findOne({
+  ): Promise<CartItemResponseDto> {
+    let cartItem = await this.cartItemRepository.findOne({
       where: {
         id: cartItemId,
         userId,
       },
+      relations: ['product'],
     });
 
     if (!cartItem) {
@@ -86,7 +120,8 @@ export class CartService {
       cartItem.selectedAttributes = updateDto.selectedAttributes;
     }
 
-    return await this.cartItemRepository.save(cartItem);
+    cartItem = await this.cartItemRepository.save(cartItem);
+    return this.formatCartItemResponse(cartItem);
   }
 
   /**
@@ -104,13 +139,16 @@ export class CartService {
   }
 
   /**
-   * Get all items in user's cart
+   * Get all items in user's cart with product details (formatted)
    */
-  async getCart(userId: number): Promise<CartItem[]> {
-    return await this.cartItemRepository.find({
+  async getCart(userId: number): Promise<CartItemResponseDto[]> {
+    const cartItems = await this.cartItemRepository.find({
       where: { userId },
+      relations: ['product'],
       order: { createdAt: 'DESC' },
     });
+
+    return cartItems.map(item => this.formatCartItemResponse(item));
   }
 
   /**

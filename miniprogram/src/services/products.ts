@@ -66,7 +66,10 @@ const CATEGORY_MAP: Record<number, string> = {
  * 将后端价格（分）转换为前端显示价格（元）
  */
 function formatPrice(priceInCents: number): string {
-  const priceInYuan = (priceInCents / 100).toFixed(2)
+  if (!priceInCents && priceInCents !== 0) {
+    return '0.00'
+  }
+  const priceInYuan = (Number(priceInCents) / 100).toFixed(2)
   return priceInYuan
 }
 
@@ -231,6 +234,16 @@ export async function getHotProducts(limit: number = 10): Promise<Product[]> {
 }
 
 /**
+ * 价格对象结构
+ */
+export interface PriceObject {
+  originalPrice: number // 单位：分
+  currentPrice: number // 单位：分
+  discountRate: number
+  currency: string
+}
+
+/**
  * 商品详情响应数据类型（后端返回）
  */
 export interface ProductDetailResponse {
@@ -238,16 +251,18 @@ export interface ProductDetailResponse {
   name: string
   subtitle?: string
   categoryId: number
-  currentPrice: number // 单位：分
-  originalPrice: number // 单位：分
-  discountRate: number
+  categoryName?: string
+  price?: PriceObject // 价格对象（单位：元）
+  currentPrice?: number // 兼容旧结构（单位：分）
+  originalPrice?: number // 兼容旧结构（单位：分）
+  discountRate?: number
   description?: string
   images?: string[] // 商品图片数组
   coverImageUrl?: string
   colors?: string[] // 商品颜色选项
   specs?: Record<string, string[]> // 其他规格
   salesCount: number
-  averageRating: number
+  averageRating: number | string
   reviewsCount: number
   isNew: boolean
   isSaleOn: boolean
@@ -302,19 +317,33 @@ function mapProductDetailToFrontend(
     ? backendProduct.colors
     : ['颜色选项']
 
+  // 处理价格 - 支持两种格式
+  let price = '0.00'
+  let originalPrice = '0.00'
+
+  if (backendProduct.price && typeof backendProduct.price === 'object') {
+    // 新格式：price 是一个对象，单位是分，需要除以100
+    price = formatPrice(backendProduct.price.currentPrice || 0)
+    originalPrice = formatPrice(backendProduct.price.originalPrice || 0)
+  } else if (backendProduct.currentPrice) {
+    // 旧格式：currentPrice 是数字，单位也是分，需要除以100
+    price = formatPrice(backendProduct.currentPrice)
+    originalPrice = formatPrice(backendProduct.originalPrice || 0)
+  }
+
   return {
     id: backendProduct.id,
     name: backendProduct.name,
-    category: CATEGORY_MAP[backendProduct.categoryId] || '其他',
-    price: formatPrice(backendProduct.currentPrice),
-    originalPrice: formatPrice(backendProduct.originalPrice),
+    category: backendProduct.categoryName || CATEGORY_MAP[backendProduct.categoryId] || '其他',
+    price,
+    originalPrice,
     description: backendProduct.description || '暂无描述',
     images, // 轮播图片数组（当前通常只有一张）
     colors,
     skuCode: backendProduct.skuCode || `SKU${backendProduct.id}`,
     isNew: backendProduct.isNew,
     salesCount: backendProduct.salesCount || 0,
-    rating: backendProduct.averageRating || 0,
+    rating: Number(backendProduct.averageRating) || 0,
     reviewCount: backendProduct.reviewsCount || 0
   }
 }
@@ -324,11 +353,19 @@ function mapProductDetailToFrontend(
  */
 export async function getProductDetail(productId: number): Promise<ProductDetail | null> {
   try {
-    const response = await api.get<{ data: ProductDetailResponse }>(
+    const response = await api.get<{ code: number; message: string; data: ProductDetailResponse }>(
       `/products/${productId}`
     )
 
-    return mapProductDetailToFrontend(response.data)
+    console.log('获取商品详情响应:', response)
+
+    if (response && response.data) {
+      const productDetail = mapProductDetailToFrontend(response.data)
+      console.log('映射后的商品详情:', productDetail)
+      return productDetail
+    }
+
+    return null
   } catch (error) {
     console.error('Failed to fetch product detail:', error)
     return null

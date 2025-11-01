@@ -37,11 +37,7 @@
       <text class="product-name">{{ productData.name }}</text>
       <view class="price-section">
         <text class="current-price">¥{{ productData.price }}</text>
-        <text class="sku-code">商品货号：{{ productData.skuCode }}</text>
       </view>
-
-      <!-- 特殊标签 -->
-      <text class="promotion-badge">尊享12期分期免息</text>
 
       <!-- 分割线 -->
       <view class="divider"></view>
@@ -52,22 +48,6 @@
         <text class="description-text">{{ productData.description }}</text>
       </view>
 
-      <!-- 规格选择 -->
-      <view class="spec-section">
-        <text class="section-title">选择颜色</text>
-        <view class="spec-options">
-          <view
-            v-for="(color, index) in productData.colors"
-            :key="index"
-            class="spec-option"
-            :class="{ active: selectedColor === index }"
-            @tap="selectedColor = index"
-          >
-            <text>{{ color }}</text>
-          </view>
-        </view>
-      </view>
-
       <!-- 数量选择 -->
       <view class="quantity-section">
         <text class="section-title">数量</text>
@@ -75,21 +55,6 @@
           <view class="qty-btn" @tap="decreaseQuantity">−</view>
           <text class="qty-value">{{ quantity }}</text>
           <view class="qty-btn" @tap="increaseQuantity">+</view>
-        </view>
-      </view>
-
-      <!-- 分割线 -->
-      <view class="divider"></view>
-
-      <!-- 收藏和分享 -->
-      <view class="action-section">
-        <view class="action-item" @tap="toggleFavorite">
-          <text class="action-icon" :class="{ active: isFavorite }">♡</text>
-          <text class="action-label">{{ isFavorite ? '已收藏' : '收藏' }}</text>
-        </view>
-        <view class="action-item" @tap="shareProduct">
-          <text class="action-icon">⤵</text>
-          <text class="action-label">分享</text>
         </view>
       </view>
 
@@ -114,7 +79,9 @@
 
 <script>
 import { getProductDetail } from '../../services/products'
+import { cartService } from '../../services/cart'
 import { authService } from '../../services/auth'
+import { api } from '../../services/api'
 import PhoneAuthModal from '../../components/PhoneAuthModal.vue'
 
 export default {
@@ -126,43 +93,41 @@ export default {
       indicatorColor: 'rgba(0, 0, 0, 0.3)',
       indicatorActiveColor: '#000000',
       currentImageIndex: 0,
-      selectedColor: 0,
       quantity: 1,
-      isFavorite: false,
       isLoading: true,
       productImages: [],
       productData: {
+        id: 0,
         name: '加载中...',
         price: '0',
-        skuCode: '加载中',
-        description: '加载中...',
-        colors: ['颜色选项']
+        description: '加载中...'
       },
-      // 授权相关
       showPhoneAuthModal: false,
-      pendingAction: null // 'addToCart' or 'buyNow'
+      pendingAction: null
     }
   },
   async onLoad(options) {
     try {
-      // 从路由参数获取商品ID
+      // 从URL参数获取产品ID
       const productId = options?.id || 1
-
       console.log('商品详情页加载，商品ID:', productId)
 
-      // 获取商品详情
+      // 从API获取商品详情
       const productDetail = await getProductDetail(parseInt(productId))
+
+      console.log('getProductDetail返回的数据:', productDetail)
 
       if (productDetail) {
         // 绑定产品数据
         this.productImages = productDetail.images || []
         this.productData = {
+          id: productDetail.id,
           name: productDetail.name,
           price: productDetail.price,
-          skuCode: productDetail.skuCode,
-          description: productDetail.description,
-          colors: productDetail.colors || ['颜色选项']
+          description: productDetail.description
         }
+
+        console.log('绑定到页面的productData:', this.productData)
       } else {
         // 获取失败，显示错误提示
         uni.showToast({
@@ -238,21 +203,6 @@ export default {
     onImageChange(e) {
       this.currentImageIndex = e.detail.current
     },
-    toggleFavorite() {
-      this.isFavorite = !this.isFavorite
-      const status = this.isFavorite ? '已收藏' : '已移除收藏'
-      uni.showToast({
-        title: status,
-        icon: 'none',
-        duration: 1000
-      })
-    },
-    shareProduct() {
-      uni.showToast({
-        title: '分享成功',
-        icon: 'none'
-      })
-    },
     increaseQuantity() {
       this.quantity++
     },
@@ -274,56 +224,55 @@ export default {
     /**
      * 执行添加购物车操作
      */
-    proceedAddToCart() {
-      // 构建购物车项
-      const cartItem = {
-        id: Date.now(),
-        name: this.productData.name,
-        color: this.productData.colors[this.selectedColor],
-        price: this.productData.price.replace(/,/g, ''),
-        quantity: this.quantity,
-        image: this.productImages[0],
-        selected: true
-      }
-
+    async proceedAddToCart() {
       try {
-        // 获取现有购物车
-        let cartItems = uni.getStorageSync('cartItems') || []
+        uni.showLoading({
+          title: '添加中...'
+        })
 
-        // 检查是否已存在相同商品
-        const existingIndex = cartItems.findIndex(
-          (item) => item.name === cartItem.name && item.color === cartItem.color
+        // 调用API添加到购物车
+        const result = await cartService.addToCart(
+          this.productData.id,
+          this.quantity
         )
 
-        if (existingIndex !== -1) {
-          // 更新数量
-          cartItems[existingIndex].quantity += this.quantity
-        } else {
-          // 添加新商品
-          cartItems.push(cartItem)
-        }
+        uni.hideLoading()
 
-        // 保存到存储
-        uni.setStorageSync('cartItems', cartItems)
-
-        uni.showToast({
-          title: `已添加 ${this.quantity} 件到购物袋`,
-          icon: 'success',
-          duration: 1500
-        })
-
-        // 延迟后跳转到购物车
-        setTimeout(() => {
-          uni.switchTab({
-            url: '/pages/cart/cart'
+        if (result) {
+          uni.showToast({
+            title: `已添加 ${this.quantity} 件到购物袋`,
+            icon: 'success',
+            duration: 1500
           })
-        }, 1500)
-      } catch (e) {
-        console.error('Failed to add to cart:', e)
-        uni.showToast({
-          title: '添加失败，请重试',
-          icon: 'none'
-        })
+
+          // 延迟后跳转到购物车
+          setTimeout(() => {
+            uni.switchTab({
+              url: '/pages/cart/cart'
+            })
+          }, 1500)
+        } else {
+          uni.showToast({
+            title: '添加失败，请重试',
+            icon: 'none'
+          })
+        }
+      } catch (error) {
+        uni.hideLoading()
+        console.error('Failed to add to cart:', error)
+
+        // 检查是否是登录过期错误
+        const errorMsg = error.message || ''
+        if (errorMsg.includes('登录过期') || errorMsg.includes('401')) {
+          // 显示手机号授权弹窗
+          this.pendingAction = 'addToCart'
+          this.showPhoneAuthModal = true
+        } else {
+          uni.showToast({
+            title: errorMsg || '添加失败，请重试',
+            icon: 'none'
+          })
+        }
       }
     },
     buyNow() {
@@ -339,40 +288,55 @@ export default {
     /**
      * 执行立即购买操作
      */
-    proceedBuyNow() {
-      // 直接生成订单并跳转到支付
-      const cartItem = {
-        id: Date.now(),
-        name: this.productData.name,
-        color: this.productData.colors[this.selectedColor],
-        price: this.productData.price.replace(/,/g, ''),
-        quantity: this.quantity,
-        image: this.productImages[0],
-        selected: true
-      }
-
+    async proceedBuyNow() {
       try {
-        // 保存为临时购物车（用于立即购买）
-        uni.setStorageSync('checkoutItems', [cartItem])
-
-        uni.showToast({
-          title: '前往结算',
-          icon: 'none',
-          duration: 1000
+        uni.showLoading({
+          title: '添加中...'
         })
 
-        // 延迟后跳转到结算页面
-        setTimeout(() => {
-          uni.navigateTo({
-            url: '/pages/checkout/checkout'
+        // 调用API添加到购物车
+        const result = await cartService.addToCart(
+          this.productData.id,
+          this.quantity
+        )
+
+        uni.hideLoading()
+
+        if (result) {
+          uni.showToast({
+            title: '前往结算',
+            icon: 'none',
+            duration: 1000
           })
-        }, 1000)
-      } catch (e) {
-        console.error('Failed to proceed with purchase:', e)
-        uni.showToast({
-          title: '操作失败，请重试',
-          icon: 'none'
-        })
+
+          // 延迟后跳转到购物车或结算页面
+          setTimeout(() => {
+            uni.navigateTo({
+              url: '/pages/checkout/checkout'
+            })
+          }, 1000)
+        } else {
+          uni.showToast({
+            title: '操作失败，请重试',
+            icon: 'none'
+          })
+        }
+      } catch (error) {
+        uni.hideLoading()
+        console.error('Failed to proceed with purchase:', error)
+
+        // 检查是否是登录过期错误
+        const errorMsg = error.message || ''
+        if (errorMsg.includes('登录过期') || errorMsg.includes('401')) {
+          // 显示手机号授权弹窗
+          this.pendingAction = 'buyNow'
+          this.showPhoneAuthModal = true
+        } else {
+          uni.showToast({
+            title: errorMsg || '操作失败，请重试',
+            icon: 'none'
+          })
+        }
       }
     },
 
@@ -417,32 +381,23 @@ export default {
 
         // 调用后端 API 创建支付订单
         // 使用 0.01 元作为测试金额
-        const createOrderResponse = await uni.request({
-          url: 'https://yunjie.online/api/checkout',
-          method: 'POST',
-          header: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          data: {
-            items: [
-              {
-                productId: 1,
-                quantity: 1,
-                price: 0.01  // 测试金额：0.01 元 (1分)
-              }
-            ],
-            addressId: 1,
-            paymentMethod: 'wechat'
-          }
+        const responseData = await api.post('/checkout', {
+          items: [
+            {
+              productId: 1,
+              quantity: 1,
+              price: 0.01  // 测试金额：0.01 元 (1分)
+            }
+          ],
+          addressId: 1,
+          paymentMethod: 'wechat'
         })
 
         uni.hideLoading()
 
-        console.log('API 响应:', createOrderResponse)
+        console.log('API 响应:', responseData)
 
-        if (createOrderResponse && (createOrderResponse.statusCode === 200 || createOrderResponse.statusCode === 201)) {
-          const responseData = createOrderResponse.data
+        if (responseData) {
           const orderData = responseData.order
           const paymentData = responseData.payment
 
@@ -480,7 +435,7 @@ export default {
           })
         } else {
           uni.showToast({
-            title: `创建订单失败: ${createOrderResponse?.statusCode || '未知错误'}`,
+            title: '创建订单失败',
             icon: 'none'
           })
         }
@@ -499,20 +454,11 @@ export default {
      */
     async queryPaymentStatus(orderNumber, token) {
       try {
-        const response = await uni.request({
-          url: `https://yunjie.online/api/checkout/payment-status?orderNumber=${orderNumber}`,
-          method: 'GET',
-          header: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const result = await api.get(`/checkout/payment-status?orderNumber=${orderNumber}`)
 
-        console.log('支付状态查询响应:', response)
+        console.log('支付状态查询结果:', result)
 
-        if (response && response.statusCode === 200) {
-          const result = response.data
-          console.log('支付状态查询结果:', result)
-
+        if (result) {
           if (result.status === 'paid' || result.paymentStatus === 'completed') {
             uni.showToast({
               title: '订单已支付',
@@ -526,7 +472,7 @@ export default {
             })
           }
         } else {
-          console.warn('支付状态查询失败:', response?.statusCode)
+          console.warn('支付状态查询失败')
         }
       } catch (error) {
         console.error('查询支付状态异常:', error)
@@ -606,22 +552,6 @@ export default {
       font-weight: 700;
       color: #000000;
     }
-
-    .sku-code {
-      display: block;
-      font-size: 22rpx;
-      color: #999999;
-    }
-  }
-
-  .promotion-badge {
-    display: inline-block;
-    padding: 8rpx 16rpx;
-    background: #f0f0f0;
-    border-radius: 4rpx;
-    font-size: 22rpx;
-    color: #333333;
-    margin-bottom: 24rpx;
   }
 
   .divider {
@@ -646,31 +576,6 @@ export default {
       font-size: 26rpx;
       color: #666666;
       line-height: 1.6;
-    }
-  }
-
-  .spec-section {
-    margin-bottom: 24rpx;
-
-    .spec-options {
-      display: flex;
-      gap: 16rpx;
-      flex-wrap: wrap;
-
-      .spec-option {
-        padding: 12rpx 24rpx;
-        border: 2px solid #e0e0e0;
-        border-radius: 4rpx;
-        font-size: 26rpx;
-        color: #333333;
-        cursor: pointer;
-
-        &.active {
-          border-color: #000000;
-          background: #000000;
-          color: #ffffff;
-        }
-      }
     }
   }
 
@@ -709,32 +614,6 @@ export default {
     }
   }
 
-  .action-section {
-    display: flex;
-    gap: 40rpx;
-
-    .action-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8rpx;
-      cursor: pointer;
-
-      .action-icon {
-        font-size: 40rpx;
-        color: #999999;
-
-        &.active {
-          color: #000000;
-        }
-      }
-
-      .action-label {
-        font-size: 24rpx;
-        color: #666666;
-      }
-    }
-  }
 }
 
 /* 底部操作按钮 */

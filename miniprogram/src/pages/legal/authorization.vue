@@ -99,6 +99,8 @@
 </template>
 
 <script>
+import { api } from '../../services/api'
+
 export default {
   data() {
     return {
@@ -108,7 +110,6 @@ export default {
         marketing: true,
         transfer: true
       },
-      apiBaseUrl: 'https://yunjie.online/api',
       isLoading: false,
       isSaving: false
     }
@@ -136,26 +137,20 @@ export default {
           return
         }
 
-        const response = await uni.request({
-          url: `${this.apiBaseUrl}/user/authorizations`,
-          method: 'GET',
-          header: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const response = await api.get('/user/authorizations')
 
         console.log('授权设置响应:', response)
 
-        if (response && response.statusCode === 200 && response.data) {
+        if (response) {
           // Convert API response (0/1) to boolean for UI
           this.authorizations = {
-            registration: response.data.registration === 1,
-            analysis: response.data.analysis === 1,
-            marketing: response.data.marketing === 1,
-            transfer: response.data.transfer === 1
+            registration: response.registration === 1,
+            analysis: response.analysis === 1,
+            marketing: response.marketing === 1,
+            transfer: response.transfer === 1
           }
         } else {
-          console.warn('获取授权设置失败:', response?.statusCode)
+          console.warn('获取授权设置失败')
         }
       } catch (error) {
         console.error('加载授权设置出错:', error)
@@ -203,35 +198,22 @@ export default {
                 return
               }
 
-              const response = await uni.request({
-                url: `${this.apiBaseUrl}/users/deactivate`,
-                method: 'DELETE',
-                header: {
-                  'Authorization': `Bearer ${token}`
-                }
+              await api.delete('/users/deactivate')
+
+              uni.showToast({
+                title: '账户已删除',
+                icon: 'success',
+                duration: 1500
               })
 
-              if (response && response.statusCode === 200) {
-                uni.showToast({
-                  title: '账户已删除',
-                  icon: 'success',
-                  duration: 1500
+              // Clear local storage and navigate back after delay
+              setTimeout(() => {
+                uni.removeStorageSync('accessToken')
+                uni.removeStorageSync('userInfo')
+                uni.reLaunch({
+                  url: '/pages/auth/login'
                 })
-
-                // Clear local storage and navigate back after delay
-                setTimeout(() => {
-                  uni.removeStorageSync('accessToken')
-                  uni.removeStorageSync('userInfo')
-                  uni.reLaunch({
-                    url: '/pages/auth/login'
-                  })
-                }, 1500)
-              } else {
-                uni.showToast({
-                  title: '删除账户失败',
-                  icon: 'none'
-                })
-              }
+              }, 1500)
             } catch (error) {
               console.error('删除账户出错:', error)
               uni.showToast({
@@ -270,33 +252,19 @@ export default {
           transfer: this.authorizations.transfer ? 1 : 0
         }
 
-        const response = await uni.request({
-          url: `${this.apiBaseUrl}/user/authorizations`,
-          method: 'PUT',
-          data: payload,
-          header: {
-            'Authorization': `Bearer ${token}`
-          }
+        await api.put('/user/authorizations', payload)
+
+        console.log('保存授权设置成功')
+
+        uni.showToast({
+          title: '授权设置已保存',
+          icon: 'success',
+          duration: 1500
         })
 
-        console.log('保存授权设置响应:', response)
-
-        if (response && response.statusCode === 200) {
-          uni.showToast({
-            title: '授权设置已保存',
-            icon: 'success',
-            duration: 1500
-          })
-
-          setTimeout(() => {
-            uni.navigateBack()
-          }, 1500)
-        } else {
-          uni.showToast({
-            title: '保存失败，请重试',
-            icon: 'none'
-          })
-        }
+        setTimeout(() => {
+          uni.navigateBack()
+        }, 1500)
       } catch (error) {
         console.error('保存授权设置出错:', error)
         uni.showToast({

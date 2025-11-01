@@ -280,133 +280,17 @@ export default {
       // 货架集合名称（从 API 获取）
       shelfCollectionName: '精品服饰',
 
-      // 首页：陈列货架模块（两行 × 两列）
-      shelfProducts: [
-        {
-          en: 'Re-Nylon',
-          cn: '双肩背包',
-          price: '21,800',
-          image: '/static/images/product/120251017222229.jpg'
-        },
-        {
-          en: 'Re-Nylon',
-          cn: '双肩背包',
-          price: '21,800',
-          image: '/static/images/product/120251017222238.jpg'
-        },
-        {
-          en: 'Re-Nylon与牛皮革',
-          cn: '拼接双肩背包',
-          price: '28,700',
-          image: '/static/images/product/120251017222242.jpg'
-        },
-        {
-          en: 'Re-Nylon与牛皮革',
-          cn: '拼接双肩背包',
-          price: '28,700',
-          image: '/static/images/product/120251017222234.jpg'
-        }
-      ],
-      // 精品珠宝
-      jewelryProducts: [
-        {
-          name: '18K金钻石项链',
-          category: '项链',
-          price: '28,900',
-          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80'
-        },
-        {
-          name: '翡翠手镯',
-          category: '手镯',
-          price: '15,600',
-          image: 'https://images.unsplash.com/photo-1515562141207-6811bcb33eaf?w=400&q=80'
-        },
-        {
-          name: '珍珠戒指',
-          category: '戒指',
-          price: '12,800',
-          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80'
-        }
-      ],
-      // 商品资讯
-      newsItems: [
-        {
-          id: 'news-1',
-          title: '2024秋冬系列正式发布',
-          desc: '全新设计理念融合传统工艺，探索奢华与可持续的完美平衡',
-          image: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=600&q=80',
-          tag: '新品首发',
-          date: '2024-10-25',
-          readCount: '12.5K'
-        },
-        {
-          id: 'news-2',
-          title: '如何甄选高质量珠宝首饰',
-          desc: '专业珠宝顾问为您解析珍珠品质鉴定的秘诀',
-          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=600&q=80',
-          tag: '购物指南',
-          date: '2024-10-24',
-          readCount: '8.3K'
-        },
-        {
-          id: 'news-3',
-          title: '品牌工坊探访：制作精品背包的故事',
-          desc: '深入了解每一件产品背后的匠人精神与工艺创新',
-          image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&q=80',
-          tag: '',
-          date: '2024-10-23',
-          readCount: '6.8K'
-        }
-      ],
+      // 首页：陈列货架模块（从 API 动态加载）
+      shelfProducts: [],
 
-      // 推荐商品（3列）
-      recommendProducts: [
-        {
-          name: '【明星同款】Prada Explore 中号Re-...',
-          price: '26,800',
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80'
-        },
-        {
-          name: '【预售】Prada Explore中号Nappa...',
-          price: '28,500',
-          image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&q=80'
-        },
-        {
-          name: 'Re-Nylon双肩背包',
-          price: '21,800',
-          image: 'https://images.unsplash.com/photo-1556821552-5f06b5991ce0?w=400&q=80'
-        },
-        {
-          name: '【预售】皮革中筒靴',
-          price: '14,900',
-          image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400&q=80'
-        },
-        {
-          name: 'Prada Bonnie 迷你牛皮革手袋',
-          price: '19,600',
-          image: 'https://images.unsplash.com/photo-1548062407-f961713e6786?w=400&q=80'
-        },
-        {
-          name: 'Prada Re-Edition 1978小号Re-Nylon...',
-          price: '15,200',
-          image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=400&q=80'
-        },
-        {
-          name: 'Re-Nylon双肩背包',
-          price: '21,800',
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80'
-        },
-        {
-          name: '再生尼龙羽绒夹克',
-          price: '28,400',
-          image: 'https://images.unsplash.com/photo-1551028719-00167b16ebc5?w=400&q=80'
-        },
-        {
-          name: '亮面皮革乐福鞋',
-          price: '10,300',
-          image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&q=80'
-        }
-      ]
+      // 精品珠宝（从 API 动态加载）
+      jewelryProducts: [],
+
+      // 商品资讯（从 API 动态加载）
+      newsItems: [],
+
+      // 推荐商品（从 API 动态加载）
+      recommendProducts: []
     }
   },
   onLoad() {
@@ -479,7 +363,7 @@ export default {
               id: product.id,
               en: product.name,
               cn: product.subtitle || '\u00A0', // 如果没有副标题，使用不换行空格占位
-              price: product.currentPrice ? `${product.currentPrice}` : '¥0',
+              price: product.currentPrice ? (product.currentPrice / 100).toFixed(2) : '0.00',
               image: product.coverImageUrl || ''
             }))
 
@@ -487,6 +371,8 @@ export default {
           } else {
             console.warn('集合中没有产品')
           }
+        } else {
+          console.warn('未获取到货架商品数据')
         }
       } catch (error) {
         console.error('加载货架商品失败:', error)
@@ -507,7 +393,7 @@ export default {
             id: product.id,
             name: product.name,
             category: product.subtitle || '珠宝',
-            price: product.currentPrice ? `${product.currentPrice}` : '¥0',
+            price: product.currentPrice ? (product.currentPrice / 100).toFixed(2) : '0.00',
             image: product.coverImageUrl || ''
           }))
 
@@ -563,7 +449,7 @@ export default {
           this.recommendProducts = collection.products.map(product => ({
             id: product.id,
             name: product.name,
-            price: product.currentPrice ? `${product.currentPrice}` : '¥0',
+            price: product.currentPrice ? (product.currentPrice / 100).toFixed(2) : '0.00',
             image: product.coverImageUrl || ''
           }))
 
@@ -586,7 +472,10 @@ export default {
       })
     },
     onShelfProductTap(p) {
-      uni.showToast({ title: `${p.en} ${p.cn}`, icon: 'none' })
+      // 跳转到商品详情页，通过URL参数传递productId
+      uni.navigateTo({
+        url: `/pages/product/detail?id=${p.id}`
+      })
     },
     onExploreMoreShelves() {
       // 跳转到系列探索页
@@ -670,27 +559,15 @@ export default {
       }
     },
     onJewelryProductTap(product) {
-      // 保存珠宝商品信息用于详情页
-      try {
-        uni.setStorageSync('selectedProduct', product)
-      } catch (e) {
-        console.error('Failed to save product:', e)
-      }
-
+      // 跳转到商品详情页，通过URL参数传递productId
       uni.navigateTo({
-        url: '/pages/product/detail'
+        url: `/pages/product/detail?id=${product.id}`
       })
     },
     onProductTap(product) {
-      // 保存推荐商品信息用于详情页
-      try {
-        uni.setStorageSync('selectedProduct', product)
-      } catch (e) {
-        console.error('Failed to save product:', e)
-      }
-
+      // 跳转到商品详情页，通过URL参数传递productId
       uni.navigateTo({
-        url: '/pages/product/detail'
+        url: `/pages/product/detail?id=${product.id}`
       })
     },
 

@@ -11,6 +11,7 @@
         v-for="(address, index) in addresses"
         :key="index"
         class="address-item"
+        @tap="selectAddress(index)"
       >
         <!-- 地址卡片 -->
         <view class="address-card">
@@ -56,14 +57,13 @@
 </template>
 
 <script>
-import { authService } from '../../services/auth'
+import { api } from '../../services/api'
 
 export default {
   data() {
     return {
       addresses: [],
-      isLoading: true,
-      apiBaseUrl: 'https://yunjie.online/api'
+      isLoading: true
     }
   },
   onLoad() {
@@ -89,19 +89,13 @@ export default {
           return
         }
 
-        const response = await uni.request({
-          url: `${this.apiBaseUrl}/addresses`,
-          method: 'GET',
-          header: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const response = await api.get('/addresses')
 
         console.log('地址列表响应:', response)
 
-        if (response && response.statusCode === 200 && response.data) {
-          // 提取 addresses 数组（后端返回 { addresses, total, page, totalPages }）
-          let addressList = Array.isArray(response.data) ? response.data : response.data.addresses || []
+        if (response) {
+          // 提取 addresses 数组（后端返回 { addresses, total, page, totalPages } 或直接是数组）
+          let addressList = Array.isArray(response) ? response : response.addresses || []
 
           // 字段映射：后端返回 receiverName/receiverPhone，前端期望 name/phone
           this.addresses = addressList.map(addr => ({
@@ -110,7 +104,7 @@ export default {
             phone: addr.receiverPhone || addr.phone
           }))
         } else {
-          console.warn('获取地址列表失败:', response?.statusCode)
+          console.warn('获取地址列表失败')
           uni.showToast({
             title: '加载地址失败',
             icon: 'none'
@@ -147,6 +141,33 @@ export default {
       // onShow() 生命周期会在返回时自动刷新列表
     },
     /**
+     * 选择地址
+     */
+    selectAddress(index) {
+      const address = this.addresses[index]
+
+      // 通过 eventChannel 返回选中的地址
+      const eventChannel = this.getOpenerEventChannel?.()
+      if (eventChannel) {
+        eventChannel.emit('selectAddress', {
+          id: address.id,
+          name: address.name,
+          phone: address.phone,
+          province: address.province,
+          city: address.city,
+          district: address.district,
+          detail: address.detail,
+          receiverName: address.name,
+          receiverPhone: address.phone,
+          addressDetail: address.detail
+        })
+      }
+
+      // 返回到上一页面
+      uni.navigateBack()
+    },
+
+    /**
      * 删除地址
      */
     deleteAddress(index) {
@@ -157,28 +178,14 @@ export default {
         success: async (res) => {
           if (res.confirm) {
             try {
-              const token = uni.getStorageSync('accessToken')
-              const response = await uni.request({
-                url: `${this.apiBaseUrl}/addresses/${address.id}`,
-                method: 'DELETE',
-                header: {
-                  'Authorization': `Bearer ${token}`
-                }
+              await api.delete(`/addresses/${address.id}`)
+
+              this.addresses.splice(index, 1)
+
+              uni.showToast({
+                title: '地址已删除',
+                icon: 'success'
               })
-
-              if (response && response.statusCode === 200) {
-                this.addresses.splice(index, 1)
-
-                uni.showToast({
-                  title: '地址已删除',
-                  icon: 'success'
-                })
-              } else {
-                uni.showToast({
-                  title: '删除失败',
-                  icon: 'none'
-                })
-              }
             } catch (error) {
               console.error('删除地址出错:', error)
               uni.showToast({
@@ -223,11 +230,18 @@ export default {
   border-radius: 8rpx;
   overflow: hidden;
   border: 2px solid #f0f0f0;
+  transition: all 0.3s ease;
+
+  &:active {
+    background: #f9f9f9;
+    border-color: #e0e0e0;
+  }
 
   .address-card {
     display: flex;
     gap: 12rpx;
     padding: 16rpx;
+    cursor: pointer;
 
     .address-info {
       flex: 1;

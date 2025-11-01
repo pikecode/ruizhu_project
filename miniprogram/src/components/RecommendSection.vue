@@ -22,7 +22,7 @@
         </view>
         <view class="recommend-info">
           <text class="recommend-product-name">{{ item.name }}</text>
-          <text class="recommend-price">¥{{ item.price }}</text>
+          <text class="recommend-price">¥{{ (item.price / 100).toFixed(2) }}</text>
         </view>
       </view>
     </view>

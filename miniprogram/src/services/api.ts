@@ -66,11 +66,11 @@ export const request = async <T = any>(
         if (res.statusCode === 200 || res.statusCode === 201) {
           resolve(res.data as T)
         } else if (res.statusCode === 401) {
-          // Token 过期，需要刷新
+          // Token 过期，清除本地数据
           uni.removeStorageSync('accessToken')
           uni.removeStorageSync('refreshToken')
           uni.removeStorageSync('user')
-          uni.redirectTo({ url: '/pages/auth/login' })
+          // 抛出错误，让调用方决定如何处理（显示授权弹窗或重定向）
           reject(new Error('登录过期，请重新登录'))
         } else {
           reject(new Error(res.data?.message || '请求失败'))

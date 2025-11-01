@@ -7,6 +7,7 @@ export interface CollectionProduct {
   id: number
   name: string
   subtitle?: string
+  description?: string
   coverImageUrl?: string
   isNew: number
   isSaleOn: number

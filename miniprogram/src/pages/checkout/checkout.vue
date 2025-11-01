@@ -1,14 +1,5 @@
 <template>
   <view class="page">
-    <!-- 页面头部 -->
-    <view class="checkout-header">
-      <view class="header-back" @tap="goBack">
-        <text>‹</text>
-      </view>
-      <text class="header-title">确认订单</text>
-      <view class="header-spacer"></view>
-    </view>
-
     <!-- 收货地址 -->
     <view class="section address-section">
       <view class="section-title">收货地址</view>
@@ -38,46 +29,15 @@
           <view class="item-info">
             <text class="item-name">{{ item.name }}</text>
             <text class="item-specs">{{ item.color }} · 数量：{{ item.quantity }}</text>
-            <text class="item-price">¥{{ item.price }}</text>
+            <text class="item-price">¥{{ (item.price / 100).toFixed(2) }}</text>
           </view>
-          <text class="item-subtotal">¥{{ parseInt(item.price) * item.quantity }}</text>
+          <text class="item-subtotal">¥{{ ((item.price / 100) * item.quantity).toFixed(2) }}</text>
         </view>
-      </view>
-    </view>
-
-    <!-- 优惠券 -->
-    <view class="section coupon-section">
-      <view class="coupon-input-wrapper">
-        <view class="coupon-label">优惠券</view>
-        <input
-          v-model="couponCode"
-          type="text"
-          placeholder="输入优惠券代码"
-          class="coupon-input"
-        />
-        <view class="coupon-apply-btn" @tap="applyCoupon">
-          应用
-        </view>
-      </view>
-      <view v-if="appliedCoupon" class="coupon-status">
-        <text class="coupon-success">优惠券已应用：-¥{{ appliedCoupon.discount }}</text>
       </view>
     </view>
 
     <!-- 费用明细 -->
     <view class="section fee-summary-section">
-      <view class="fee-row">
-        <text class="fee-label">商品小计</text>
-        <text class="fee-value">¥{{ subtotal }}</text>
-      </view>
-      <view class="fee-row">
-        <text class="fee-label">运费</text>
-        <text class="fee-value">¥{{ expressPrice }}</text>
-      </view>
-      <view v-if="discountAmount > 0" class="fee-row discount">
-        <text class="fee-label">优惠</text>
-        <text class="fee-value">-¥{{ discountAmount }}</text>
-      </view>
       <view class="fee-row total">
         <text class="fee-label">应付金额</text>
         <text class="fee-value">¥{{ totalAmount }}</text>
@@ -102,21 +62,16 @@ export default {
   data() {
     return {
       cartItems: [],
-      selectedAddress: null,
-      couponCode: '',
-      appliedCoupon: null,
-      expressPrice: 10, // 默认运费
-      discountAmount: 0
+      selectedAddress: null
     }
   },
   computed: {
-    subtotal() {
-      return this.cartItems
-        .reduce((sum, item) => sum + parseInt(item.price) * item.quantity, 0)
-        .toString()
-    },
     totalAmount() {
-      return (parseInt(this.subtotal) + this.expressPrice - this.discountAmount).toString()
+      // 价格单位为分，需要转换为元
+      const totalInFen = this.cartItems.reduce((sum, item) => {
+        return sum + (item.price * item.quantity)
+      }, 0)
+      return (totalInFen / 100).toFixed(2)
     }
   },
   onLoad() {
@@ -124,9 +79,6 @@ export default {
     this.loadAddresses()
   },
   methods: {
-    goBack() {
-      uni.navigateBack()
-    },
     loadCartItems() {
       // 从购物车页面传递或从本地存储获取
       try {
@@ -152,49 +104,22 @@ export default {
     navigateToAddresses() {
       uni.navigateTo({
         url: '/pages/addresses/addresses',
-        events: {
-          selectedAddress: (data) => {
-            this.selectedAddress = data
-          }
-        },
         success: (res) => {
+          // 监听来自 addresses 页面的地址选择事件
           res.eventChannel.on('selectAddress', (data) => {
-            this.selectedAddress = data
+            console.log('选中的地址:', data)
+            this.selectedAddress = {
+              id: data.id,
+              name: data.name || data.receiverName,
+              phone: data.phone || data.receiverPhone,
+              province: data.province,
+              city: data.city,
+              district: data.district,
+              detail: data.detail || data.addressDetail
+            }
           })
         }
       })
-    },
-    applyCoupon() {
-      if (!this.couponCode.trim()) {
-        uni.showToast({
-          title: '请输入优惠券代码',
-          icon: 'none'
-        })
-        return
-      }
-
-      // 模拟优惠券验证
-      const validCoupons = {
-        'SAVE10': { code: 'SAVE10', discount: 10 },
-        'SAVE20': { code: 'SAVE20', discount: 20 },
-        'SAVE50': { code: 'SAVE50', discount: 50 }
-      }
-
-      if (validCoupons[this.couponCode]) {
-        this.appliedCoupon = validCoupons[this.couponCode]
-        this.discountAmount = this.appliedCoupon.discount
-        uni.showToast({
-          title: '优惠券应用成功',
-          icon: 'success'
-        })
-      } else {
-        uni.showToast({
-          title: '优惠券代码无效',
-          icon: 'none'
-        })
-        this.appliedCoupon = null
-        this.discountAmount = 0
-      }
     },
     confirmOrder() {
       if (!this.selectedAddress) {
@@ -221,11 +146,7 @@ export default {
         orderId,
         items: this.cartItems,
         address: this.selectedAddress,
-        subtotal: parseInt(this.subtotal),
-        expressPrice: this.expressPrice,
-        discount: this.discountAmount,
-        total: parseInt(this.totalAmount),
-        coupon: this.appliedCoupon?.code || '',
+        total: parseFloat(this.totalAmount),
         status: '待支付',
         createdAt: new Date().toISOString()
       }
@@ -255,38 +176,6 @@ export default {
 .page {
   background: #f9f9f9;
   padding-bottom: 120rpx;
-}
-
-/* 页面头部 */
-.checkout-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16rpx 24rpx;
-  background: #ffffff;
-  border-bottom: 1px solid #f0f0f0;
-
-  .header-back {
-    width: 48rpx;
-    height: 48rpx;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 40rpx;
-    color: #000000;
-  }
-
-  .header-title {
-    font-size: 32rpx;
-    font-weight: 600;
-    color: #000000;
-    flex: 1;
-    text-align: center;
-  }
-
-  .header-spacer {
-    width: 48rpx;
-  }
 }
 
 /* 分组样式 */
@@ -419,50 +308,6 @@ export default {
       color: #000000;
       min-width: 80rpx;
       text-align: right;
-    }
-  }
-}
-
-/* 优惠券 */
-.coupon-section {
-  .coupon-input-wrapper {
-    display: flex;
-    gap: 12rpx;
-    align-items: center;
-
-    .coupon-label {
-      font-size: 26rpx;
-      color: #333333;
-      min-width: 80rpx;
-    }
-
-    .coupon-input {
-      flex: 1;
-      padding: 12rpx 16rpx;
-      font-size: 26rpx;
-      border: 1px solid #d0d0d0;
-      border-radius: 4rpx;
-      background: #ffffff;
-    }
-
-    .coupon-apply-btn {
-      padding: 12rpx 24rpx;
-      background: #000000;
-      color: #ffffff;
-      border-radius: 4rpx;
-      font-size: 26rpx;
-      font-weight: 500;
-      white-space: nowrap;
-    }
-  }
-
-  .coupon-status {
-    margin-top: 12rpx;
-
-    .coupon-success {
-      display: block;
-      font-size: 24rpx;
-      color: #00b26a;
     }
   }
 }

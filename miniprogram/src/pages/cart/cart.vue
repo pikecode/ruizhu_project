@@ -26,7 +26,7 @@
               <text class="item-specs">尺码：{{ item.size }}</text>
 
               <view class="item-footer">
-                <text class="item-price">¥{{ item.price }}</text>
+                <text class="item-price">¥{{ (item.price / 100).toFixed(2) }}</text>
 
                 <view class="quantity-control">
                   <text class="qty-label">数量：</text>
@@ -117,6 +117,8 @@
 
 <script>
 import RecommendSection from '../../components/RecommendSection.vue'
+import { cartService } from '../../services/cart'
+import { collectionService } from '../../services/collection'
 
 export default {
   components: {
@@ -126,62 +128,9 @@ export default {
     return {
       expressPrice: 0,
       discount: 0,
-      cartItems: [
-        {
-          id: 1,
-          name: '【明星同款】Prada Explore 中号Re-Nylon单肩包',
-          color: '黑色',
-          size: '均码',
-          price: '17900',
-          image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&q=80',
-          quantity: 1,
-          selected: true
-        },
-        {
-          id: 4,
-          name: '中号羊皮革双肩背包',
-          color: '黑色',
-          size: '均码',
-          price: '35900',
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80',
-          quantity: 2,
-          selected: true
-        }
-      ],
-      recommendProducts: [
-        {
-          id: 1,
-          name: '【明星同款】Prada Explore 中号Re-Nylon单肩包',
-          price: '17,900',
-          image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&q=80',
-          imageCount: 2,
-          isFavorite: false
-        },
-        {
-          id: 2,
-          name: '【预售】Prada Explore中号Nappa牛皮革单肩包',
-          price: '26,400',
-          image: 'https://images.unsplash.com/photo-1596736342875-ff5348bf9908?w=400&q=80',
-          imageCount: 2,
-          isFavorite: false
-        },
-        {
-          id: 3,
-          name: 'Re-Nylon双肩背包',
-          price: '21,800',
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80',
-          imageCount: 2,
-          isFavorite: false
-        },
-        {
-          id: 4,
-          name: '【预售】皮革中筒靴',
-          price: '15,200',
-          image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400&q=80',
-          imageCount: 2,
-          isFavorite: false
-        }
-      ]
+      cartItems: [],
+      recommendProducts: [],
+      isLoading: false
     }
   },
   computed: {
@@ -191,35 +140,90 @@ export default {
     selectedTotal() {
       return this.cartItems
         .filter(item => item.selected)
-        .reduce((sum, item) => sum + parseInt(item.price) * item.quantity, 0)
-        .toString()
+        .reduce((sum, item) => {
+          // 价格以分为单位，需要转换为元并乘以数量
+          const price = typeof item.price === 'number' ? item.price : parseInt(item.price) || 0
+          const total = (price / 100) * item.quantity
+          return sum + total
+        }, 0)
+        .toFixed(2)
     },
     isSelectAll() {
       return this.cartItems.length > 0 && this.cartItems.every(item => item.selected)
     }
   },
-  onLoad() {
-    console.log('购物袋页面加载完成')
+  async onLoad() {
+    await this.loadCartData()
   },
-  onShow() {
-    // 合并待加入的商品（来自其他页面的“即刻购买”）
+  async onShow() {
+    // 检查是否有待合并的商品（来自其他页面的"即刻购买"）
     try {
-      const pending = uni.getStorageSync('pendingCartItems') || []
-      if (Array.isArray(pending) && pending.length) {
-        pending.forEach((p) => {
-          const idx = this.cartItems.findIndex((x) => x.id === p.id)
-          if (idx >= 0) {
-            this.cartItems[idx].quantity += p.quantity || 1
-          } else {
-            this.cartItems.push(p)
-          }
-        })
+      const pending = uni.getStorageSync('pendingCartItems')
+      if (pending && pending.length > 0) {
+        // 有待加入的商品，重新加载购物车
+        await this.loadCartData()
         uni.removeStorageSync('pendingCartItems')
-        this.$forceUpdate()
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to process pending items:', e)
+    }
   },
   methods: {
+    /**
+     * 加载购物车数据和推荐商品
+     * API现在返回包含产品信息的完整购物车数据
+     */
+    async loadCartData() {
+      this.isLoading = true
+      try {
+        // 并行加载购物车和推荐商品
+        const [cartData, collectionData] = await Promise.all([
+          cartService.getCart(),
+          collectionService.getCollectionBySlug('guess-you-like')
+        ])
+
+        // 处理购物车数据（API已包含name, image, price等信息）
+        if (cartData && Array.isArray(cartData)) {
+          this.cartItems = cartData.map(item => ({
+            ...item,
+            selected: item.selected || false // 保留或初始化选中状态
+          }))
+        }
+
+        // 处理推荐商品数据
+        if (collectionData && collectionData.products) {
+          this.recommendProducts = collectionData.products.map(product => ({
+            id: product.id,
+            name: product.name,
+            image: product.coverImageUrl,
+            price: product.currentPrice, // API返回的价格以分为单位
+            originalPrice: product.originalPrice,
+            discountRate: product.discountRate,
+            isNew: product.isNew,
+            isSaleOn: product.isSaleOn,
+            imageCount: 1, // RecommendSection组件需要此字段
+            isFavorite: false // 初始化收藏状态
+          }))
+        }
+      } catch (error) {
+        console.error('Failed to load cart data:', error)
+        uni.showToast({
+          title: '加载购物车失败',
+          icon: 'none'
+        })
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    /**
+     * 格式化价格显示（分转元）
+     */
+    formatPrice(priceInFen) {
+      const price = typeof priceInFen === 'number' ? priceInFen : parseInt(priceInFen) || 0
+      return (price / 100).toFixed(2)
+    },
+
     toggleItemSelect(index) {
       this.$set(this.cartItems[index], 'selected', !this.cartItems[index].selected)
     },
@@ -229,26 +233,68 @@ export default {
         this.$set(this.cartItems[index], 'selected', !allSelected)
       })
     },
-    increaseQuantity(index) {
-      this.$set(this.cartItems[index], 'quantity', this.cartItems[index].quantity + 1)
+    async increaseQuantity(index) {
+      const item = this.cartItems[index]
+      const newQuantity = item.quantity + 1
+
+      try {
+        const result = await cartService.updateCartItem(item.id, newQuantity)
+        if (result) {
+          this.$set(this.cartItems[index], 'quantity', newQuantity)
+        }
+      } catch (error) {
+        console.error('Failed to update quantity:', error)
+        uni.showToast({
+          title: '更新数量失败',
+          icon: 'none'
+        })
+      }
     },
-    decreaseQuantity(index) {
-      if (this.cartItems[index].quantity > 1) {
-        this.$set(this.cartItems[index], 'quantity', this.cartItems[index].quantity - 1)
+    async decreaseQuantity(index) {
+      const item = this.cartItems[index]
+      if (item.quantity <= 1) {
+        return
+      }
+
+      const newQuantity = item.quantity - 1
+
+      try {
+        const result = await cartService.updateCartItem(item.id, newQuantity)
+        if (result) {
+          this.$set(this.cartItems[index], 'quantity', newQuantity)
+        }
+      } catch (error) {
+        console.error('Failed to update quantity:', error)
+        uni.showToast({
+          title: '更新数量失败',
+          icon: 'none'
+        })
       }
     },
     removeItem(index) {
       uni.showModal({
         title: '确认删除',
         content: '是否确认删除此商品?',
-        success: (res) => {
+        success: async (res) => {
           if (res.confirm) {
-            this.cartItems.splice(index, 1)
-            uni.showToast({
-              title: '已移出购物袋',
-              icon: 'none',
-              duration: 1500
-            })
+            try {
+              const item = this.cartItems[index]
+              const success = await cartService.removeFromCart(item.id)
+              if (success) {
+                this.cartItems.splice(index, 1)
+                uni.showToast({
+                  title: '已移出购物袋',
+                  icon: 'none',
+                  duration: 1500
+                })
+              }
+            } catch (error) {
+              console.error('Failed to remove item:', error)
+              uni.showToast({
+                title: '删除失败',
+                icon: 'none'
+              })
+            }
           }
         }
       })
@@ -572,7 +618,7 @@ export default {
 
   .checkout-btn {
     flex-shrink: 0;
-    background: #d0d0d0;
+    background: #000000;
     color: #ffffff;
     padding: 16rpx 32rpx;
     border-radius: 8rpx;
@@ -584,7 +630,7 @@ export default {
     text-align: center;
 
     &:active {
-      background: #b0b0b0;
+      background: #333333;
       transform: scale(0.98);
     }
 

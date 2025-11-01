@@ -29,6 +29,15 @@ export interface NewsResponse {
 }
 
 /**
+ * 资讯详情响应
+ */
+export interface NewsDetailResponse {
+  code: number
+  message: string
+  data: NewsItem
+}
+
+/**
  * 资讯服务
  */
 export const newsService = {
@@ -45,6 +54,20 @@ export const newsService = {
     } catch (error) {
       console.error('Failed to fetch news list:', error)
       return []
+    }
+  },
+
+  /**
+   * 获取资讯详情
+   * API: GET /news/:id
+   */
+  getNewsDetail: async (id: number): Promise<NewsItem | null> => {
+    try {
+      const response = await api.get<NewsDetailResponse>(`/news/${id}`)
+      return response.data || null
+    } catch (error) {
+      console.error(`Failed to fetch news detail ${id}:`, error)
+      return null
     }
   }
 }

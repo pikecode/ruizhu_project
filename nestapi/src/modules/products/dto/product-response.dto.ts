@@ -116,8 +116,39 @@ export class ProductListResponseDto {
   pages: number;
 }
 
-import { IsOptional, IsString, IsNumber, IsBoolean, IsArray, ValidateNested, IsEnum, IsIn } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsBoolean, IsArray, ValidateNested, IsEnum, IsIn, Min, Max } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+
+/**
+ * 更新商品价格 DTO
+ */
+export class UpdateProductPriceDto {
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  originalPrice?: number; // 原价（分）
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  currentPrice?: number; // 现价（分）
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  discountRate?: number;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  vipDiscountRate?: number;
+}
 
 /**
  * 更新商品 DTO
@@ -247,17 +278,11 @@ export class UpdateProductDto {
   @IsNumber()
   freeShippingThreshold?: number;
 
-  // 价格信息（需要特殊处理）
+  // 价格信息（使用专门的 DTO 类进行验证和转换）
   @IsOptional()
   @ValidateNested()
-  @Type(() => Object)
-  price?: {
-    originalPrice?: number;
-    currentPrice?: number;
-    discountRate?: number;
-    currency?: string;
-    vipDiscountRate?: number;
-  };
+  @Type(() => UpdateProductPriceDto)
+  price?: UpdateProductPriceDto;
 
   // 图片URL（支持 url 或 coverImageUrl，与上传接口返回格式保持一致）
   @IsOptional()

@@ -25,21 +25,51 @@ export class CartController {
   /**
    * Add item to cart
    * POST /api/cart
+   *
+   * Response includes product details:
+   * - id: cart item ID
+   * - productId: product ID
+   * - name: product name (商品名称)
+   * - image: product cover image URL (商品图片)
+   * - price: product price in cents (商品价格，单位：分)
+   * - quantity: quantity added to cart (数量)
+   * - color: selected color (颜色)
+   * - size: selected size (尺码)
    */
   @Post()
   @ApiOperation({ summary: 'Add item to cart' })
   async addToCart(@Request() req, @Body() createDto: CreateCartItemDto) {
-    return await this.cartService.addToCart(req.user.id, createDto);
+    const data = await this.cartService.addToCart(req.user.id, createDto);
+    return {
+      code: 200,
+      message: '商品已添加到购物车',
+      data,
+    };
   }
 
   /**
-   * Get all items in user's cart
+   * Get all items in user's cart with product details
    * GET /api/cart
+   *
+   * Response includes:
+   * - id: cart item ID
+   * - productId: product ID
+   * - name: product name (商品名称)
+   * - image: product cover image URL (商品图片)
+   * - price: product price in cents (商品价格，单位：分)
+   * - quantity: quantity in cart (数量)
+   * - color: selected color (颜色)
+   * - size: selected size (尺码)
    */
   @Get()
-  @ApiOperation({ summary: 'Get all cart items' })
+  @ApiOperation({ summary: 'Get all cart items with product details' })
   async getCart(@Request() req) {
-    return await this.cartService.getCart(req.user.id);
+    const data = await this.cartService.getCart(req.user.id);
+    return {
+      code: 200,
+      message: '获取购物车成功',
+      data,
+    };
   }
 
   /**
@@ -68,6 +98,8 @@ export class CartController {
   /**
    * Update cart item quantity or attributes
    * PUT /api/cart/:itemId
+   *
+   * Response includes product details (name, image, price)
    */
   @Put(':itemId')
   @ApiOperation({ summary: 'Update cart item' })
@@ -76,7 +108,12 @@ export class CartController {
     @Param('itemId', ParseIntPipe) itemId: number,
     @Body() updateDto: UpdateCartItemDto,
   ) {
-    return await this.cartService.updateCartItem(req.user.id, itemId, updateDto);
+    const data = await this.cartService.updateCartItem(req.user.id, itemId, updateDto);
+    return {
+      code: 200,
+      message: '购物车项更新成功',
+      data,
+    };
   }
 
   /**

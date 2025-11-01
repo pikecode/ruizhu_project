@@ -122,6 +122,8 @@
 </template>
 
 <script>
+import { api } from '../../services/api'
+
 export default {
   data() {
     const years = []
@@ -152,7 +154,6 @@ export default {
       ],
 
       // API related
-      apiBaseUrl: 'https://yunjie.online/api',
       isLoading: false,
       isSaving: false
     }
@@ -177,18 +178,12 @@ export default {
           return
         }
 
-        const response = await uni.request({
-          url: `${this.apiBaseUrl}/memberships`,
-          method: 'GET',
-          header: {
-            'Authorization': `Bearer ${token}`
-          }
-        })
+        const response = await api.get('/memberships')
 
         console.log('获取会员信息响应:', response)
 
-        if (response && response.statusCode === 200 && response.data && response.data.hasProfile) {
-          const data = response.data
+        if (response && response.hasProfile) {
+          const data = response
           this.salutationIndex = this.salutations.indexOf(data.salutation) || 0
           this.lastName = data.lastName || ''
           this.firstName = data.firstName || ''
@@ -313,41 +308,20 @@ export default {
 
         console.log('保存会员信息，数据:', payload)
 
-        // Check if profile exists
-        const existingProfile = await uni.request({
-          url: `${this.apiBaseUrl}/memberships`,
-          method: 'GET',
-          header: {
-            'Authorization': `Bearer ${token}`
+        try {
+          // Check if profile exists
+          const existingProfile = await api.get('/memberships')
+
+          if (existingProfile && existingProfile.hasProfile) {
+            // Update existing profile
+            await api.put('/memberships', payload)
+            console.log('更新会员信息成功')
+          } else {
+            // Create new profile
+            await api.post('/memberships', payload)
+            console.log('创建会员信息成功')
           }
-        })
 
-        let response
-        if (existingProfile.data && existingProfile.data.hasProfile) {
-          // Update existing profile
-          response = await uni.request({
-            url: `${this.apiBaseUrl}/memberships`,
-            method: 'PUT',
-            data: payload,
-            header: {
-              'Authorization': `Bearer ${token}`
-            }
-          })
-          console.log('更新会员信息响应:', response)
-        } else {
-          // Create new profile
-          response = await uni.request({
-            url: `${this.apiBaseUrl}/memberships`,
-            method: 'POST',
-            data: payload,
-            header: {
-              'Authorization': `Bearer ${token}`
-            }
-          })
-          console.log('创建会员信息响应:', response)
-        }
-
-        if (response && response.statusCode === 200 || response.statusCode === 201) {
           uni.showToast({
             title: '会员信息已保存',
             icon: 'success',
@@ -357,7 +331,8 @@ export default {
           setTimeout(() => {
             uni.navigateBack({})
           }, 1500)
-        } else {
+        } catch (apiError) {
+          console.error('API 请求出错:', apiError)
           uni.showToast({
             title: '保存失败，请重试',
             icon: 'none'

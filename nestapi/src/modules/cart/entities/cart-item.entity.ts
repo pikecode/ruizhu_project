@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import { Product } from '../../../entities/product.entity';
 
 /**
  * CartItem Entity
@@ -35,4 +36,11 @@ export class CartItem {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  /**
+   * 关联的产品信息
+   */
+  @ManyToOne(() => Product, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'product_id' })
+  product: Product;
 }
