@@ -7,12 +7,12 @@ import {
   Param,
   Query,
   UseGuards,
-  BadRequestException
+  BadRequestException,
+  Request,
+  ParseIntPipe
 } from '@nestjs/common'
-import { JwtAuthGuard } from '../../guards/jwt-auth.guard'
-import { CurrentUser } from '../../decorators/current-user.decorator'
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard'
 import { WishlistsService } from './wishlists.service'
-import { User } from '../../entities/user.entity'
 
 @Controller('wishlists')
 @UseGuards(JwtAuthGuard)
@@ -24,16 +24,16 @@ export class WishlistsController {
    */
   @Get()
   async getWishlist(
-    @CurrentUser() user: User,
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 20
+    @Request() req,
+    @Query('page', ParseIntPipe) page: number = 1,
+    @Query('limit', ParseIntPipe) limit: number = 20
   ) {
     if (page < 1) page = 1
     if (limit < 1 || limit > 100) limit = 20
 
     const skip = (page - 1) * limit
 
-    return await this.wishlistsService.getWishlist(user.id, skip, limit)
+    return await this.wishlistsService.getWishlist(req.user.id, skip, limit)
   }
 
   /**
@@ -41,7 +41,7 @@ export class WishlistsController {
    */
   @Post('check')
   async checkWishlist(
-    @CurrentUser() user: User,
+    @Request() req,
     @Body('productIds') productIds: number[]
   ) {
     if (!Array.isArray(productIds) || productIds.length === 0) {
@@ -49,7 +49,7 @@ export class WishlistsController {
     }
 
     return await this.wishlistsService.checkMultipleWishlists(
-      user.id,
+      req.user.id,
       productIds
     )
   }
@@ -59,14 +59,14 @@ export class WishlistsController {
    */
   @Post()
   async addToWishlist(
-    @CurrentUser() user: User,
+    @Request() req,
     @Body('productId') productId: number
   ) {
     if (!productId) {
       throw new BadRequestException('productId is required')
     }
 
-    return await this.wishlistsService.addToWishlist(user.id, productId)
+    return await this.wishlistsService.addToWishlist(req.user.id, productId)
   }
 
   /**
@@ -74,14 +74,14 @@ export class WishlistsController {
    */
   @Delete(':productId')
   async removeFromWishlist(
-    @CurrentUser() user: User,
-    @Param('productId') productId: number
+    @Request() req,
+    @Param('productId', ParseIntPipe) productId: number
   ) {
     if (!productId) {
       throw new BadRequestException('productId is required')
     }
 
-    await this.wishlistsService.removeFromWishlist(user.id, productId)
+    await this.wishlistsService.removeFromWishlist(req.user.id, productId)
 
     return { message: 'Product removed from wishlist' }
   }
@@ -90,8 +90,8 @@ export class WishlistsController {
    * 清空心愿单
    */
   @Delete()
-  async clearWishlist(@CurrentUser() user: User) {
-    await this.wishlistsService.clearWishlist(user.id)
+  async clearWishlist(@Request() req) {
+    await this.wishlistsService.clearWishlist(req.user.id)
 
     return { message: 'Wishlist cleared' }
   }
