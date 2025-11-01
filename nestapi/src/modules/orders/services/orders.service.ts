@@ -411,4 +411,137 @@ export class OrdersService {
       totalPages: Math.ceil(total / limit),
     };
   }
+
+  /**
+   * Admin: Get all orders with pagination
+   */
+  async getAllOrders(
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    items: Order[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
+    const skip = (page - 1) * limit;
+
+    const [orders, total] = await this.orderRepository.findAndCount({
+      skip,
+      take: limit,
+      order: { createdAt: 'DESC' },
+    });
+
+    return {
+      items: orders,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Admin: Get orders by status
+   */
+  async getOrdersByStatusAdmin(
+    status: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    items: Order[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
+    const skip = (page - 1) * limit;
+    const validStatuses = [
+      'pending',
+      'paid',
+      'shipped',
+      'delivered',
+      'cancelled',
+      'refunded',
+    ];
+
+    if (!validStatuses.includes(status)) {
+      throw new BadRequestException('Invalid order status');
+    }
+
+    const [orders, total] = await this.orderRepository.findAndCount({
+      where: { status },
+      skip,
+      take: limit,
+      order: { createdAt: 'DESC' },
+    });
+
+    return {
+      items: orders,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Admin: Get order by ID (no user check)
+   */
+  async getOrderById(orderId: number): Promise<Order> {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    return order;
+  }
+
+  /**
+   * Admin: Update order (no user ownership check)
+   */
+  async updateOrderByAdmin(
+    orderId: number,
+    updateDto: UpdateOrderDto,
+  ): Promise<Order> {
+    const order = await this.getOrderById(orderId);
+
+    if (updateDto.status) {
+      const validStatuses = [
+        'pending',
+        'paid',
+        'shipped',
+        'delivered',
+        'cancelled',
+        'refunded',
+      ];
+      if (!validStatuses.includes(updateDto.status)) {
+        throw new BadRequestException('Invalid order status');
+      }
+
+      const canTransition = this.canTransitionStatus(
+        order.status,
+        updateDto.status,
+      );
+      if (!canTransition) {
+        throw new BadRequestException(
+          `Cannot transition from ${order.status} to ${updateDto.status}`,
+        );
+      }
+
+      order.status = updateDto.status;
+
+      if (updateDto.status === 'shipped') {
+        order.shippedAt = new Date();
+      } else if (updateDto.status === 'delivered') {
+        order.deliveredAt = new Date();
+      }
+    }
+
+    if (updateDto.remark !== undefined) {
+      order.notes = updateDto.remark;
+    }
+
+    return await this.orderRepository.save(order);
+  }
 }

@@ -11,6 +11,7 @@ import {
 import { Category } from '../../entities/category.entity';
 import { ProductsService } from './products.service';
 import { ProductsController } from './products.controller';
+import { AdminProductsController } from './admin-products.controller';
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { ProductsController } from './products.controller';
       Category,
     ]),
   ],
-  controllers: [ProductsController],
+  controllers: [ProductsController, AdminProductsController],
   providers: [ProductsService],
   exports: [ProductsService],
 })
