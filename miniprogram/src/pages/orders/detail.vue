@@ -64,7 +64,7 @@
             <text class="item-name">{{ item.name }}</text>
             <text class="item-specs">{{ item.color }} · 数量：{{ item.quantity }}</text>
           </view>
-          <text class="item-price">¥{{ parseInt(item.price) * item.quantity }}</text>
+          <text class="item-price">¥{{ ((item.price / 100) * item.quantity).toFixed(2) }}</text>
         </view>
       </view>
     </view>
@@ -73,19 +73,19 @@
     <view class="section fee-section">
       <view class="fee-row">
         <text class="fee-label">商品小计</text>
-        <text class="fee-value">¥{{ order.subtotal }}</text>
+        <text class="fee-value">¥{{ formatPrice(order.subtotal) }}</text>
       </view>
       <view class="fee-row">
         <text class="fee-label">运费</text>
-        <text class="fee-value">¥{{ order.expressPrice }}</text>
+        <text class="fee-value">¥{{ formatPrice(order.expressPrice) }}</text>
       </view>
       <view v-if="order.discount > 0" class="fee-row discount">
         <text class="fee-label">优惠</text>
-        <text class="fee-value">-¥{{ order.discount }}</text>
+        <text class="fee-value">-¥{{ formatPrice(order.discount) }}</text>
       </view>
       <view class="fee-row total">
         <text class="fee-label">应付金额</text>
-        <text class="fee-value">¥{{ order.total }}</text>
+        <text class="fee-value">¥{{ formatPrice(order.total) }}</text>
       </view>
     </view>
 
@@ -167,6 +167,19 @@ export default {
       } catch (e) {
         console.error('Failed to load order detail:', e)
       }
+    },
+    formatPrice(price) {
+      // 处理价格单位转换
+      // 如果 price 是数字且大于 100，认为是分，需要除以 100
+      // 否则认为已经是元
+      if (typeof price === 'number' && price > 100) {
+        return (price / 100).toFixed(2)
+      } else if (typeof price === 'number') {
+        return price.toFixed(2)
+      } else if (typeof price === 'string') {
+        return parseFloat(price).toFixed(2)
+      }
+      return '0.00'
     },
     formatTime(dateString) {
       const date = new Date(dateString)
