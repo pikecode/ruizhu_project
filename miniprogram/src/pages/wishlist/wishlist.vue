@@ -59,14 +59,26 @@ export default {
       wishlistProducts: [],
       isLoading: false,
       page: 1,
-      pageSize: 20
+      pageSize: 20,
+      userId: null
     }
   },
   onLoad() {
-    this.loadWishlistData()
+    console.log('心愿单页面 onLoad 执行')
+    // 延迟加载，确保组件完全初始化
+    setTimeout(() => {
+      this.loadWishlistData()
+    }, 100)
   },
   onShow() {
     // 页面显示时刷新数据
+    console.log('心愿单页面 onShow 执行')
+    if (this.wishlistProducts.length === 0 && !this.isLoading) {
+      this.loadWishlistData()
+    }
+  },
+  mounted() {
+    console.log('心愿单页面 mounted 执行')
     this.loadWishlistData()
   },
   methods: {
@@ -78,16 +90,25 @@ export default {
         this.isLoading = true
         const response = await wishlistService.getWishlist(this.page, this.pageSize)
 
+        console.log('获取心愿单 API 响应:', response)
+
         if (response && response.items && Array.isArray(response.items)) {
+          console.log('心愿单项数:', response.items.length)
           // 转换API返回的数据结构
-          this.wishlistProducts = response.items.map(item => ({
-            id: item.productId || item.product?.id,
-            name: item.product?.name || '',
-            image: item.product?.coverImageUrl || '',
-            price: item.product?.currentPrice || 0,
-            isFavorite: true
-          }))
+          this.wishlistProducts = response.items.map(item => {
+            const product = {
+              id: item.productId || item.product?.id,
+              name: item.product?.name || '',
+              image: item.product?.coverImageUrl || '',
+              price: item.product?.currentPrice || 0,
+              isFavorite: true
+            }
+            console.log('映射产品数据:', item, '->', product)
+            return product
+          })
+          console.log('最终 wishlistProducts:', this.wishlistProducts)
         } else {
+          console.log('API 返回为空或无效:', response)
           this.wishlistProducts = []
         }
       } catch (error) {

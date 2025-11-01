@@ -47,7 +47,7 @@ export interface WishlistResponse {
   items: WishlistItem[]
   total: number
   page: number
-  limit: number
+  totalPages?: number  // 后端返回的字段
 }
 
 /**
