@@ -1,33 +1,43 @@
 <template>
   <view class="wishlist-page">
-  
+    <!-- 空状态 -->
+    <view v-if="wishlistProducts.length === 0 && !isLoading" class="empty-state">
+      <view class="empty-illustration">
+        <text class="empty-icon">♡</text>
+      </view>
+      <text class="empty-title">还没有收藏商品</text>
+      <text class="empty-description">点击商品上的♡图标即可收藏喜欢的商品</text>
+      <view class="empty-action-btn" @tap="continueShopping">
+        <text>继续购物</text>
+      </view>
+    </view>
+
+    <!-- 加载中状态 -->
+    <view v-if="isLoading" class="loading-state">
+      <text>加载中...</text>
+    </view>
 
     <!-- 心愿单产品网格 -->
-    <view class="wishlist-section">
+    <view v-if="wishlistProducts.length > 0" class="wishlist-section">
       <view class="wishlist-grid">
         <view
           v-for="(item, index) in wishlistProducts"
-          :key="index"
+          :key="item.id"
           class="wishlist-card"
         >
           <!-- 产品图片和收藏按钮 -->
           <view class="product-image-wrapper">
             <image :src="item.image" class="product-image" mode="aspectFill"></image>
-            <text class="favorite-btn" @tap.stop="toggleFavorite(index)">♥</text>
+            <text class="favorite-btn" @tap.stop="removeFromWishlist(index)">♥</text>
             <view class="image-indicators">
-              <text
-                v-for="(dot, dotIndex) in item.imageCount"
-                :key="dotIndex"
-                class="indicator-dot"
-                :class="{ active: dotIndex === 0 }"
-              ></text>
+              <text class="indicator-dot active"></text>
             </view>
           </view>
 
           <!-- 产品信息 -->
           <view class="product-info">
             <text class="product-name">{{ item.name }}</text>
-            <text class="product-price">¥{{ item.price }}</text>
+            <text class="product-price">¥{{ (item.price / 100).toFixed(2) }}</text>
           </view>
 
           <!-- 查看详情按钮 -->
@@ -41,87 +51,120 @@
 </template>
 
 <script>
+import wishlistService from '../../services/wishlist'
+
 export default {
   data() {
     return {
-      wishlistProducts: [
-        {
-          id: 1,
-          name: '【粉星同款】Prada Explore 中号Re-Nylon单肩包',
-          price: '17,900',
-          image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&q=80',
-          imageCount: 2,
-          isFavorite: true
-        },
-        {
-          id: 2,
-          name: '【特售】Prada Explore中号Nappa牛皮革单肩包',
-          price: '26,400',
-          image: 'https://images.unsplash.com/photo-1596736342875-ff5348bf9908?w=400&q=80',
-          imageCount: 2,
-          isFavorite: true
-        },
-        {
-          id: 3,
-          name: 'Re-Nylon双肩背包',
-          price: '19,500',
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80',
-          imageCount: 2,
-          isFavorite: true
-        },
-        {
-          id: 4,
-          name: '【特售】皮靴中筒靴',
-          price: '8,900',
-          image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400&q=80',
-          imageCount: 2,
-          isFavorite: true
-        },
-        {
-          id: 5,
-          name: 'Prada Bonnie 迷你牛皮革手袋',
-          price: '12,500',
-          image: 'https://images.unsplash.com/photo-1548062407-f961713e6786?w=400&q=80',
-          imageCount: 2,
-          isFavorite: true
-        },
-        {
-          id: 6,
-          name: 'Prada Re-Edition 1978小号Re-Nylon手袋',
-          price: '14,800',
-          image: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=400&q=80',
-          imageCount: 2,
-          isFavorite: true
-        }
-      ]
+      wishlistProducts: [],
+      isLoading: false,
+      page: 1,
+      pageSize: 20
     }
   },
   onLoad() {
-    console.log('心愿单页面加载完成')
+    this.loadWishlistData()
+  },
+  onShow() {
+    // 页面显示时刷新数据
+    this.loadWishlistData()
   },
   methods: {
-    goBack() {
-      uni.navigateBack()
+    /**
+     * 加载心愿单数据
+     */
+    async loadWishlistData() {
+      try {
+        this.isLoading = true
+        const response = await wishlistService.getWishlist(this.page, this.pageSize)
+
+        if (response && response.items && Array.isArray(response.items)) {
+          // 转换API返回的数据结构
+          this.wishlistProducts = response.items.map(item => ({
+            id: item.productId || item.product?.id,
+            name: item.product?.name || '',
+            image: item.product?.coverImageUrl || '',
+            price: item.product?.currentPrice || 0,
+            isFavorite: true
+          }))
+        } else {
+          this.wishlistProducts = []
+        }
+      } catch (error) {
+        console.error('Failed to load wishlist:', error)
+        uni.showToast({
+          title: '加载心愿单失败',
+          icon: 'none',
+          duration: 2000
+        })
+      } finally {
+        this.isLoading = false
+      }
     },
-    toggleFavorite(index) {
-      this.wishlistProducts[index].isFavorite = !this.wishlistProducts[index].isFavorite
-      const status = this.wishlistProducts[index].isFavorite ? '已收藏' : '已移除'
-      uni.showToast({
-        title: status,
-        icon: 'none',
-        duration: 1000
-      })
+
+    /**
+     * 从心愿单中移除产品
+     */
+    async removeFromWishlist(index) {
+      if (index < 0 || index >= this.wishlistProducts.length) {
+        return
+      }
+
+      const item = this.wishlistProducts[index]
+
+      try {
+        // 先执行乐观更新
+        const removedItem = this.wishlistProducts.splice(index, 1)[0]
+
+        uni.showToast({
+          title: '已移除',
+          icon: 'none',
+          duration: 1000
+        })
+
+        // 调用API删除
+        await wishlistService.removeFromWishlist(item.id)
+      } catch (error) {
+        console.error('Failed to remove from wishlist:', error)
+
+        // 恢复数据
+        this.wishlistProducts.splice(index, 0, item)
+
+        uni.showToast({
+          title: '移除失败，请重试',
+          icon: 'none',
+          duration: 2000
+        })
+      }
     },
+
+    /**
+     * 查看产品详情
+     */
     onViewDetail(item) {
-      uni.showToast({
-        title: item.name,
-        icon: 'none',
-        duration: 1500
+      // 导航到产品详情页
+      uni.navigateTo({
+        url: `/pages/product/detail?id=${item.id}`,
+        fail: () => {
+          uni.showToast({
+            title: '页面不存在',
+            icon: 'none',
+            duration: 2000
+          })
+        }
       })
-      // 可以导航到产品详情页
-      // uni.navigateTo({
-      //   url: `/pages/product/detail?id=${item.id}`
-      // })
+    },
+
+    /**
+     * 继续购物 - 返回商城
+     */
+    continueShopping() {
+      uni.switchTab({
+        url: '/pages/index/index',
+        fail: () => {
+          uni.navigateBack()
+        }
+      })
     }
   }
 }
@@ -132,6 +175,82 @@ export default {
   min-height: 100vh;
   background: #ffffff;
   padding-bottom: 120rpx;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 40rpx;
+
+  .empty-illustration {
+    margin-bottom: 40rpx;
+
+    .empty-icon {
+      display: block;
+      font-size: 120rpx;
+      line-height: 1;
+      color: #cccccc;
+    }
+  }
+
+  .empty-title {
+    display: block;
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #333333;
+    margin-bottom: 16rpx;
+    text-align: center;
+  }
+
+  .empty-description {
+    display: block;
+    font-size: 26rpx;
+    color: #999999;
+    margin-bottom: 40rpx;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .empty-action-btn {
+    width: 300rpx;
+    padding: 16rpx 0;
+    background: #000000;
+    color: #ffffff;
+    border-radius: 6rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28rpx;
+    font-weight: 500;
+    transition: all 0.2s ease;
+
+    &:active {
+      background: #333333;
+      transform: scale(0.98);
+    }
+
+    text {
+      display: block;
+    }
+  }
+}
+
+/* 加载中状态 */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  padding: 40rpx;
+
+  text {
+    font-size: 28rpx;
+    color: #999999;
+  }
 }
 
 /* 顶部返回和标题 */
