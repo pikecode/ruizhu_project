@@ -48,10 +48,16 @@ export class WishlistsController {
       throw new BadRequestException('productIds must be a non-empty array')
     }
 
-    return await this.wishlistsService.checkMultipleWishlists(
+    const result = await this.wishlistsService.checkMultipleWishlists(
       req.user.id,
       productIds
     )
+
+    return {
+      code: 200,
+      message: 'Success',
+      data: result
+    }
   }
 
   /**

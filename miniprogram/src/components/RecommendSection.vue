@@ -50,6 +50,19 @@ export default {
       validator: (val) => [2, 3].includes(val)
     }
   },
+  watch: {
+    items: {
+      handler(newItems) {
+        console.log('🎯 [RecommendSection] items 数据更新:', newItems.map(item => ({
+          id: item.id,
+          name: item.name,
+          isFavorite: item.isFavorite
+        })))
+      },
+      deep: true,
+      immediate: true
+    }
+  },
   data() {
     return {
       loadingFavorite: {} // Track loading state for each product: { productId: true/false }

@@ -152,6 +152,7 @@ export const wishlistService = {
       )
 
       console.log('批量检查心愿单成功:', response)
+      // 后端现在返回标准格式: { code: 200, message: "Success", data: {13: true, ...} }
       return response.data || {}
     } catch (error) {
       console.error('Failed to check multiple wishlists:', error)
