@@ -32,6 +32,8 @@ import { UserAddress } from '../modules/addresses/entities/user-address.entity';
 import { CartItem } from '../modules/cart/entities/cart-item.entity';
 import { WechatPaymentEntity } from '../modules/wechat/entities/wechat-payment.entity';
 import { WechatNotificationEntity } from '../modules/wechat/entities/wechat-notification.entity';
+import { UserAuthorization } from '../modules/authorizations/entities/user-authorization.entity';
+import { Membership } from '../modules/memberships/entities/membership.entity';
 
 /**
  * 获取 TypeORM 数据库配置
@@ -110,6 +112,8 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
       Banner,
       WechatPaymentEntity,
       WechatNotificationEntity,
+      UserAuthorization,
+      Membership,
     ],
 
     // 禁用自动同步 - 使用 migration 或手动创建表

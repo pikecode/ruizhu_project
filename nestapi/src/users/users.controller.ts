@@ -5,7 +5,8 @@ import {
   Body,
   Param,
   Delete,
-  UseGuards
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { UsersService } from './users.service';
@@ -30,6 +31,17 @@ export class UsersController {
   @UseGuards(AuthGuard('jwt'))
   async findOne(@Param('id') id: string) {
     return this.usersService.findOne(+id);
+  }
+
+  /**
+   * Deactivate current user account
+   * DELETE /api/users/deactivate
+   */
+  @Delete('deactivate')
+  @UseGuards(AuthGuard('jwt'))
+  async deactivateAccount(@Request() req) {
+    await this.usersService.remove(req.user.id);
+    return { message: 'Account deactivated successfully' };
   }
 
   @Delete(':id')

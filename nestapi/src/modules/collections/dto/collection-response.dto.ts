@@ -22,7 +22,7 @@ export class CollectionProductItemDto {
 export class CollectionDetailResponseDto {
   id: number;
   name: string;
-  slug: string;
+  slug?: string | null;
   description?: string;
   coverImageUrl?: string | null;
   iconUrl?: string | null;
@@ -43,11 +43,13 @@ export class CollectionDetailResponseDto {
 export class CollectionListItemDto {
   id: number;
   name: string;
-  slug: string;
+  slug?: string | null;
   description?: string;
   coverImageUrl?: string | null;
   iconUrl?: string | null;
   sortOrder: number;
+  isActive?: boolean;
+  isFeatured?: boolean;
   productCount: number;
 
   // 集合内的前N个产品

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import {
   Upload,
   Button,
@@ -20,7 +20,10 @@ import {
   PictureOutlined,
   UploadOutlined,
   LinkOutlined,
+  SwapOutlined,
 } from '@ant-design/icons'
+import Lightbox from 'yet-another-react-lightbox'
+import 'yet-another-react-lightbox/styles.css'
 import type { RcFile } from 'antd/es/upload'
 import styles from './MediaUploader.module.scss'
 
@@ -42,6 +45,7 @@ interface MediaUploaderProps {
   multiple?: boolean
   maxSize?: number // MB
   onUploadToCloud?: (file: File) => Promise<string> // 上传到腾讯云COS的函数
+  compact?: boolean // 紧凑模式（用于编辑弹窗）
 }
 
 export default function MediaUploader({
@@ -51,9 +55,13 @@ export default function MediaUploader({
   multiple = false,
   maxSize = 500, // 默认500MB
   onUploadToCloud,
+  compact = false,
 }: MediaUploaderProps) {
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
+  const replaceFileInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
 
   // 验证文件类型和大小
   const validateFile = (file: RcFile): boolean => {
@@ -153,6 +161,63 @@ export default function MediaUploader({
     message.success('文件已删除')
   }
 
+  // 替换文件
+  const handleReplace = useCallback(
+    async (index: number, newFile: RcFile) => {
+      if (!validateFile(newFile)) return
+
+      setUploading(true)
+      const fileKey = newFile.uid || newFile.name + Date.now()
+
+      // 模拟上传进度
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => ({
+          ...prev,
+          [fileKey]: Math.min((prev[fileKey] || 0) + Math.random() * 30, 95),
+        }))
+      }, 500)
+
+      try {
+        // 上传到云端（如果提供了上传函数）
+        const url = onUploadToCloud
+          ? await onUploadToCloud(newFile)
+          : URL.createObjectURL(newFile)
+
+        clearInterval(progressInterval)
+        setUploadProgress((prev) => ({
+          ...prev,
+          [fileKey]: 100,
+        }))
+
+        const updated = [...value]
+        updated[index] = {
+          url,
+          type: 'image',
+          size: newFile.size,
+          name: newFile.name,
+          altText: value[index]?.altText || '',
+          sortOrder: index,
+        }
+        onChange?.(updated)
+
+        // 延迟后清除进度显示
+        setTimeout(() => {
+          setUploadProgress((prev) => {
+            const newProgress = { ...prev }
+            delete newProgress[fileKey]
+            return newProgress
+          })
+        }, 500)
+      } catch (error) {
+        clearInterval(progressInterval)
+        message.error(`替换失败: ${newFile.name}`)
+      } finally {
+        setUploading(false)
+      }
+    },
+    [value, onChange, onUploadToCloud]
+  )
+
   // 获取文件大小显示
   const getFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 B'
@@ -162,138 +227,126 @@ export default function MediaUploader({
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
   }
 
+  // 处理替换文件
+  const handleReplaceFileChange = useCallback(
+    async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = event.currentTarget.files
+      if (!files || files.length === 0) return
+
+      const file = files[0]
+      const rcFile = file as unknown as RcFile
+
+      if (validateFile(rcFile)) {
+        await handleReplace(index, rcFile)
+      }
+
+      // 重置文件输入
+      event.currentTarget.value = ''
+    },
+    [validateFile, handleReplace]
+  )
+
   return (
-    <div className={styles.mediaUploader}>
-      <div className={styles.uploadZone}>
-        <Upload.Dragger
-          name="files"
-          multiple={multiple}
-          beforeUpload={(file) => {
-            if (validateFile(file)) {
-              handleUpload([file])
-            }
-            return false
-          }}
-          disabled={uploading || value.length >= maxCount}
-          accept="image/*"
-        >
-          <p className={styles.dragIcon}>
-            <UploadOutlined style={{ fontSize: '32px', color: '#1890ff' }} />
-          </p>
-          <p className={styles.dragText}>拖拽文件到此处，或点击选择</p>
-          <p className={styles.dragHint}>
-            支持图片，单个文件不超过 {maxSize}MB
-          </p>
-        </Upload.Dragger>
-      </div>
+    <div className={`${styles.mediaUploader} ${compact ? styles.compact : ''}`}>
+      {value.length === 0 ? (
+        // 未上传状态 - 显示拖拽上传区域
+        <div className={styles.uploadZone}>
+          <Upload.Dragger
+            name="files"
+            multiple={multiple}
+            beforeUpload={(file) => {
+              if (validateFile(file)) {
+                handleUpload([file])
+              }
+              return false
+            }}
+            disabled={uploading}
+            accept="image/*"
+          >
+            <p className={styles.dragIcon}>
+              <UploadOutlined style={{ fontSize: '48px', color: '#1890ff' }} />
+            </p>
+            <p className={styles.dragText}>拖拽图片到此处，或点击选择</p>
+            <p className={styles.dragHint}>
+              支持 JPG、PNG 等图片格式，单个文件不超过 {maxSize}MB
+            </p>
+          </Upload.Dragger>
+        </div>
+      ) : (
+        // 已上传状态 - 显示图片卡片
+        <Spin spinning={uploading}>
+          <div className={styles.uploadedContainer}>
+            {value.map((file, index) => (
+              <div className={styles.mediaCard} key={index}>
+                {/* 图片预览容器 */}
+                <div className={styles.mediaPreviewWrapper}>
+                  {/* 删除按钮 - 右上角 */}
+                  <Popconfirm
+                    title="删除图片"
+                    description="确定要删除此图片吗？"
+                    onConfirm={() => handleRemove(index)}
+                    okText="删除"
+                    cancelText="取消"
+                  >
+                    <button className={styles.deleteButton}>
+                      <DeleteOutlined />
+                    </button>
+                  </Popconfirm>
 
-      {/* 上传中的文件 */}
-      {Object.keys(uploadProgress).length > 0 && (
-        <Card
-          title="上传中"
-          size="small"
-          style={{ marginTop: 16 }}
-          className={styles.uploadingCard}
-        >
-          {Object.entries(uploadProgress).map(([key, progress]) => (
-            <div key={key} style={{ marginBottom: 12 }}>
-              <Progress percent={Math.round(progress)} size="small" />
-            </div>
-          ))}
-        </Card>
-      )}
+                  {/* 替换按钮 - 右上角 */}
+                  <label
+                    className={styles.replaceButton}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <SwapOutlined />
+                    <input
+                      ref={(el) => {
+                        replaceFileInputRefs.current[index] = el
+                      }}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleReplaceFileChange(index, e)}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
 
-      {/* 已上传文件列表 */}
-      {value.length > 0 && (
-        <Card
-          title={`已上传媒体 (${value.length}/${maxCount})`}
-          size="small"
-          style={{ marginTop: 16 }}
-        >
-          <Spin spinning={uploading}>
-            {value.length === 0 ? (
-              <Empty description="暂无文件" />
-            ) : (
-              <Row gutter={[16, 16]}>
-                {value.map((file, index) => (
-                  <Col xs={24} sm={12} md={8} lg={6} key={index}>
-                    <div className={styles.mediaCard}>
-                      {/* 图片预览 */}
-                      <div className={styles.mediaPreview}>
-                        <Image
-                          src={file.url}
-                          preview={{
-                            mask: '预览',
-                          }}
-                          style={{
-                            width: '100%',
-                            height: '120px',
-                            objectFit: 'cover',
-                          }}
-                        />
-                      </div>
+                  {/* 点击图片预览 */}
+                  <div
+                    className={styles.mediaPreview}
+                    onClick={() => {
+                      setLightboxIndex(index)
+                      setLightboxOpen(true)
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <img
+                      src={file.url}
+                      alt={file.name}
+                    />
+                  </div>
 
-                      {/* 文件信息 */}
-                      <div className={styles.mediaInfo} style={{ padding: '8px' }}>
-                        <div style={{ marginBottom: '4px' }}>
-                          <Tag color="blue">
-                            <PictureOutlined />
-                            图片
-                          </Tag>
-                        </div>
-                        <Tooltip title={file.name}>
-                          <p
-                            style={{
-                              fontSize: '12px',
-                              margin: '4px 0',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            {file.name}
-                          </p>
-                        </Tooltip>
-                        <p style={{ fontSize: '12px', color: '#999', margin: '4px 0' }}>
-                          {getFileSize(file.size)}
-                        </p>
+                  {/* Hover 时显示的查看遮罩 */}
+                  <div className={styles.mediaOverlay} />
+                </div>
 
-                        {/* 操作按钮 */}
-                        <Space size="small" style={{ marginTop: '8px' }}>
-                          <Tooltip title="复制链接">
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<LinkOutlined />}
-                              onClick={() => {
-                                navigator.clipboard.writeText(file.url)
-                                message.success('链接已复制')
-                              }}
-                            />
-                          </Tooltip>
-                          <Popconfirm
-                            title="删除文件"
-                            description="确定要删除此文件吗？"
-                            onConfirm={() => handleRemove(index)}
-                            okText="删除"
-                            cancelText="取消"
-                          >
-                            <Button
-                              type="text"
-                              danger
-                              size="small"
-                              icon={<DeleteOutlined />}
-                            />
-                          </Popconfirm>
-                        </Space>
-                      </div>
-                    </div>
-                  </Col>
-                ))}
-              </Row>
-            )}
-          </Spin>
-        </Card>
+              </div>
+            ))}
+          </div>
+
+          {/* Lightbox 全屏预览 */}
+          <Lightbox
+            open={lightboxOpen}
+            close={() => setLightboxOpen(false)}
+            slides={value.map((file) => ({
+              src: file.url,
+              alt: file.name,
+            }))}
+            index={lightboxIndex}
+            on={{
+              view: ({ index }) => setLightboxIndex(index),
+            }}
+          />
+        </Spin>
       )}
     </div>
   )

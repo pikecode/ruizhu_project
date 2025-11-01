@@ -26,19 +26,10 @@
         </view>
       </view>
 
-      <!-- 手机号 + 授权 -->
-      <view class="form-row two-cols">
+      <!-- 手机号 -->
+      <view class="form-row">
         <view class="form-col">
-          <input class="input" type="number" placeholder="11位手机号" v-model="mobile" maxlength="11" />
-        </view>
-        <view class="form-col link-col">
-          <!-- 小程序端授权按钮 -->
-          <!-- #ifdef MP-WEIXIN -->
-          <button class="link-btn" open-type="getPhoneNumber" @getphonenumber="onGetPhoneNumber">微信授权手机号</button>
-          <!-- #endif -->
-          <!-- #ifndef MP-WEIXIN -->
-          <text class="link-btn" @tap="mockAuthorizePhone">微信授权手机号</text>
-          <!-- #endif -->
+          <input class="input" type="number" placeholder="请输入11位手机号" v-model="mobile" maxlength="11" />
         </view>
       </view>
 
@@ -158,13 +149,77 @@ export default {
       optionalConsents: [
         { label: '分析', value: false },
         { label: '营销', value: false }
-      ]
+      ],
+
+      // API related
+      apiBaseUrl: 'https://yunjie.online/api',
+      isLoading: false,
+      isSaving: false
     }
   },
   onLoad() {
-    console.log('会员入会页加载')
+    this.loadMembershipProfile()
+  },
+  onShow() {
+    // Reload on page display to ensure latest data
+    this.loadMembershipProfile()
   },
   methods: {
+    /**
+     * Load existing membership profile if user is editing
+     */
+    async loadMembershipProfile() {
+      this.isLoading = true
+      try {
+        const token = uni.getStorageSync('accessToken')
+        if (!token) {
+          this.isLoading = false
+          return
+        }
+
+        const response = await uni.request({
+          url: `${this.apiBaseUrl}/memberships`,
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        console.log('获取会员信息响应:', response)
+
+        if (response && response.statusCode === 200 && response.data && response.data.hasProfile) {
+          const data = response.data
+          this.salutationIndex = this.salutations.indexOf(data.salutation) || 0
+          this.lastName = data.lastName || ''
+          this.firstName = data.firstName || ''
+          this.mobile = data.mobile || ''
+
+          // Parse birth date if exists
+          if (data.birthDate) {
+            const [year, month, day] = data.birthDate.split('-')
+            this.yearIndex = this.years.indexOf(year) || 0
+            this.monthIndex = this.months.indexOf(month) || 0
+            this.dayIndex = this.days.indexOf(day) || 0
+          }
+
+          // Set region
+          if (data.province || data.city || data.district) {
+            this.region = [data.province || '', data.city || '', data.district || '']
+          }
+
+          // Set consent flags
+          this.requiredConsent = data.requiredConsent === 1
+          this.marketingConsent = data.marketingConsent === 1
+          this.optionalConsents[0].value = data.analysisConsent === 1
+          this.optionalConsents[1].value = data.marketingOptionalConsent === 1
+        }
+      } catch (error) {
+        console.error('加载会员信息出错:', error)
+      } finally {
+        this.isLoading = false
+      }
+    },
+
     onSalutationChange(e) {
       this.salutationIndex = e.detail.value
     },
@@ -178,40 +233,145 @@ export default {
       this.$forceUpdate?.()
     },
     openPolicy() {
-      uni.showToast({ title: '打开隐私政策', icon: 'none' })
+      uni.navigateTo({
+        url: '/pages/legal/legal'
+      })
     },
-    onGetPhoneNumber(e) {
-      // 微信端获取手机号的占位逻辑
-      if (e?.detail?.code) {
-        // 真实场景：将 code 发到服务端解密手机号
-        this.mobile = '***授权手机号***'
-        uni.showToast({ title: '已授权手机号', icon: 'none' })
-      } else {
-        uni.showToast({ title: '授权失败', icon: 'none' })
-      }
-    },
-    mockAuthorizePhone() {
-      // 非微信端演示
-      this.mobile = '18600000000'
-      uni.showToast({ title: '已填充演示手机号', icon: 'none' })
-    },
-    onSave() {
+
+    /**
+     * Validate form data
+     */
+    validateForm() {
       if (!this.requiredConsent) {
         uni.showToast({ title: '请先同意隐私政策', icon: 'none' })
-        return
+        return false
       }
       if (!this.lastName || !this.firstName) {
         uni.showToast({ title: '请填写姓名', icon: 'none' })
-        return
+        return false
       }
       if (!this.mobile) {
         uni.showToast({ title: '请填写/授权手机号', icon: 'none' })
-        return
+        return false
       }
-      uni.showToast({ title: '已保存', icon: 'none' })
-      setTimeout(() => {
-        uni.navigateBack({})
-      }, 800)
+
+      // Validate phone number format
+      if (!/^1[3-9]\d{9}$/.test(this.mobile)) {
+        uni.showToast({ title: '请输入有效的手机号', icon: 'none' })
+        return false
+      }
+
+      return true
+    },
+
+    /**
+     * Build birth date string
+     */
+    getBirthDate() {
+      if (this.yearIndex === 0 || this.monthIndex === 0 || this.dayIndex === 0) {
+        return null
+      }
+      const year = this.years[this.yearIndex]
+      const month = String(this.monthIndex).padStart(2, '0')
+      const day = String(this.dayIndex).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    },
+
+    /**
+     * Save membership profile
+     */
+    async onSave() {
+      if (!this.validateForm()) return
+      if (this.isSaving) return
+
+      this.isSaving = true
+      try {
+        const token = uni.getStorageSync('accessToken')
+        if (!token) {
+          uni.showToast({
+            title: '请先登录',
+            icon: 'none'
+          })
+          this.isSaving = false
+          return
+        }
+
+        const payload = {
+          salutation: this.salutations[this.salutationIndex],
+          lastName: this.lastName,
+          firstName: this.firstName,
+          mobile: this.mobile,
+          birthDate: this.getBirthDate(),
+          province: this.region[0] || null,
+          city: this.region[1] || null,
+          district: this.region[2] || null,
+          requiredConsent: this.requiredConsent ? 1 : 0,
+          marketingConsent: this.marketingConsent ? 1 : 0,
+          analysisConsent: this.optionalConsents[0].value ? 1 : 0,
+          marketingOptionalConsent: this.optionalConsents[1].value ? 1 : 0
+        }
+
+        console.log('保存会员信息，数据:', payload)
+
+        // Check if profile exists
+        const existingProfile = await uni.request({
+          url: `${this.apiBaseUrl}/memberships`,
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        let response
+        if (existingProfile.data && existingProfile.data.hasProfile) {
+          // Update existing profile
+          response = await uni.request({
+            url: `${this.apiBaseUrl}/memberships`,
+            method: 'PUT',
+            data: payload,
+            header: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          console.log('更新会员信息响应:', response)
+        } else {
+          // Create new profile
+          response = await uni.request({
+            url: `${this.apiBaseUrl}/memberships`,
+            method: 'POST',
+            data: payload,
+            header: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          console.log('创建会员信息响应:', response)
+        }
+
+        if (response && response.statusCode === 200 || response.statusCode === 201) {
+          uni.showToast({
+            title: '会员信息已保存',
+            icon: 'success',
+            duration: 1500
+          })
+
+          setTimeout(() => {
+            uni.navigateBack({})
+          }, 1500)
+        } else {
+          uni.showToast({
+            title: '保存失败，请重试',
+            icon: 'none'
+          })
+        }
+      } catch (error) {
+        console.error('保存会员信息出错:', error)
+        uni.showToast({
+          title: '保存出错，请检查网络',
+          icon: 'none'
+        })
+      } finally {
+        this.isSaving = false
+      }
     }
   }
 }

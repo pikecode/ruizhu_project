@@ -1,4 +1,5 @@
 import { IsString, IsOptional, IsBoolean, IsNumber, Length } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 /**
  * 更新集合 DTO
@@ -38,10 +39,24 @@ export class UpdateCollectionDto {
 
   @IsOptional()
   @IsBoolean()
+  @Transform(({ value }) => {
+    // 将 0/1 或 '0'/'1' 转换为 false/true
+    if (typeof value === 'string') {
+      return value === 'true' || value === '1';
+    }
+    return Boolean(value);
+  })
   isActive?: boolean; // 是否激活
 
   @IsOptional()
   @IsBoolean()
+  @Transform(({ value }) => {
+    // 将 0/1 或 '0'/'1' 转换为 false/true
+    if (typeof value === 'string') {
+      return value === 'true' || value === '1';
+    }
+    return Boolean(value);
+  })
   isFeatured?: boolean; // 是否在首页展示
 
   @IsOptional()

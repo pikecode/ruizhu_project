@@ -1,28 +1,24 @@
 <template>
   <view class="page">
+    <!-- 加载状态 -->
+    <view v-if="isLoading" class="loading-state">
+      <text>加载中...</text>
+    </view>
+
     <!-- 地址列表 -->
-    <view v-if="addresses.length > 0" class="addresses-list">
+    <view v-else-if="addresses.length > 0" class="addresses-list">
       <view
         v-for="(address, index) in addresses"
         :key="index"
         class="address-item"
-        :class="{ selected: selectedAddressIndex === index }"
       >
         <!-- 地址卡片 -->
-        <view class="address-card" @tap="selectAddress(index)">
-          <!-- 左侧选择框 -->
-          <view class="address-checkbox">
-            <view class="checkbox" :class="{ checked: selectedAddressIndex === index }">
-              <text v-if="selectedAddressIndex === index">✓</text>
-            </view>
-          </view>
-
+        <view class="address-card">
           <!-- 中间地址信息 -->
           <view class="address-info">
             <view class="address-header">
               <text class="address-name">{{ address.name }}</text>
               <text class="address-phone">{{ address.phone }}</text>
-              <view v-if="address.isDefault" class="default-badge">默认</view>
             </view>
             <text class="address-detail">
               {{ address.province }} {{ address.city }} {{ address.district }}
@@ -55,136 +51,141 @@
       <view class="add-address-btn" @tap="addAddress">
         <text>+ 添加新地址</text>
       </view>
-      <view v-if="addresses.length > 0" class="confirm-btn" @tap="confirmSelection">
-        <text>确认选择</text>
-      </view>
     </view>
   </view>
 </template>
 
 <script>
+import { authService } from '../../services/auth'
+
 export default {
   data() {
     return {
       addresses: [],
-      selectedAddressIndex: 0
+      isLoading: true,
+      apiBaseUrl: 'https://yunjie.online/api'
     }
   },
   onLoad() {
     this.loadAddresses()
   },
+  onShow() {
+    // 每次页面显示时重新加载地址列表，确保显示最新数据
+    this.loadAddresses()
+  },
   methods: {
-    loadAddresses() {
+    /**
+     * 从服务器加载地址列表
+     */
+    async loadAddresses() {
+      this.isLoading = true
       try {
-        const addresses = uni.getStorageSync('userAddresses') || []
-        if (addresses.length === 0) {
-          // 模拟初始地址数据
-          this.addresses = [
-            {
-              id: 1,
-              name: '张三',
-              phone: '18912345678',
-              province: '广东省',
-              city: '深圳市',
-              district: '福田区',
-              detail: '中心广场写字楼A座2501室',
-              isDefault: true
-            },
-            {
-              id: 2,
-              name: '李四',
-              phone: '13800138000',
-              province: '上海市',
-              city: '浦东新区',
-              district: '陆家嘴',
-              detail: '世纪大道1号',
-              isDefault: false
-            }
-          ]
-          this.saveAddresses()
-        } else {
-          this.addresses = addresses
+        const token = uni.getStorageSync('accessToken')
+        if (!token) {
+          uni.showToast({
+            title: '请先登录',
+            icon: 'none'
+          })
+          return
         }
-      } catch (e) {
-        console.error('Failed to load addresses:', e)
-      }
-    },
-    saveAddresses() {
-      try {
-        uni.setStorageSync('userAddresses', this.addresses)
-      } catch (e) {
-        console.error('Failed to save addresses:', e)
-      }
-    },
-    selectAddress(index) {
-      this.selectedAddressIndex = index
-    },
-    confirmSelection() {
-      const selectedAddress = this.addresses[this.selectedAddressIndex]
 
-      // 保存到存储
-      try {
-        uni.setStorageSync('selectedAddress', selectedAddress)
-      } catch (e) {
-        console.error('Failed to save selected address:', e)
-      }
-
-      // 通过事件通知上层页面（如果存在）
-      try {
-        if (this.$wx && typeof this.$wx.getOpenerEventChannel === 'function') {
-          const eventChannel = this.$wx.getOpenerEventChannel()
-          if (eventChannel) {
-            eventChannel.emit('selectAddress', selectedAddress)
+        const response = await uni.request({
+          url: `${this.apiBaseUrl}/addresses`,
+          method: 'GET',
+          header: {
+            'Authorization': `Bearer ${token}`
           }
-        }
-      } catch (e) {
-        console.error('Failed to emit event:', e)
-      }
+        })
 
-      // 返回上一页
-      uni.navigateBack()
+        console.log('地址列表响应:', response)
+
+        if (response && response.statusCode === 200 && response.data) {
+          // 提取 addresses 数组（后端返回 { addresses, total, page, totalPages }）
+          let addressList = Array.isArray(response.data) ? response.data : response.data.addresses || []
+
+          // 字段映射：后端返回 receiverName/receiverPhone，前端期望 name/phone
+          this.addresses = addressList.map(addr => ({
+            ...addr,
+            name: addr.receiverName || addr.name,
+            phone: addr.receiverPhone || addr.phone
+          }))
+        } else {
+          console.warn('获取地址列表失败:', response?.statusCode)
+          uni.showToast({
+            title: '加载地址失败',
+            icon: 'none'
+          })
+        }
+      } catch (error) {
+        console.error('加载地址出错:', error)
+        uni.showToast({
+          title: '网络错误',
+          icon: 'none'
+        })
+      } finally {
+        this.isLoading = false
+      }
     },
+    /**
+     * 添加新地址
+     */
     addAddress() {
       uni.navigateTo({
-        url: '/pages/addresses/add-edit?mode=add',
-        events: {
-          addressAdded: (data) => {
-            this.addresses.push(data)
-            this.saveAddresses()
-          }
-        }
+        url: '/pages/addresses/add-edit?mode=add'
       })
+      // onShow() 生命周期会在返回时自动刷新列表
     },
+
+    /**
+     * 编辑地址
+     */
     editAddress(index) {
       const address = this.addresses[index]
       uni.navigateTo({
-        url: `/pages/addresses/add-edit?mode=edit&id=${address.id}`,
-        events: {
-          addressUpdated: (data) => {
-            this.$set(this.addresses, index, data)
-            this.saveAddresses()
-          }
-        }
+        url: `/pages/addresses/add-edit?mode=edit&id=${address.id}`
       })
+      // onShow() 生命周期会在返回时自动刷新列表
     },
+    /**
+     * 删除地址
+     */
     deleteAddress(index) {
+      const address = this.addresses[index]
       uni.showModal({
         title: '删除地址',
         content: '确定要删除此地址吗？',
-        success: (res) => {
+        success: async (res) => {
           if (res.confirm) {
-            this.addresses.splice(index, 1)
-            this.saveAddresses()
+            try {
+              const token = uni.getStorageSync('accessToken')
+              const response = await uni.request({
+                url: `${this.apiBaseUrl}/addresses/${address.id}`,
+                method: 'DELETE',
+                header: {
+                  'Authorization': `Bearer ${token}`
+                }
+              })
 
-            // 如果删除的是当前选中的地址，选择第一个
-            if (this.selectedAddressIndex >= this.addresses.length) {
-              this.selectedAddressIndex = 0
+              if (response && response.statusCode === 200) {
+                this.addresses.splice(index, 1)
+
+                uni.showToast({
+                  title: '地址已删除',
+                  icon: 'success'
+                })
+              } else {
+                uni.showToast({
+                  title: '删除失败',
+                  icon: 'none'
+                })
+              }
+            } catch (error) {
+              console.error('删除地址出错:', error)
+              uni.showToast({
+                title: '删除失败',
+                icon: 'none'
+              })
             }
-
-            uni.showToast({
-              title: '地址已删除',
-              icon: 'success'
-            })
           }
         }
       })
@@ -197,6 +198,16 @@ export default {
 .page {
   background: #f9f9f9;
   padding-bottom: 200rpx;
+}
+
+/* 加载状态 */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 400rpx;
+  font-size: 28rpx;
+  color: #999999;
 }
 
 /* 地址列表 */
@@ -213,48 +224,10 @@ export default {
   overflow: hidden;
   border: 2px solid #f0f0f0;
 
-  &.selected {
-    border-color: #000000;
-  }
-
   .address-card {
     display: flex;
     gap: 12rpx;
     padding: 16rpx;
-
-    .address-checkbox {
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding-top: 4rpx;
-      flex-shrink: 0;
-
-      .checkbox {
-        width: 28rpx;
-        height: 28rpx;
-        border: 2px solid #d0d0d0;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-
-        text {
-          font-size: 16rpx;
-          font-weight: 600;
-          color: transparent;
-        }
-
-        &.checked {
-          background: #000000;
-          border-color: #000000;
-
-          text {
-            color: #ffffff;
-          }
-        }
-      }
-    }
 
     .address-info {
       flex: 1;
@@ -392,24 +365,6 @@ export default {
 
     &:active {
       background: #f9f9f9;
-    }
-  }
-
-  .confirm-btn {
-    width: 100%;
-    height: 80rpx;
-    background: #000000;
-    color: #ffffff;
-    border-radius: 8rpx;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 32rpx;
-    font-weight: 600;
-    cursor: pointer;
-
-    &:active {
-      background: #333333;
     }
   }
 }

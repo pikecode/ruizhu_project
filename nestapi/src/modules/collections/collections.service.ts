@@ -31,13 +31,15 @@ export class CollectionsService {
    * 创建集合
    */
   async createCollection(createDto: CreateCollectionDto): Promise<Collection> {
-    // 检查slug是否已存在
-    const existingCollection = await this.collectionRepository.findOne({
-      where: { slug: createDto.slug },
-    });
+    // 只在提供了slug时检查是否已存在
+    if (createDto.slug) {
+      const existingCollection = await this.collectionRepository.findOne({
+        where: { slug: createDto.slug },
+      });
 
-    if (existingCollection) {
-      throw new BadRequestException(`Slug "${createDto.slug}" 已经存在`);
+      if (existingCollection) {
+        throw new BadRequestException(`Slug "${createDto.slug}" 已经存在`);
+      }
     }
 
     const collection = this.collectionRepository.create(createDto);
@@ -92,8 +94,29 @@ export class CollectionsService {
 
     const pages = Math.ceil(total / limit);
 
+    // 为每个集合添加 productCount
+    const itemsWithProductCount: CollectionListItemDto[] = [];
+    for (const collection of items) {
+      const productCount = await this.collectionProductRepository.count({
+        where: { collectionId: collection.id },
+      });
+
+      itemsWithProductCount.push({
+        id: collection.id,
+        name: collection.name,
+        slug: collection.slug,
+        description: collection.description,
+        coverImageUrl: collection.coverImageUrl,
+        iconUrl: collection.iconUrl,
+        sortOrder: collection.sortOrder,
+        isActive: collection.isActive,
+        isFeatured: collection.isFeatured,
+        productCount,
+      });
+    }
+
     return {
-      items: items as any,
+      items: itemsWithProductCount,
       total,
       page,
       limit,
@@ -244,14 +267,15 @@ export class CollectionsService {
       sortOrder: startSortOrder + index,
     }));
 
-    // 忽略重复的记录（product已经在collection中）
-    const query = this.dataSource
-      .createQueryBuilder()
-      .insert()
-      .into(CollectionProduct)
-      .values(collectionProducts);
-
-    await query.orIgnore().execute();
+    // 使用批量插入，忽略重复的记录（product已经在collection中）
+    try {
+      await this.collectionProductRepository.insert(collectionProducts);
+    } catch (error: any) {
+      // 忽略重复键错误（product已经在collection中）
+      if (error.code !== 'ER_DUP_ENTRY') {
+        throw error;
+      }
+    }
   }
 
   /**

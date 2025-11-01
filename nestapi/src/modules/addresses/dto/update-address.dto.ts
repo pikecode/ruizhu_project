@@ -1,4 +1,4 @@
-import { IsString, IsOptional, Length, Matches } from 'class-validator';
+import { IsString, IsOptional, Length, Matches, IsIn } from 'class-validator';
 
 /**
  * Update Address DTO - All fields are optional
@@ -42,4 +42,8 @@ export class UpdateAddressDto {
   @IsOptional()
   @Length(1, 50)
   label?: string;
+
+  @IsIn([0, 1, true, false])
+  @IsOptional()
+  isDefault?: number | boolean;
 }

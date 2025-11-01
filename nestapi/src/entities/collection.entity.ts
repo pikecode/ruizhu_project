@@ -16,7 +16,6 @@ import {
 import { CollectionProduct } from './collection-product.entity';
 
 @Entity('collections')
-@Unique(['slug'])
 @Index(['isActive', 'sortOrder'])
 @Index(['isFeatured'])
 @Index(['createdAt'])
@@ -27,8 +26,8 @@ export class Collection {
   @Column({ type: 'varchar', length: 100, nullable: false })
   name: string; // 集合名称，如"精品服饰"
 
-  @Column({ type: 'varchar', length: 100, unique: true, nullable: false })
-  slug: string; // URL友好的标识，如"premium-clothing"
+  @Column({ type: 'varchar', length: 100, unique: true, nullable: true })
+  slug: string | null; // URL友好的标识，如"premium-clothing"，可选
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   description: string; // 集合描述

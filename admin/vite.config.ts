@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 // 获取 API 地址，默认为本地开发
-const apiUrl = process.env.VITE_API_URL || 'http://localhost:3000'
+const apiUrl = process.env.VITE_API_URL || 'http://localhost:8888'
 
 export default defineConfig({
   base: '/',
@@ -14,7 +14,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5174,
+    port: 5175,
     proxy: {
       '/api': {
         target: apiUrl,

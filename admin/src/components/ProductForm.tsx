@@ -51,7 +51,7 @@ export default function ProductForm({
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
 
   useEffect(() => {
-    if (product) {
+    if (visible && product) {
       // 根据 isOutOfStock 和 isSoldOut 转换为 stockStatus
       let stockStatus = 'normal'
       if (product.isSoldOut) {
@@ -107,7 +107,7 @@ export default function ProductForm({
       } else {
         setMediaFiles([])
       }
-    } else {
+    } else if (visible && !product) {
       form.resetFields()
       setMediaFiles([])
       form.setFieldsValue({ stockQuantity: 1, stockStatus: 'normal', productTags: [] })
@@ -193,6 +193,7 @@ export default function ProductForm({
             onChange={setMediaFiles}
             maxCount={1}
             onUploadToCloud={handleUploadToCloud}
+            compact={true}
           />
 
           <Divider style={{ marginTop: '12px', marginBottom: '12px' }}>产品基本信息</Divider>

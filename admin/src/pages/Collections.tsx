@@ -6,13 +6,9 @@ import {
   Modal,
   Form,
   Input,
-  InputNumber,
-  Checkbox,
   message,
   Popconfirm,
   Tag,
-  Tooltip,
-  Select,
 } from 'antd'
 import {
   PlusOutlined,
@@ -26,11 +22,6 @@ import Layout from '@/components/Layout'
 import { Collection, CollectionListItem } from '@/types'
 import { collectionsService } from '@/services/collections'
 import CollectionProductsModal from '@/components/CollectionProductsModal'
-import {
-  COLLECTION_SLUG_OPTIONS,
-  getSlugLabel,
-  getSlugDescription,
-} from '@/constants/collection-slugs'
 
 export default function CollectionsPage() {
   const [collections, setCollections] = useState<CollectionListItem[]>([])
@@ -118,47 +109,21 @@ export default function CollectionsPage() {
       title: '集合名称',
       dataIndex: 'name',
       key: 'name',
-      width: 200,
+      width: 150,
     },
     {
-      title: '位置',
+      title: 'Slug',
       dataIndex: 'slug',
       key: 'slug',
-      width: 180,
-      render: (slug: string) => (
-        <Tooltip title={getSlugDescription(slug)}>
-          <div>
-            <div>{getSlugLabel(slug)}</div>
-            <small style={{ color: '#999' }}>{slug}</small>
-          </div>
-        </Tooltip>
-      ),
+      width: 150,
+      render: (slug: string | null | undefined) => slug ? <code style={{ color: '#c41d7f', backgroundColor: '#f5f5f5', padding: '2px 6px', borderRadius: 2 }}>{slug}</code> : '-',
     },
     {
       title: '产品数',
       dataIndex: 'productCount',
       key: 'productCount',
       width: 80,
-      render: (count: number) => <Tag color="blue">{count}</Tag>,
-    },
-    {
-      title: '排序',
-      dataIndex: 'sortOrder',
-      key: 'sortOrder',
-      width: 80,
-      sorter: (a: Collection, b: Collection) => a.sortOrder - b.sortOrder,
-    },
-    {
-      title: '状态',
-      key: 'status',
-      width: 120,
-      render: (_: any, record: Collection) => (
-        <Space size="small">
-          {record.isActive && <Tag color="green">激活</Tag>}
-          {!record.isActive && <Tag>禁用</Tag>}
-          {record.isFeatured && <Tag color="gold">首页</Tag>}
-        </Space>
-      ),
+      render: (count: number | undefined) => <Tag color="blue">{count || 0}</Tag>,
     },
     {
       title: '操作',
@@ -261,25 +226,21 @@ export default function CollectionsPage() {
           </Form.Item>
 
           <Form.Item
-            label="位置"
+            label="Slug"
             name="slug"
-            rules={[{ required: true, message: '请选择集合在首页的位置' }]}
+            rules={[
+              { max: 100, message: 'Slug不超过100个字符' },
+              {
+                pattern: /^[a-z0-9-]*$/,
+                message: 'Slug只能包含小写字母、数字和中划线',
+              },
+            ]}
           >
-            {editingCollection ? (
-              <Input
-                disabled
-                value={editingCollection.slug}
-                addonAfter={getSlugDescription(editingCollection.slug)}
-              />
-            ) : (
-              <Select
-                placeholder="选择集合在首页的位置"
-                options={COLLECTION_SLUG_OPTIONS.map((opt) => ({
-                  label: `${opt.label} - ${opt.description}`,
-                  value: opt.value,
-                }))}
-              />
-            )}
+            <Input
+              placeholder="如：premium-fashion"
+              disabled={!!editingCollection}
+              title={editingCollection ? '编辑时不允许修改Slug' : ''}
+            />
           </Form.Item>
 
           <Form.Item
@@ -288,39 +249,6 @@ export default function CollectionsPage() {
             rules={[{ max: 500, message: '描述不超过500个字符' }]}
           >
             <Input.TextArea rows={3} placeholder="集合描述" />
-          </Form.Item>
-
-          <Form.Item
-            label="封面图片URL"
-            name="coverImageUrl"
-            rules={[{ type: 'url', message: '请输入有效的URL' }]}
-          >
-            <Input placeholder="https://..." />
-          </Form.Item>
-
-          <Form.Item label="图标URL" name="iconUrl">
-            <Input placeholder="https://..." />
-          </Form.Item>
-
-          <Form.Item
-            label="排序"
-            name="sortOrder"
-            initialValue={0}
-            rules={[{ required: true, message: '请输入排序号' }]}
-          >
-            <InputNumber min={0} />
-          </Form.Item>
-
-          <Form.Item name="isActive" valuePropName="checked" initialValue={true}>
-            <Checkbox>激活</Checkbox>
-          </Form.Item>
-
-          <Form.Item name="isFeatured" valuePropName="checked" initialValue={false}>
-            <Checkbox>在首页展示</Checkbox>
-          </Form.Item>
-
-          <Form.Item label="备注" name="remark">
-            <Input.TextArea rows={2} placeholder="备注说明" />
           </Form.Item>
         </Form>
       </Modal>

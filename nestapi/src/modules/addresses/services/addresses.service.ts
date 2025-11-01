@@ -31,10 +31,20 @@ export class AddressesService {
       where: { userId, isDeleted: 0 },
     });
 
+    // Determine isDefault value
+    let isDefaultValue = 0;
+    if (createDto.isDefault !== undefined) {
+      // User explicitly specified isDefault
+      isDefaultValue = createDto.isDefault === 1 || createDto.isDefault === true ? 1 : 0;
+    } else {
+      // Auto-set first address as default
+      isDefaultValue = existingCount === 0 ? 1 : 0;
+    }
+
     const address = this.addressRepository.create({
       userId,
       ...createDto,
-      isDefault: existingCount === 0 ? 1 : 0,
+      isDefault: isDefaultValue,
     });
 
     return await this.addressRepository.save(address);
@@ -99,7 +109,13 @@ export class AddressesService {
   ): Promise<UserAddress> {
     const address = await this.getAddress(userId, addressId);
 
-    // Update fields if provided
+    // Handle isDefault field specially - just convert to 0/1, no auto-clearing of other addresses
+    if (updateDto.isDefault !== undefined) {
+      const isDefaultValue = updateDto.isDefault === 1 || updateDto.isDefault === true ? 1 : 0;
+      updateDto.isDefault = isDefaultValue as any;
+    }
+
+    // Update fields from DTO
     Object.assign(address, updateDto);
 
     return await this.addressRepository.save(address);
@@ -110,19 +126,6 @@ export class AddressesService {
    */
   async deleteAddress(userId: number, addressId: number): Promise<void> {
     const address = await this.getAddress(userId, addressId);
-
-    // If this was the default address, set another as default
-    if (address.isDefault === 1) {
-      const nextDefault = await this.addressRepository.findOne({
-        where: { userId, isDeleted: 0, id: { $ne: addressId } as any },
-        order: { createdAt: 'DESC' },
-      });
-
-      if (nextDefault) {
-        nextDefault.isDefault = 1;
-        await this.addressRepository.save(nextDefault);
-      }
-    }
 
     address.isDeleted = 1;
     await this.addressRepository.save(address);
@@ -143,13 +146,7 @@ export class AddressesService {
   async setDefaultAddress(userId: number, addressId: number): Promise<UserAddress> {
     const address = await this.getAddress(userId, addressId);
 
-    // Remove default flag from all other addresses
-    await this.addressRepository.update(
-      { userId, isDeleted: 0 },
-      { isDefault: 0 },
-    );
-
-    // Set this address as default
+    // Set this address as default (no auto-clearing of other addresses)
     address.isDefault = 1;
     return await this.addressRepository.save(address);
   }

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, Length, IsOptional, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, Length, IsOptional, Matches, IsIn } from 'class-validator';
 
 /**
  * Create Address DTO
@@ -42,4 +42,8 @@ export class CreateAddressDto {
   @IsOptional()
   @Length(1, 50)
   label?: string;
+
+  @IsIn([0, 1, true, false])
+  @IsOptional()
+  isDefault?: number | boolean;
 }

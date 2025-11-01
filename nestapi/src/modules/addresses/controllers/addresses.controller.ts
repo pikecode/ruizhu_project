@@ -37,20 +37,22 @@ export class AddressesController {
   }
 
   /**
-   * Get all addresses for current user with pagination
-   * GET /api/addresses?page=1&limit=20
+   * Get all addresses for current user
+   * GET /api/addresses
    */
   @Get()
   @ApiOperation({ summary: 'Get user addresses' })
   async getAddresses(
     @Request() req,
-    @Query('page', ParseIntPipe) page: number = 1,
-    @Query('limit', ParseIntPipe) limit: number = 20,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 20;
     return await this.addressesService.getAddresses(
       req.user.id,
-      page,
-      limit,
+      pageNum,
+      limitNum,
     );
   }
 
