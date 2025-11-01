@@ -23,12 +23,14 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 配置
-REMOTE_HOST="123.207.14.67"
-REMOTE_USER="root"
-REMOTE_PASSWORD="Pp123456"
-REMOTE_APP_DIR="/opt/ruizhu-app/nestapi-dist"
-REMOTE_BACKUP_DIR="/opt/ruizhu-app/backups"
+# 配置 (从环境变量读取)
+REMOTE_HOST="${DEPLOY_HOST:-}"
+REMOTE_USER="${DEPLOY_USER:-root}"
+REMOTE_PASSWORD="${DEPLOY_PASS:-}"
+REMOTE_APP_DIR="${NESTAPI_REMOTE_PATH:-/opt/ruizhu-app/nestapi-dist}"
+REMOTE_BACKUP_DIR="${BACKUP_DIR:-/opt/ruizhu-app/backups}"
+NESTAPI_PM2_NAME="${NESTAPI_PM2_NAME:-ruizhu-backend}"
+NESTAPI_PORT="${NESTAPI_PORT:-8888}"
 
 # 本地配置
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"  # 上升两级到项目根目录
@@ -81,6 +83,33 @@ handle_error() {
 
 trap handle_error ERR
 
+# 验证部署配置
+validate_deployment_config() {
+    log_step "验证部署配置"
+
+    if [ -z "$REMOTE_HOST" ]; then
+        log_error "服务器地址未设置"
+        log_info "请设置环境变量: export DEPLOY_HOST='123.207.14.67'"
+        exit 1
+    fi
+
+    if [ -z "$REMOTE_PASSWORD" ]; then
+        log_warning "服务器密码未设置，需要交互输入"
+        read -sp "请输入 $REMOTE_USER@$REMOTE_HOST 的密码: " REMOTE_PASSWORD
+        echo ""
+        if [ -z "$REMOTE_PASSWORD" ]; then
+            log_error "密码不能为空"
+            exit 1
+        fi
+    fi
+
+    log_success "部署配置验证完成"
+    log_info "服务器: $REMOTE_USER@$REMOTE_HOST"
+    log_info "应用目录: $REMOTE_APP_DIR"
+    log_info "PM2 应用名: $NESTAPI_PM2_NAME"
+    log_info "应用端口: $NESTAPI_PORT"
+}
+
 # 开始部署
 clear
 echo -e "${BLUE}"
@@ -93,6 +122,9 @@ echo -e "${NC}"
 if [ "$DRY_RUN" = true ]; then
   log_warning "运行于测试模式 - 不会执行实际部署"
 fi
+
+# 验证部署配置
+validate_deployment_config
 
 # ============================================================================
 # 阶段 1: 本地构建
@@ -210,7 +242,7 @@ if [ "$DRY_RUN" = false ]; then
 set -e
 
 echo "⏸️  停止应用..."
-pm2 stop ruizhu-backend 2>/dev/null || true
+pm2 stop $NESTAPI_PM2_NAME 2>/dev/null || true
 sleep 3
 
 echo "💾 创建备份..."
@@ -321,11 +353,11 @@ sleep 2
 
 # 重启应用以加载新的代码
 echo "重启应用..."
-pm2 restart ruizhu-backend
+pm2 restart $NESTAPI_PM2_NAME
 sleep 5
 
 echo "🧪 测试应用..."
-HEALTH_CHECK=\$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/docs)
+HEALTH_CHECK=\$(curl -s -o /dev/null -w "%{http_code}" http://localhost:$NESTAPI_PORT/api)
 if [ "\$HEALTH_CHECK" == "200" ]; then
   echo "✅ 应用已启动并运行正常 (HTTP \$HEALTH_CHECK)"
 else
@@ -338,7 +370,7 @@ fi
 
 echo ""
 echo "PM2 状态:"
-pm2 status | grep ruizhu-backend || true
+pm2 status | grep $NESTAPI_PM2_NAME || true
 
 DEPLOY_SCRIPT
 
@@ -404,9 +436,10 @@ echo "  • 部署时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
 
 echo "🔍 验证命令:"
-echo "  • 查看应用状态: sshpass -p '$REMOTE_PASSWORD' ssh root@$REMOTE_HOST pm2 status"
-echo "  • 查看应用日志: sshpass -p '$REMOTE_PASSWORD' ssh root@$REMOTE_HOST pm2 logs ruizhu-backend"
-echo "  • 测试API: curl https://yunjie.online/api/docs"
+echo "  • 查看应用状态: sshpass -p '\$DEPLOY_PASS' ssh root@$REMOTE_HOST pm2 status"
+echo "  • 查看应用日志: sshpass -p '\$DEPLOY_PASS' ssh root@$REMOTE_HOST pm2 logs $NESTAPI_PM2_NAME"
+echo "  • 测试API: curl http://localhost:$NESTAPI_PORT/api"
+echo "  • 远程测试: sshpass -p '\$DEPLOY_PASS' ssh root@$REMOTE_HOST 'curl http://localhost:$NESTAPI_PORT/api'"
 echo ""
 
 echo "🆘 遇到问题?"

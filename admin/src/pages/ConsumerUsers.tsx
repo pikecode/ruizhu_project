@@ -137,7 +137,7 @@ export default function ConsumerUsersPage() {
       title: '操作',
       key: 'actions',
       width: 150,
-      fixed: 'right',
+      fixed: 'right' as const,
       render: (_: any, record: ConsumerUser) => (
         <Space size="small">
           <Popconfirm

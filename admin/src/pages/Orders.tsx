@@ -97,7 +97,7 @@ export default function OrdersPage() {
       title: '操作',
       key: 'actions',
       width: 100,
-      fixed: 'right',
+      fixed: 'right' as const,
       render: (_: any, record: Order) => (
         <Space size="small">
           <Button type="primary" size="small" icon={<EyeOutlined />} disabled />

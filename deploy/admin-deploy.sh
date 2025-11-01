@@ -21,11 +21,12 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# 服务器配置
-SERVER_HOST="123.207.14.67"
-SERVER_USER="root"
-SERVER_PASS="Pp123456"
-REMOTE_ADMIN_PATH="/opt/ruizhu-app/admin"
+# 服务器配置 (从环境变量读取)
+SERVER_HOST="${DEPLOY_HOST:-}"
+SERVER_USER="${DEPLOY_USER:-root}"
+SERVER_PASS="${DEPLOY_PASS:-}"
+REMOTE_ADMIN_PATH="${ADMIN_REMOTE_PATH:-/opt/ruizhu-app/admin}"
+ADMIN_DOMAIN="${ADMIN_DOMAIN:-yunjie.online}"
 
 # 本地配置（相对于项目根目录）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -86,6 +87,31 @@ show_usage() {
   $0 prod --no-reload       # 部署但不重载 Nginx
 
 EOF
+}
+
+# 验证部署配置
+validate_deployment_config() {
+    print_section "验证部署配置"
+
+    if [ -z "$SERVER_HOST" ]; then
+        print_error "服务器地址未设置"
+        print_info "请设置环境变量: export DEPLOY_HOST='123.207.14.67'"
+        exit 1
+    fi
+
+    if [ -z "$SERVER_PASS" ]; then
+        print_warning "服务器密码未设置，需要交互输入"
+        read -sp "请输入 $SERVER_USER@$SERVER_HOST 的密码: " SERVER_PASS
+        echo ""
+        if [ -z "$SERVER_PASS" ]; then
+            print_error "密码不能为空"
+            exit 1
+        fi
+    fi
+
+    print_success "部署配置验证完成"
+    print_info "服务器: $SERVER_USER@$SERVER_HOST"
+    print_info "部署路径: $REMOTE_ADMIN_PATH"
 }
 
 # 检查依赖
@@ -365,7 +391,7 @@ test_deployment() {
     if command -v curl &> /dev/null; then
         # 测试 Admin 首页
         print_info "测试 1: 检查 Admin 首页..."
-        response=$(curl -s -o /dev/null -w "%{http_code}" https://yunjie.online/)
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://$ADMIN_DOMAIN/)
         if [ "$response" = "200" ]; then
             print_success "Admin 首页返回 200 OK"
         else
@@ -375,7 +401,7 @@ test_deployment() {
 
         # 测试 index.html 缓存头
         print_info "测试 2: 检查 index.html 缓存头..."
-        cache_header=$(curl -s -I https://yunjie.online/index.html | grep -i "cache-control" || echo "")
+        cache_header=$(curl -s -I https://$ADMIN_DOMAIN/index.html | grep -i "cache-control" || echo "")
         if echo "$cache_header" | grep -q "no-cache"; then
             print_success "index.html 缓存策略正确: $cache_header"
         else
@@ -384,9 +410,9 @@ test_deployment() {
 
         # 测试 API 代理
         print_info "测试 3: 检查 API 代理..."
-        api_response=$(curl -s -o /dev/null -w "%{http_code}" https://yunjie.online/api/products)
-        if [ "$api_response" = "200" ]; then
-            print_success "API 代理返回 200 OK"
+        api_response=$(curl -s -o /dev/null -w "%{http_code}" https://$ADMIN_DOMAIN/api/products)
+        if [ "$api_response" = "200" ] || [ "$api_response" = "401" ]; then
+            print_success "API 代理可访问（HTTP $api_response）"
         else
             print_warning "API 代理返回 $api_response (可能是正常的非200)"
         fi
@@ -407,7 +433,7 @@ show_summary() {
     echo -e "  • 本地构建目录: $LOCAL_DIST_DIR"
     echo -e "  • 远程部署目录: $REMOTE_ADMIN_PATH"
     echo -e "  • 服务器地址: $SERVER_HOST"
-    echo -e "  • 访问地址: https://yunjie.online/"
+    echo -e "  • 访问地址: https://$ADMIN_DOMAIN/"
 
     echo -e "\n${BLUE}部署状态:${NC}"
     echo -e "  • 本地构建: ✓"
@@ -418,7 +444,7 @@ show_summary() {
     fi
 
     echo -e "\n${BLUE}下一步:${NC}"
-    echo -e "  1. 打开浏览器访问: https://yunjie.online/"
+    echo -e "  1. 打开浏览器访问: https://$ADMIN_DOMAIN/"
     echo -e "  2. 检查浏览器控制台是否有错误"
     echo -e "  3. 测试各个功能是否正常"
 
@@ -494,6 +520,7 @@ main() {
     echo -e "${YELLOW}自动重载 Nginx: $AUTO_RELOAD_NGINX${NC}\n"
 
     # 执行部署步骤
+    validate_deployment_config
     check_dependencies
     check_directories
     clean_build

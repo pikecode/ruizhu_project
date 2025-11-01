@@ -21,11 +21,11 @@ export default function LoginPage() {
       setIsLoading(true)
       const response = await authService.adminLogin(values)
 
-      setToken(response.access_token)
+      setToken(response.accessToken)
       setUser(response.user)
 
       message.success('登录成功')
-      navigate('/dashboard')
+      navigate('/products')
     } catch (error) {
       message.error(getErrorMessage(error))
     } finally {

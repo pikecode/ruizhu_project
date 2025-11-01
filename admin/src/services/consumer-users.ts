@@ -1,5 +1,4 @@
 import api from './api'
-import { PaginationParams, PaginationResult } from '@/types'
 
 export interface ConsumerUser {
   id: number

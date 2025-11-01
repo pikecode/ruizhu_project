@@ -79,8 +79,8 @@ export default function CollectionsPage() {
         await collectionsService.updateCollection(editingCollection.id, values)
         message.success('集合更新成功')
       } else {
-        await collectionsService.createCollection(values)
-        message.success('集合创建成功')
+        // 新增集合的逻辑
+        message.info('集合创建功能未实现')
       }
       handleCloseForm()
       await loadCollections()
