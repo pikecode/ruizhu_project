@@ -56,6 +56,8 @@ export default function NewsManager() {
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadStatus, setUploadStatus] = useState<string>('')
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [sortChanged, setSortChanged] = useState(false)
 
   useEffect(() => {
     loadNews()
@@ -211,6 +213,54 @@ export default function NewsManager() {
     }
   }
 
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault()
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null)
+      return
+    }
+
+    const newNewsList = [...newsList]
+    const draggedItem = newNewsList[draggedIndex]
+    newNewsList.splice(draggedIndex, 1)
+    newNewsList.splice(targetIndex, 0, draggedItem)
+    setNewsList(newNewsList)
+    setSortChanged(true)
+    setDraggedIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null)
+  }
+
+  const handleSaveSort = async () => {
+    try {
+      setLoading(true)
+      for (let i = 0; i < newsList.length; i++) {
+        await newsService.update(newsList[i].id, { sortOrder: i })
+      }
+
+      message.success('排序保存成功')
+      setSortChanged(false)
+      await loadNews()
+    } catch (error) {
+      message.error('保存排序失败')
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const columns: any = [
     {
       title: '标题',
@@ -322,7 +372,35 @@ export default function NewsManager() {
           },
         }}
         scroll={{ x: 1200 }}
+        onRow={(record, index) => ({
+          draggable: true,
+          onDragStart: (e) => handleDragStart(e, index || 0),
+          onDragOver: handleDragOver,
+          onDrop: (e) => handleDrop(e, index || 0),
+          onDragEnd: handleDragEnd,
+          style: {
+            cursor: 'move',
+            background: draggedIndex === index ? '#e6f7ff' : 'transparent',
+            transition: 'background 0.2s',
+          },
+        })}
       />
+      {sortChanged && (
+        <div style={{ marginTop: 16 }}>
+          <Button type="primary" onClick={handleSaveSort} loading={loading}>
+            保存排序
+          </Button>
+          <Button
+            style={{ marginLeft: 8 }}
+            onClick={() => {
+              setSortChanged(false)
+              loadNews()
+            }}
+          >
+            取消
+          </Button>
+        </div>
+      )}
 
       <Modal
         title={editingNews ? '编辑资讯' : '创建资讯'}

@@ -65,6 +65,8 @@ export default function CustomBannerManager() {
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadStatus, setUploadStatus] = useState<string>('')
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [sortChanged, setSortChanged] = useState(false)
 
   useEffect(() => {
     loadBanners()
@@ -225,6 +227,55 @@ export default function CustomBannerManager() {
     }
   }
 
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault()
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null)
+      return
+    }
+
+    const newBanners = [...banners]
+    const draggedItem = newBanners[draggedIndex]
+    newBanners.splice(draggedIndex, 1)
+    newBanners.splice(targetIndex, 0, draggedItem)
+    setBanners(newBanners)
+    setSortChanged(true)
+    setDraggedIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null)
+  }
+
+  const handleSaveSort = async () => {
+    try {
+      setLoading(true)
+      // 逐个更新排序
+      for (let i = 0; i < banners.length; i++) {
+        await bannerService.update(banners[i].id, { sortOrder: i, pageType: 'custom' })
+      }
+
+      message.success('排序保存成功')
+      setSortChanged(false)
+      await loadBanners()
+    } catch (error) {
+      message.error('保存排序失败')
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const columns: any = [
     {
       title: '标题',
@@ -349,7 +400,35 @@ export default function CustomBannerManager() {
           },
         }}
         scroll={{ x: 1400 }}
+        onRow={(record, index) => ({
+          draggable: true,
+          onDragStart: (e) => handleDragStart(e, index || 0),
+          onDragOver: handleDragOver,
+          onDrop: (e) => handleDrop(e, index || 0),
+          onDragEnd: handleDragEnd,
+          style: {
+            cursor: 'move',
+            background: draggedIndex === index ? '#e6f7ff' : 'transparent',
+            transition: 'background 0.2s',
+          },
+        })}
       />
+      {sortChanged && (
+        <div style={{ marginTop: 16 }}>
+          <Button type="primary" onClick={handleSaveSort} loading={loading}>
+            保存排序
+          </Button>
+          <Button
+            style={{ marginLeft: 8 }}
+            onClick={() => {
+              setSortChanged(false)
+              loadBanners()
+            }}
+          >
+            取消
+          </Button>
+        </div>
+      )}
 
       <Modal
         title={editingBanner ? '编辑Banner' : '创建Banner'}
