@@ -21,6 +21,7 @@ import { AddressesModule } from './modules/addresses/addresses.module';
 import { CheckoutModule } from './modules/checkout/checkout.module';
 import { AuthorizationsModule } from './modules/authorizations/authorizations.module';
 import { MembershipsModule } from './modules/memberships/memberships.module';
+import { WishlistsModule } from './modules/wishlists/wishlists.module';
 import { getDatabaseConfig } from './database/database.config';
 
 @Module({
@@ -53,6 +54,7 @@ import { getDatabaseConfig } from './database/database.config';
     CheckoutModule, // 结账模块（集成购物车、订单、地址）
     AuthorizationsModule, // 个人信息授权模块
     MembershipsModule, // 会员信息管理模块
+    WishlistsModule, // 心愿单（收藏）模块
   ],
   controllers: [AppController],
   providers: [AppService],
