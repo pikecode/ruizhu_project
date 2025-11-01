@@ -99,6 +99,7 @@
 <script>
 import RecommendSection from '../../components/RecommendSection.vue'
 import { authService } from '../../services/auth'
+import { collectionService } from '../../services/collection'
 
 export default {
   components: {
@@ -128,46 +129,42 @@ export default {
         { id: 'shipped', label: '已发货', icon: '/static/icons/order-shipped.svg' },
         { id: 'aftersales', label: '售后', icon: '/static/icons/order-aftersales.svg' }
       ],
-      recommendProducts: [
-        {
-          id: 1,
-          name: '【粉星同款】Prada Explore 中号Re-Nylon单肩包',
-          price: '17,900',
-          image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300&q=80',
-          imageCount: 2,
-          isFavorite: false
-        },
-        {
-          id: 2,
-          name: '【特售】Prada Explore中号Nappa牛皮革单肩包',
-          price: '26,400',
-          image: 'https://images.unsplash.com/photo-1596736342875-ff5348bf9908?w=300&q=80',
-          imageCount: 2,
-          isFavorite: false
-        },
-        {
-          id: 3,
-          name: 'Re-Nylon双肩背包',
-          price: '19,500',
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=300&q=80',
-          imageCount: 2,
-          isFavorite: false
-        },
-        {
-          id: 4,
-          name: '【特售】皮靴中筒靴',
-          price: '8,900',
-          image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=300&q=80',
-          imageCount: 2,
-          isFavorite: false
-        }
-      ]
+      recommendProducts: []
     }
   },
   onLoad() {
-    console.log('我的页面加载完成')
+    this.loadRecommendedProducts()
+  },
+  onShow() {
+    // 每次显示页面时重新加载推荐商品
+    this.loadRecommendedProducts()
   },
   methods: {
+    /**
+     * 加载推荐商品（与购物车页面相同）
+     */
+    async loadRecommendedProducts() {
+      try {
+        const collectionData = await collectionService.getCollectionBySlug('guess-you-like')
+
+        if (collectionData && collectionData.products) {
+          this.recommendProducts = collectionData.products.map(product => ({
+            id: product.id,
+            name: product.name,
+            image: product.coverImageUrl,
+            price: product.currentPrice, // API返回的价格以分为单位
+            originalPrice: product.originalPrice,
+            discountRate: product.discountRate,
+            isNew: product.isNew,
+            isSaleOn: product.isSaleOn,
+            imageCount: 1, // RecommendSection组件需要此字段
+            isFavorite: false // 初始化收藏状态
+          }))
+        }
+      } catch (error) {
+        console.error('Failed to load recommended products:', error)
+      }
+    },
     onSwiperChange(e) {
       this.currentBannerIndex = e.detail.current
     },
