@@ -87,7 +87,9 @@ export default {
      */
     async loadWishlistData() {
       try {
+        console.log('开始加载心愿单数据...')
         this.isLoading = true
+        console.log('调用 wishlistService.getWishlist:', this.page, this.pageSize)
         const response = await wishlistService.getWishlist(this.page, this.pageSize)
 
         console.log('获取心愿单 API 响应:', response)

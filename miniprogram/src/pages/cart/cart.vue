@@ -119,7 +119,7 @@
 import RecommendSection from '../../components/RecommendSection.vue'
 import { cartService } from '../../services/cart'
 import { collectionService } from '../../services/collection'
-import { wishlistService } from '../../services/wishlist'
+import wishlistService from '../../services/wishlist'
 
 export default {
   components: {

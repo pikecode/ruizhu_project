@@ -69,7 +69,7 @@ export interface ApiResponse<T = any> {
 /**
  * 心愿单服务
  */
-export const wishlistService = {
+const wishlistService = {
   /**
    * 添加商品到心愿单
    * API: POST /wishlists
@@ -201,3 +201,5 @@ export const wishlistService = {
     }
   }
 }
+
+export default wishlistService

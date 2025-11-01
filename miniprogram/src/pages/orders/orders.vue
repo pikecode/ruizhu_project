@@ -104,6 +104,8 @@
 </template>
 
 <script>
+import ordersService from '../../services/orders'
+
 export default {
   data() {
     return {
@@ -114,7 +116,11 @@ export default {
         { label: '已完成', value: 'completed', count: 0 },
         { label: '已取消', value: 'cancelled', count: 0 }
       ],
-      orders: []
+      orders: [],
+      isLoading: false,
+      page: 1,
+      pageSize: 20,
+      hasMore: true
     }
   },
   computed: {
@@ -129,95 +135,142 @@ export default {
     this.loadOrders()
   },
   methods: {
-    loadOrders() {
+    /**
+     * 加载订单数据
+     */
+    async loadOrders() {
       try {
-        // 从存储加载订单历史
-        const orders = uni.getStorageSync('orderHistory') || []
+        this.isLoading = true
+        console.log('开始加载订单数据...')
 
-        // 如果没有订单，创建模拟数据
-        if (orders.length === 0) {
-          this.orders = [
-            {
-              id: 1,
-              orderId: 'ORD20231025001',
-              items: [
-                {
-                  id: 1,
-                  name: '【明星同款】Prada Explore 中号Re-Nylon单肩包',
-                  color: '黑色',
-                  price: '17900',
-                  quantity: 1,
-                  image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&q=80'
-                }
-              ],
-              total: '17910',
-              subtotal: '17900',
-              expressPrice: '10',
-              discount: '0',
-              status: 'completed',
-              statusText: '已完成',
-              createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-              id: 2,
-              orderId: 'ORD20231024001',
-              items: [
-                {
-                  id: 2,
-                  name: 'Re-Nylon双肩背包',
-                  color: '蓝色',
-                  price: '21800',
-                  quantity: 1,
-                  image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80'
-                }
-              ],
-              total: '21810',
-              subtotal: '21800',
-              expressPrice: '10',
-              discount: '0',
-              status: 'pending',
-              statusText: '待支付',
-              createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
-            },
-            {
-              id: 3,
-              orderId: 'ORD20231023001',
-              items: [
-                {
-                  id: 3,
-                  name: 'Prada Bonnie 迷你牛皮革手袋',
-                  color: '红色',
-                  price: '12500',
-                  quantity: 2,
-                  image: 'https://images.unsplash.com/photo-1548062407-f961713e6786?w=400&q=80'
-                },
-                {
-                  id: 4,
-                  name: '亮面皮革乐福鞋',
-                  color: '黑色',
-                  price: '8900',
-                  quantity: 1,
-                  image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&q=80'
-                }
-              ],
-              total: '42410',
-              subtotal: '42400',
-              expressPrice: '10',
-              discount: '0',
-              status: 'completed',
-              statusText: '已完成',
-              createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
-            }
-          ]
-          this.saveOrders()
+        const response = await ordersService.getUserOrders(this.page, this.pageSize)
+
+        if (response && response.orders) {
+          console.log('获取订单列表成功:', response)
+
+          // 转换API返回的数据结构以适配前端显示
+          this.orders = response.orders.map(order => ({
+            id: order.id,
+            orderId: order.orderNumber,
+            items: order.items.map(item => ({
+              id: item.id,
+              name: item.product.name,
+              image: item.product.coverImageUrl || 'https://via.placeholder.com/400x400?text=No+Image',
+              quantity: item.quantity,
+              price: (item.unitPrice / 100).toFixed(2), // 转换为元
+              color: '默认' // 后端暂时没有颜色信息，使用默认值
+            })),
+            total: (order.totalAmount / 100).toFixed(2), // 转换为元
+            subtotal: (order.subtotalAmount / 100).toFixed(2),
+            expressPrice: (order.shippingAmount / 100).toFixed(2),
+            discount: (order.discountAmount / 100).toFixed(2),
+            status: order.status,
+            statusText: this.getStatusText(order.status),
+            createdAt: order.createdAt
+          }))
+
+          this.hasMore = response.page < response.totalPages
         } else {
-          this.orders = orders
+          console.log('API 返回为空或无效:', response)
+          this.orders = []
         }
 
         // 更新标签页计数
         this.updateTabCounts()
-      } catch (e) {
-        console.error('Failed to load orders:', e)
+      } catch (error) {
+        console.error('Failed to load orders:', error)
+        uni.showToast({
+          title: '加载订单失败',
+          icon: 'none',
+          duration: 2000
+        })
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    /**
+     * 根据状态获取中文显示文本
+     */
+    getStatusText(status) {
+      const statusMap = {
+        'pending': '待支付',
+        'paid': '已支付',
+        'shipped': '已发货',
+        'delivered': '已送达',
+        'completed': '已完成',
+        'cancelled': '已取消',
+        'refunded': '已退款'
+      }
+      return statusMap[status] || status
+    },
+
+    /**
+     * 切换标签页并加载对应数据
+     */
+    async selectTab(value) {
+      if (this.activeTab === value) return
+
+      this.activeTab = value
+      this.page = 1
+      this.orders = []
+
+      if (value === 'all') {
+        await this.loadOrders()
+      } else {
+        await this.loadOrdersByStatus(value)
+      }
+    },
+
+    /**
+     * 根据状态加载订单
+     */
+    async loadOrdersByStatus(status) {
+      try {
+        this.isLoading = true
+        console.log(`加载${status}状态订单...`)
+
+        const response = await ordersService.getOrdersByStatus(status, this.page, this.pageSize)
+
+        if (response && response.orders) {
+          console.log(`获取${status}状态订单成功:`, response)
+
+          // 转换数据结构
+          this.orders = response.orders.map(order => ({
+            id: order.id,
+            orderId: order.orderNumber,
+            items: order.items.map(item => ({
+              id: item.id,
+              name: item.product.name,
+              image: item.product.coverImageUrl || 'https://via.placeholder.com/400x400?text=No+Image',
+              quantity: item.quantity,
+              price: (item.unitPrice / 100).toFixed(2),
+              color: '默认'
+            })),
+            total: (order.totalAmount / 100).toFixed(2),
+            subtotal: (order.subtotalAmount / 100).toFixed(2),
+            expressPrice: (order.shippingAmount / 100).toFixed(2),
+            discount: (order.discountAmount / 100).toFixed(2),
+            status: order.status,
+            statusText: this.getStatusText(order.status),
+            createdAt: order.createdAt
+          }))
+
+          this.hasMore = response.page < response.totalPages
+        } else {
+          this.orders = []
+        }
+
+        this.updateTabCounts()
+      } catch (error) {
+        console.error(`Failed to load ${status} orders:`, error)
+        uni.showToast({
+          title: '加载订单失败',
+          icon: 'none',
+          duration: 2000
+        })
+      } finally {
+        this.isLoading = false
       }
     },
     saveOrders() {

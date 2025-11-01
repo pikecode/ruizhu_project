@@ -33,7 +33,13 @@ export class WishlistsController {
 
     const skip = (page - 1) * limit
 
-    return await this.wishlistsService.getWishlist(req.user.id, skip, limit)
+    const result = await this.wishlistsService.getWishlist(req.user.id, skip, limit)
+
+    return {
+      code: 200,
+      message: 'Success',
+      data: result
+    }
   }
 
   /**

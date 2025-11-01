@@ -30,7 +30,7 @@
 </template>
 
 <script>
-import { wishlistService } from '../services/wishlist'
+import wishlistService from '../services/wishlist'
 
 export default {
   name: 'RecommendSection',
