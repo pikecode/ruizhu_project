@@ -10,7 +10,7 @@ export interface ProductListResponse {
 }
 
 export const productsService = {
-  // Get products list with pagination and filters
+  // Get products list with pagination and filters (admin only)
   getProducts: (params: {
     page?: number
     limit?: number
@@ -22,12 +22,12 @@ export const productsService = {
     isNew?: boolean
     onSale?: boolean
   }): Promise<ProductListResponse> => {
-    return api.get('/products', { params }).then((res) => res.data.data)
+    return api.get('/admin/products', { params }).then((res) => res.data.data)
   },
 
-  // Get product detail by ID
+  // Get product detail by ID (admin only)
   getProductById: (id: number): Promise<Product> => {
-    return api.get(`/products/${id}`).then((res) => res.data.data)
+    return api.get(`/admin/products/${id}`).then((res) => res.data.data)
   },
 
   // Get hot products
@@ -35,9 +35,9 @@ export const productsService = {
     return api.get('/products/hot', { params: { limit } }).then((res) => res.data.data)
   },
 
-  // Search products by keyword
+  // Search products by keyword (admin only)
   searchProducts: (keyword: string, limit?: number): Promise<ProductListResponse> => {
-    return api.get('/products/search', { params: { keyword, limit } }).then((res) => res.data.data)
+    return api.get('/admin/products/search', { params: { keyword, limit } }).then((res) => res.data.data)
   },
 
   // Get products by category
@@ -45,19 +45,19 @@ export const productsService = {
     return api.get(`/products/category/${categoryId}`, { params: { limit } }).then((res) => res.data.data)
   },
 
-  // Create product
+  // Create product (admin only)
   createProduct: (payload: any): Promise<Product> => {
-    return api.post('/products', payload).then((res) => res.data.data)
+    return api.post('/admin/products', payload).then((res) => res.data.data)
   },
 
-  // Update product
+  // Update product (admin only)
   updateProduct: (id: number, payload: Partial<Product>): Promise<Product> => {
-    return api.put(`/products/${id}`, payload).then((res) => res.data.data)
+    return api.put(`/admin/products/${id}`, payload).then((res) => res.data.data)
   },
 
-  // Delete product
+  // Delete product (admin only)
   deleteProduct: (id: number): Promise<void> => {
-    return api.delete(`/products/${id}`).then(() => undefined)
+    return api.delete(`/admin/products/${id}`).then(() => undefined)
   },
 
   // Get all categories
