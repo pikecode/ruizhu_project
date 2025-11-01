@@ -66,49 +66,66 @@
       </view>
     </view>
 
-    <!-- 陈列货架模块（两列×两行 + 探索更多） -->
+    <!-- 陈列货架模块（Swiper 效果 - 一屏4个） -->
     <view class="collection-section">
-      <text class="section-title">精品服饰</text>
+      <text class="section-title">{{ shelfCollectionName }}</text>
 
-      <!-- 第1行 -->
-      <view class="shelf-row">
-        <view class="shelf-items">
-          <view
-            v-for="(p, i) in shelfProducts.slice(0, 2)"
-            :key="'s1-' + i"
-            class="shelf-item"
-            @tap="onShelfProductTap(p)"
-          >
-            <image class="shelf-image" :src="p.image" mode="aspectFit"></image>
-            <view class="shelf-meta">
-              <text class="shelf-en">{{ p.en }}</text>
-              <text class="shelf-cn">{{ p.cn }}</text>
-              <text class="shelf-price">¥ {{ p.price }}</text>
+      <!-- Swiper 容器 -->
+      <swiper
+        class="shelf-swiper"
+        :indicator-dots="false"
+        :autoplay="false"
+        :circular="false"
+        scroll-with-animation
+      >
+        <!-- 每个 swiper-item 显示4个产品（2行2列） -->
+        <swiper-item
+          v-for="(_, pageIndex) in Math.ceil(shelfProducts.length / 4)"
+          :key="pageIndex"
+        >
+          <view class="shelf-page">
+            <!-- 第1行 -->
+            <view class="shelf-row">
+              <view class="shelf-items">
+                <view
+                  v-for="(p, i) in shelfProducts.slice(pageIndex * 4, pageIndex * 4 + 2)"
+                  :key="'row1-' + i"
+                  class="shelf-item"
+                  @tap="onShelfProductTap(p)"
+                >
+                  <image class="shelf-image" :src="p.image" mode="aspectFit"></image>
+                  <view class="shelf-meta">
+                    <text class="shelf-en">{{ p.en }}</text>
+                    <text class="shelf-cn">{{ p.cn }}</text>
+                    <text class="shelf-price">¥ {{ p.price }}</text>
+                  </view>
+                </view>
+              </view>
+              <view class="shelf-bar"></view>
+            </view>
+
+            <!-- 第2行 -->
+            <view class="shelf-row">
+              <view class="shelf-items">
+                <view
+                  v-for="(p, i) in shelfProducts.slice(pageIndex * 4 + 2, pageIndex * 4 + 4)"
+                  :key="'row2-' + i"
+                  class="shelf-item"
+                  @tap="onShelfProductTap(p)"
+                >
+                  <image class="shelf-image" :src="p.image" mode="aspectFit"></image>
+                  <view class="shelf-meta">
+                    <text class="shelf-en">{{ p.en }}</text>
+                    <text class="shelf-cn">{{ p.cn }}</text>
+                    <text class="shelf-price">¥ {{ p.price }}</text>
+                  </view>
+                </view>
+              </view>
+              <view class="shelf-bar"></view>
             </view>
           </view>
-        </view>
-        <view class="shelf-bar"></view>
-      </view>
-
-      <!-- 第2行 -->
-      <view class="shelf-row">
-        <view class="shelf-items">
-          <view
-            v-for="(p, i) in shelfProducts.slice(2, 4)"
-            :key="'s2-' + i"
-            class="shelf-item"
-            @tap="onShelfProductTap(p)"
-          >
-            <image class="shelf-image" :src="p.image" mode="aspectFit"></image>
-            <view class="shelf-meta">
-              <text class="shelf-en">{{ p.en }}</text>
-              <text class="shelf-cn">{{ p.cn }}</text>
-              <text class="shelf-price">¥ {{ p.price }}</text>
-            </view>
-          </view>
-        </view>
-        <view class="shelf-bar"></view>
-      </view>
+        </swiper-item>
+      </swiper>
 
       <view class="collection-action" @tap="onExploreMoreShelves">
         <text>精选搭配</text>
@@ -187,6 +204,7 @@
 import GridSection from '@/components/GridSection.vue'
 import CustomNavbar from '@/components/CustomNavbar.vue'
 import { bannerService } from '@/services/banner'
+import { collectionService } from '@/services/collection'
 
 export default {
   components: {
@@ -204,6 +222,9 @@ export default {
 
       // 从 API 加载数据的加载状态
       bannerLoading: false,
+
+      // 货架集合名称（从 API 获取）
+      shelfCollectionName: '精品服饰',
 
       // 首页：陈列货架模块（两行 × 两列）
       shelfProducts: [
@@ -338,6 +359,8 @@ export default {
     console.log('Ruizhu 首页加载完成')
     // 加载轮播图数据
     this.loadBanners()
+    // 加载货架商品数据
+    this.loadShelfProducts()
   },
   methods: {
     /**
@@ -375,6 +398,38 @@ export default {
         uni.showToast({ title: '轮播图加载失败', icon: 'none' })
       } finally {
         this.bannerLoading = false
+      }
+    },
+
+    /**
+     * 加载货架商品数据
+     * 从 API 获取 premium-fashion 集合数据
+     */
+    async loadShelfProducts() {
+      try {
+        const collection = await collectionService.getCollectionBySlug('premium-fashion')
+
+        if (collection) {
+          // 更新集合名称
+          this.shelfCollectionName = collection.name
+
+          // 转换产品数据格式
+          if (collection.products && collection.products.length > 0) {
+            this.shelfProducts = collection.products.map(product => ({
+              id: product.id,
+              en: product.name,
+              cn: product.subtitle || '\u00A0', // 如果没有副标题，使用不换行空格占位
+              price: product.currentPrice ? `${product.currentPrice}` : '¥0',
+              image: product.coverImageUrl || ''
+            }))
+
+            console.log('货架商品加载成功:', this.shelfProducts)
+          } else {
+            console.warn('集合中没有产品')
+          }
+        }
+      } catch (error) {
+        console.error('加载货架商品失败:', error)
       }
     },
 
@@ -634,10 +689,28 @@ export default {
     letter-spacing: 2rpx;
   }
 
+  .shelf-swiper {
+    width: 100%;
+    height: 925rpx;
+    margin-bottom: 20rpx;
+  }
+
+  .shelf-page {
+    width: 100%;
+    height: 925rpx;
+    display: flex;
+    flex-direction: column;
+    padding: 0 20rpx;
+  }
+
   .shelf-row {
     position: relative;
     padding: 24rpx 20rpx 60rpx;
-    margin-bottom: 20rpx;
+    margin-bottom: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   .shelf-items {
@@ -645,6 +718,7 @@ export default {
     grid-template-columns: repeat(2, 1fr);
     gap: 20rpx;
     align-items: end;
+    flex: 1;
   }
 
   .shelf-item {
@@ -665,8 +739,25 @@ export default {
     flex-direction: column;
     gap: 6rpx;
   }
-  .shelf-en { font-size: 28rpx; color: #000; font-weight: 600; }
-  .shelf-cn { font-size: 26rpx; color: #333; }
+  .shelf-en {
+    font-size: 28rpx;
+    color: #000;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+  }
+  .shelf-cn {
+    font-size: 26rpx;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+  }
   .shelf-price { font-size: 26rpx; color: #000; font-weight: 600; }
 
   .shelf-bar {
