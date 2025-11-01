@@ -73,6 +73,11 @@ export default function Layout({ children }: LayoutProps) {
       onClick: () => handleNavigate('/custom-banners'),
     },
     {
+      key: '/news',
+      label: '资讯',
+      onClick: () => handleNavigate('/news'),
+    },
+    {
       key: '/orders',
       label: '订单',
       onClick: () => handleNavigate('/orders'),

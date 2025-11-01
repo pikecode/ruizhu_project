@@ -275,7 +275,16 @@ export default function BannerManager() {
               width={60}
               height={40}
               style={{ objectFit: 'cover' }}
-              preview={{ mask: '预览' }}
+              preview={{
+                mask: '预览',
+                imageRender: () => (
+                  <video
+                    src={record.videoUrl}
+                    controls
+                    style={{ maxWidth: '100%', maxHeight: '100%' }}
+                  />
+                ),
+              }}
             />
           )}
           {!record.imageUrl && !record.videoThumbnailUrl && <span>暂无</span>}
@@ -285,7 +294,7 @@ export default function BannerManager() {
     {
       title: '操作',
       key: 'action',
-      width: 240,
+      width: 100,
       fixed: 'right',
       render: (_: any, record: Banner) => (
         <Space size="small">
@@ -294,9 +303,7 @@ export default function BannerManager() {
             size="small"
             icon={<EditOutlined />}
             onClick={() => handleOpenModal(record)}
-          >
-            编辑
-          </Button>
+          />
           <Popconfirm
             title="删除Banner"
             description="确定要删除这个Banner吗?"
@@ -304,9 +311,7 @@ export default function BannerManager() {
             okText="删除"
             cancelText="取消"
           >
-            <Button danger size="small" icon={<DeleteOutlined />}>
-              删除
-            </Button>
+            <Button danger size="small" icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
       ),

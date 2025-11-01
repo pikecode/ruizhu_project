@@ -12,6 +12,7 @@ import { MediaModule } from './modules/media/media.module';
 import { CollectionsModule } from './modules/collections/collections.module';
 import { ArrayCollectionsModule } from './modules/array-collections/array-collections.module';
 import { BannersModule } from './modules/banners/banners.module';
+import { NewsModule } from './modules/news/news.module';
 import { WechatModule } from './modules/wechat/wechat.module';
 import { CartModule } from './modules/cart/cart.module';
 import { OrdersModule } from './modules/orders/orders.module';
@@ -42,6 +43,7 @@ import { getDatabaseConfig } from './database/database.config';
     CollectionsModule,
     ArrayCollectionsModule,
     BannersModule,
+    NewsModule,
     WechatModule, // 微信集成模块（支付、通知、登录）
     CartModule, // 购物车模块
     OrdersModule, // 订单模块

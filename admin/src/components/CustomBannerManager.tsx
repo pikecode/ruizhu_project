@@ -5,9 +5,7 @@ import {
   Modal,
   Form,
   Input,
-  Select,
-  InputNumber,
-  Checkbox,
+  Radio,
   Upload,
   message,
   Space,
@@ -97,19 +95,10 @@ export default function CustomBannerManager() {
         mainTitle: banner.mainTitle,
         subtitle: banner.subtitle,
         description: banner.description,
-        sortOrder: banner.sortOrder,
-        isActive: banner.isActive,
-        linkType: banner.linkType,
-        linkValue: banner.linkValue,
       })
     } else {
       setEditingBanner(null)
       form.resetFields()
-      form.setFieldsValue({
-        sortOrder: 0,
-        isActive: true,
-        linkType: 'none',
-      })
     }
     setFormVisible(true)
   }
@@ -147,14 +136,28 @@ export default function CustomBannerManager() {
           })
         }
 
-        // 再更新基本信息
+        // 再更新基本信息 - 编辑时保留原始的 sortOrder、isActive、linkType
         setUploadStatus('保存基本信息中...')
-        response = await bannerService.update(bannerId, { ...values, pageType: 'custom' })
+        response = await bannerService.update(bannerId, {
+          ...values,
+          pageType: 'custom',
+          sortOrder: editingBanner.sortOrder,
+          isActive: editingBanner.isActive,
+          linkType: editingBanner.linkType,
+          linkValue: editingBanner.linkValue,
+        })
       } else {
         // 创建新Banner或只更新信息：先保存基本信息
         setUploadStatus('保存基本信息中...')
         if (bannerId) {
-          response = await bannerService.update(bannerId, { ...values, pageType: 'custom' })
+          response = await bannerService.update(bannerId, {
+            ...values,
+            pageType: 'custom',
+            sortOrder: editingBanner.sortOrder,
+            isActive: editingBanner.isActive,
+            linkType: editingBanner.linkType,
+            linkValue: editingBanner.linkValue,
+          })
         } else {
           response = await bannerService.create({ ...values, pageType: 'custom' })
         }
@@ -275,7 +278,16 @@ export default function CustomBannerManager() {
               width={60}
               height={40}
               style={{ objectFit: 'cover' }}
-              preview={{ mask: '预览' }}
+              preview={{
+                mask: '预览',
+                imageRender: () => (
+                  <video
+                    src={record.videoUrl}
+                    controls
+                    style={{ maxWidth: '100%', maxHeight: '100%' }}
+                  />
+                ),
+              }}
             />
           )}
           {!record.imageUrl && !record.videoThumbnailUrl && <span>暂无</span>}
@@ -283,28 +295,9 @@ export default function CustomBannerManager() {
       ),
     },
     {
-      title: '状态',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      width: 80,
-      render: (isActive: boolean) =>
-        isActive ? (
-          <Tag color="green">启用</Tag>
-        ) : (
-          <Tag color="red">禁用</Tag>
-        ),
-    },
-    {
-      title: '排序',
-      dataIndex: 'sortOrder',
-      key: 'sortOrder',
-      width: 60,
-      sorter: (a: Banner, b: Banner) => a.sortOrder - b.sortOrder,
-    },
-    {
       title: '操作',
       key: 'action',
-      width: 240,
+      width: 100,
       fixed: 'right',
       render: (_: any, record: Banner) => (
         <Space size="small">
@@ -313,9 +306,7 @@ export default function CustomBannerManager() {
             size="small"
             icon={<EditOutlined />}
             onClick={() => handleOpenModal(record)}
-          >
-            编辑
-          </Button>
+          />
           <Popconfirm
             title="删除Banner"
             description="确定要删除这个Banner吗?"
@@ -323,9 +314,7 @@ export default function CustomBannerManager() {
             okText="删除"
             cancelText="取消"
           >
-            <Button danger size="small" icon={<DeleteOutlined />}>
-              删除
-            </Button>
+            <Button danger size="small" icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
       ),
@@ -380,9 +369,6 @@ export default function CustomBannerManager() {
           onFinish={handleSaveBanner}
           initialValues={{
             type: 'image',
-            sortOrder: 0,
-            isActive: true,
-            linkType: 'none',
           }}
         >
           <Form.Item
@@ -390,14 +376,14 @@ export default function CustomBannerManager() {
             name="type"
             rules={[{ required: true, message: '请选择类型' }]}
           >
-            <Select>
-              <Select.Option value="image">
+            <Radio.Group>
+              <Radio value="image">
                 <PictureOutlined /> 图片
-              </Select.Option>
-              <Select.Option value="video">
+              </Radio>
+              <Radio value="video">
                 <VideoCameraOutlined /> 视频
-              </Select.Option>
-            </Select>
+              </Radio>
+            </Radio.Group>
           </Form.Item>
 
           <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.type !== currentValues.type}>
@@ -474,40 +460,6 @@ export default function CustomBannerManager() {
 
           <Form.Item label="描述" name="description">
             <Input.TextArea placeholder="例：限时优惠详情" rows={3} />
-          </Form.Item>
-
-          <Form.Item label="排序" name="sortOrder">
-            <InputNumber min={0} placeholder="排序号越小越靠前" />
-          </Form.Item>
-
-          <Form.Item label="状态" name="isActive" valuePropName="checked">
-            <Checkbox>启用</Checkbox>
-          </Form.Item>
-
-          <Form.Item label="链接类型" name="linkType">
-            <Select>
-              <Select.Option value="none">无</Select.Option>
-              <Select.Option value="product">产品</Select.Option>
-              <Select.Option value="category">分类</Select.Option>
-              <Select.Option value="collection">专题</Select.Option>
-              <Select.Option value="url">自定义URL</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.linkType !== currentValues.linkType}>
-            {({ getFieldValue }) =>
-              getFieldValue('linkType') !== 'none' ? (
-                <Form.Item label="链接值" name="linkValue">
-                  <Input
-                    placeholder={
-                      getFieldValue('linkType') === 'url'
-                        ? '例：https://example.com'
-                        : '例：123 (ID或标识)'
-                    }
-                  />
-                </Form.Item>
-              ) : null
-            }
           </Form.Item>
         </Form>
       </Modal>

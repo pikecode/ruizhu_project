@@ -25,6 +25,7 @@ import { ArrayCollection } from '../entities/array-collection.entity';
 import { ArrayCollectionItem } from '../entities/array-collection-item.entity';
 import { ArrayCollectionItemProduct } from '../entities/array-collection-item-product.entity';
 import { Banner } from '../entities/banner.entity';
+import { News } from '../entities/news.entity';
 import { User } from '../entities/user.entity';
 import { Role } from '../entities/role.entity';
 import { Permission } from '../entities/permission.entity';
@@ -110,6 +111,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
       ArrayCollectionItem,
       ArrayCollectionItemProduct,
       Banner,
+      News,
       WechatPaymentEntity,
       WechatNotificationEntity,
       UserAuthorization,
