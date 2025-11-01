@@ -132,26 +132,62 @@
       </view>
     </view>
 
-    <!-- 精品珠宝区域 -->
+    <!-- 精品珠宝区域（Swiper 效果 - 一屏4个） -->
     <view class="jewelry-section">
       <text class="section-title">精品珠宝</text>
-      <view class="jewelry-grid">
-        <view
-          v-for="(item, index) in jewelryProducts"
-          :key="index"
-          class="jewelry-item"
-          @tap="onJewelryProductTap(item)"
+
+      <!-- Swiper 容器 -->
+      <swiper
+        class="jewelry-swiper"
+        :indicator-dots="false"
+        :autoplay="false"
+        :circular="false"
+        scroll-with-animation
+      >
+        <!-- 每个 swiper-item 显示4个产品（2行2列） -->
+        <swiper-item
+          v-for="(_, pageIndex) in Math.ceil(jewelryProducts.length / 4)"
+          :key="pageIndex"
         >
-          <view class="jewelry-image-wrapper">
-            <image class="jewelry-image" :src="item.image" mode="aspectFill"></image>
+          <view class="jewelry-page">
+            <!-- 第1行 -->
+            <view class="jewelry-row">
+              <view
+                v-for="(item, i) in jewelryProducts.slice(pageIndex * 4, pageIndex * 4 + 2)"
+                :key="'row1-' + i"
+                class="jewelry-item"
+                @tap="onJewelryProductTap(item)"
+              >
+                <view class="jewelry-image-wrapper">
+                  <image class="jewelry-image" :src="item.image" mode="aspectFit"></image>
+                </view>
+                <view class="jewelry-info">
+                  <text class="jewelry-name">{{ item.name }}</text>
+                  <text class="jewelry-price">¥{{ item.price }}</text>
+                </view>
+              </view>
+            </view>
+
+            <!-- 第2行 -->
+            <view class="jewelry-row">
+              <view
+                v-for="(item, i) in jewelryProducts.slice(pageIndex * 4 + 2, pageIndex * 4 + 4)"
+                :key="'row2-' + i"
+                class="jewelry-item"
+                @tap="onJewelryProductTap(item)"
+              >
+                <view class="jewelry-image-wrapper">
+                  <image class="jewelry-image" :src="item.image" mode="aspectFit"></image>
+                </view>
+                <view class="jewelry-info">
+                  <text class="jewelry-name">{{ item.name }}</text>
+                  <text class="jewelry-price">¥{{ item.price }}</text>
+                </view>
+              </view>
+            </view>
           </view>
-          <view class="jewelry-info">
-            <text class="jewelry-name">{{ item.name }}</text>
-            <text class="jewelry-category">{{ item.category }}</text>
-            <text class="jewelry-price">¥{{ item.price }}</text>
-          </view>
-        </view>
-      </view>
+        </swiper-item>
+      </swiper>
     </view>
 
     <!-- 商品资讯区域 -->
@@ -361,6 +397,8 @@ export default {
     this.loadBanners()
     // 加载货架商品数据
     this.loadShelfProducts()
+    // 加载珠宝商品数据
+    this.loadJewelryProducts()
   },
   methods: {
     /**
@@ -430,6 +468,33 @@ export default {
         }
       } catch (error) {
         console.error('加载货架商品失败:', error)
+      }
+    },
+
+    /**
+     * 加载珠宝商品数据
+     * 从 API 获取 premium-jewelry 集合数据
+     */
+    async loadJewelryProducts() {
+      try {
+        const collection = await collectionService.getCollectionBySlug('premium-jewelry')
+
+        if (collection && collection.products && collection.products.length > 0) {
+          // 转换产品数据格式
+          this.jewelryProducts = collection.products.map(product => ({
+            id: product.id,
+            name: product.name,
+            category: product.subtitle || '珠宝',
+            price: product.currentPrice ? `${product.currentPrice}` : '¥0',
+            image: product.coverImageUrl || ''
+          }))
+
+          console.log('珠宝商品加载成功:', this.jewelryProducts)
+        } else {
+          console.warn('未获取到珠宝商品数据')
+        }
+      } catch (error) {
+        console.error('加载珠宝商品失败:', error)
       }
     },
 
@@ -866,62 +931,78 @@ export default {
     letter-spacing: 2rpx;
   }
 
-  .jewelry-grid {
+  .jewelry-swiper {
+    width: 100%;
+    height: 925rpx;
+    margin-bottom: 20rpx;
+  }
+
+  .jewelry-page {
+    width: 100%;
+    height: 925rpx;
+    display: flex;
+    flex-direction: column;
+    padding: 0 20rpx;
+  }
+
+  .jewelry-row {
+    flex: 1;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16rpx;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24rpx;
+    align-items: center;
+    justify-items: center;
   }
 
   .jewelry-item {
-    background: #f8f8f8;
-    border-radius: 8rpx;
-    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     cursor: pointer;
+    width: 100%;
 
     &:active {
-      opacity: 0.9;
+      opacity: 0.8;
     }
 
     .jewelry-image-wrapper {
       position: relative;
       width: 100%;
-      height: 280rpx;
+      height: 300rpx;
       background: #f5f5f5;
+      border-radius: 8rpx;
       overflow: hidden;
+      margin-bottom: 16rpx;
 
       .jewelry-image {
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain;
       }
     }
 
     .jewelry-info {
-      padding: 16rpx 12rpx;
       display: flex;
       flex-direction: column;
-      gap: 6rpx;
+      gap: 8rpx;
+      align-items: center;
+      text-align: center;
 
       .jewelry-name {
         display: block;
-        font-size: 24rpx;
+        font-size: 26rpx;
         color: #333333;
         font-weight: 500;
-        line-height: 1.2;
+        line-height: 1.3;
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .jewelry-category {
-        display: block;
-        font-size: 20rpx;
-        color: #999999;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
       }
 
       .jewelry-price {
         display: block;
-        font-size: 26rpx;
+        font-size: 28rpx;
         color: #000000;
         font-weight: 600;
       }
