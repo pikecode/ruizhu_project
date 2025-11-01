@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { Repository, In } from 'typeorm'
 import { Wishlist } from '../../entities/wishlist.entity'
 import { Product } from '../../entities/product.entity'
 
@@ -107,7 +107,7 @@ export class WishlistsService {
     const wishlisted = await this.wishlistRepository.find({
       where: {
         userId,
-        productId: productIds as any
+        productId: In(productIds)
       },
       select: ['productId']
     })
