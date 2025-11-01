@@ -226,18 +226,22 @@ export default {
     async loadRecommendedProductsFavoriteStatus() {
       try {
         const productIds = this.recommendProducts.map(p => p.id)
+        console.log('🔍 检查收藏状态 - 产品IDs:', productIds)
         if (productIds.length === 0) return
 
         const favoriteStatus = await wishlistService.checkMultipleWishlists(productIds)
+        console.log('📡 API返回的收藏状态:', favoriteStatus)
 
         // 更新推荐商品的收藏状态
         this.recommendProducts.forEach((product, index) => {
-          this.$set(this.recommendProducts[index], 'isFavorite', favoriteStatus[product.id] || false)
+          const isFavorite = favoriteStatus[product.id] || false
+          console.log(`💖 产品 ${product.id} (${product.name}) 收藏状态: ${isFavorite}`)
+          this.$set(this.recommendProducts[index], 'isFavorite', isFavorite)
         })
 
-        console.log('Loaded favorite status for recommended products:', favoriteStatus)
+        console.log('✅ 最终推荐商品数据:', this.recommendProducts.map(p => ({ id: p.id, name: p.name, isFavorite: p.isFavorite })))
       } catch (error) {
-        console.error('Failed to load favorite status:', error)
+        console.error('❌ 加载收藏状态失败:', error)
         // 加载失败，保持初始值（全部未收藏）
       }
     },
