@@ -100,6 +100,7 @@ export class ArrayCollectionsService {
     return {
       id: collection.id,
       title: collection.title,
+      slug: collection.slug,
       description: collection.description,
       sortOrder: collection.sortOrder,
       isActive: collection.isActive,
@@ -211,6 +212,69 @@ export class ArrayCollectionsService {
   }
 
   /**
+   * 获取单个项目的详情（包括商品列表）
+   */
+  async getItemDetail(itemId: number): Promise<ArrayCollectionItemDto> {
+    const item = await this.itemRepository.findOne({ where: { id: itemId } });
+
+    if (!item) {
+      throw new NotFoundException(`项目 ID ${itemId} 不存在`);
+    }
+
+    const products = await this.getItemProducts(itemId);
+
+    return {
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      coverImageUrl: item.coverImageUrl,
+      sortOrder: item.sortOrder,
+      products,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    };
+  }
+
+  /**
+   * 更新集合内项目的排序
+   */
+  async updateItemsSort(
+    collectionId: number,
+    items: Array<{ itemId: number; sortOrder: number }>,
+  ): Promise<void> {
+    // 验证集合是否存在
+    const collection = await this.arrayCollectionRepository.findOne({
+      where: { id: collectionId },
+    });
+
+    if (!collection) {
+      throw new NotFoundException(`数组集合 ID ${collectionId} 不存在`);
+    }
+
+    // 批量更新项目的排序
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const item of items) {
+        await queryRunner.manager.update(
+          ArrayCollectionItem,
+          { id: item.itemId },
+          { sortOrder: item.sortOrder },
+        );
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  /**
    * 获取项目内的商品列表
    */
   private async getItemProducts(itemId: number): Promise<ArrayCollectionItemProductDto[]> {
@@ -283,14 +347,15 @@ export class ArrayCollectionsService {
       sortOrder: startSortOrder + index,
     }));
 
-    // 忽略重复的记录
-    const query = this.dataSource
-      .createQueryBuilder()
-      .insert()
-      .into(ArrayCollectionItemProduct)
-      .values(itemProducts);
-
-    await query.orIgnore().execute();
+    // 使用 insert 方法，忽略重复的记录
+    try {
+      await this.itemProductRepository.insert(itemProducts);
+    } catch (error) {
+      // 忽略重复记录的错误（由于 UNIQUE 约束）
+      if (!error.message.includes('Duplicate entry')) {
+        throw error;
+      }
+    }
   }
 
   /**

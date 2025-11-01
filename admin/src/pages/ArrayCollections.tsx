@@ -27,6 +27,7 @@ import ArrayCollectionItemsModal from '@/components/ArrayCollectionItemsModal'
 interface ArrayCollection {
   id: number
   title: string
+  slug?: string | null
   description: string
   sortOrder: number
   isActive: boolean
@@ -88,6 +89,14 @@ export default function ArrayCollectionsPage() {
   const handleSubmitForm = async () => {
     try {
       const values = await form.validateFields()
+
+      // 新增时添加默认值，编辑时保持原值
+      if (!editingCollection) {
+        values.sortOrder = 0
+        values.isActive = true
+        values.remark = ''
+      }
+
       if (editingCollection) {
         await arrayCollectionsService.updateArrayCollection(editingCollection.id, values)
         message.success('数组集合更新成功')
@@ -98,7 +107,8 @@ export default function ArrayCollectionsPage() {
       handleCloseForm()
       await loadCollections()
     } catch (error: any) {
-      message.error(error.message || '操作失败')
+      console.error('Error details:', error)
+      message.error(error.response?.data?.message || error.message || '操作失败')
     }
   }
 
@@ -125,28 +135,18 @@ export default function ArrayCollectionsPage() {
       width: 200,
     },
     {
+      title: 'Slug',
+      dataIndex: 'slug',
+      key: 'slug',
+      width: 150,
+      render: (slug: string | null) => slug || '-',
+    },
+    {
       title: '卡片数',
       dataIndex: 'itemCount',
       key: 'itemCount',
       width: 80,
       render: (count: number) => <Tag color="blue">{count}</Tag>,
-    },
-    {
-      title: '排序',
-      dataIndex: 'sortOrder',
-      key: 'sortOrder',
-      width: 80,
-      sorter: (a: ArrayCollection, b: ArrayCollection) => a.sortOrder - b.sortOrder,
-    },
-    {
-      title: '状态',
-      key: 'status',
-      width: 100,
-      render: (_: any, record: ArrayCollection) => (
-        <Tag color={record.isActive ? 'green' : 'default'}>
-          {record.isActive ? '激活' : '禁用'}
-        </Tag>
-      ),
     },
     {
       title: '操作',
@@ -249,28 +249,25 @@ export default function ArrayCollectionsPage() {
           </Form.Item>
 
           <Form.Item
+            label="Slug"
+            name="slug"
+            rules={[
+              { max: 100, message: 'Slug不超过100个字符' },
+              {
+                pattern: /^[a-z0-9-]*$/,
+                message: 'Slug只能包含小写字母、数字和中划线',
+              },
+            ]}
+          >
+            <Input placeholder="如：brand-story" />
+          </Form.Item>
+
+          <Form.Item
             label="描述"
             name="description"
             rules={[{ max: 500, message: '描述不超过500个字符' }]}
           >
             <Input.TextArea rows={3} placeholder="集合描述" />
-          </Form.Item>
-
-          <Form.Item
-            label="排序"
-            name="sortOrder"
-            initialValue={0}
-            rules={[{ required: true, message: '请输入排序号' }]}
-          >
-            <InputNumber min={0} />
-          </Form.Item>
-
-          <Form.Item name="isActive" valuePropName="checked" initialValue={true}>
-            <Checkbox>激活</Checkbox>
-          </Form.Item>
-
-          <Form.Item label="备注" name="remark">
-            <Input.TextArea rows={2} placeholder="备注说明" />
           </Form.Item>
         </Form>
       </Modal>

@@ -1,5 +1,6 @@
 import {
   Modal,
+  Drawer,
   Table,
   Button,
   Popconfirm,
@@ -8,8 +9,20 @@ import {
   Spin,
   Card,
   Tabs,
+  Empty,
+  Space,
+  Divider,
+  Badge,
+  Tooltip,
+  Row,
+  Col,
+  List,
+  Tag,
+  Checkbox,
+  Input,
+  Pagination,
 } from 'antd'
-import { DeleteOutlined, SaveOutlined } from '@ant-design/icons'
+import { DeleteOutlined, SaveOutlined, ArrowUpOutlined, ArrowDownOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { useState, useEffect } from 'react'
 import { arrayCollectionsService } from '@/services/array-collections'
 import { productsService } from '@/services/products'
@@ -33,21 +46,29 @@ export default function ArrayItemProductsModal({
   const [selectedProductIds, setSelectedProductIds] = useState<(string | number)[]>([])
   const [sortChanged, setSortChanged] = useState(false)
   const [tempProducts, setTempProducts] = useState<ProductListItem[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
+  const [searchText, setSearchText] = useState('')
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
 
   useEffect(() => {
     if (visible) {
       loadItemProducts()
-      loadAllProducts()
       loadCategories()
     }
   }, [visible, itemId])
 
+  useEffect(() => {
+    if (visible) {
+      loadAllProducts()
+    }
+  }, [visible, pagination.current, pagination.pageSize])
+
   const loadItemProducts = async () => {
     try {
       setLoading(true)
-      // 这里需要获取Item的详情，因为API返回的是集合详情，我们需要获取specific item
-      // 暂时使用一个示例实现，实际需要后端支持单个item的获取
-      const products: ProductListItem[] = [] // 应该从API获取
+      const itemDetail = await arrayCollectionsService.getItemDetail(itemId)
+      const products = itemDetail.products as ProductListItem[]
       setProducts(products)
       setTempProducts(products)
       setSelectedProductIds(products.map((p) => p.id))
@@ -62,10 +83,11 @@ export default function ArrayItemProductsModal({
   const loadAllProducts = async () => {
     try {
       const data = await productsService.getProducts({
-        page: 1,
-        limit: 100,
+        page: pagination.current,
+        limit: pagination.pageSize,
       })
       setAllProducts(data.items)
+      setPagination((prev) => ({ ...prev, total: data.total }))
     } catch (error) {
       console.error(error)
     }
@@ -118,11 +140,56 @@ export default function ArrayItemProductsModal({
     setTempProducts(products)
     setSelectedProductIds(products.map((p) => p.id))
     setSortChanged(false)
+    setSelectedCategory(null)
+    setSearchText('')
+    setPagination({ current: 1, pageSize: 10, total: 0 })
     onClose()
+  }
+
+  const handlePaginationChange = (page: number, pageSize: number) => {
+    setPagination({ current: page, pageSize, total: pagination.total })
+  }
+
+  const handleCategoryChange = (categoryId: number | null) => {
+    setSelectedCategory(categoryId)
+    setPagination({ current: 1, pageSize: pagination.pageSize, total: pagination.total })
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearchText(value)
+    setPagination({ current: 1, pageSize: pagination.pageSize, total: pagination.total })
   }
 
   const getProductsByCategory = (categoryId: number) => {
     return allProducts.filter((p) => p.categoryId === categoryId)
+  }
+
+  const getFilteredProducts = () => {
+    let filtered = selectedCategory
+      ? getProductsByCategory(selectedCategory)
+      : allProducts
+
+    if (searchText) {
+      filtered = filtered.filter(
+        (p) =>
+          p.name.toLowerCase().includes(searchText.toLowerCase()) ||
+          p.sku.toLowerCase().includes(searchText.toLowerCase())
+      )
+    }
+    return filtered
+  }
+
+  const toggleProduct = (productId: number) => {
+    const newSelectedIds = selectedProductIds.includes(productId)
+      ? selectedProductIds.filter((id) => id !== productId)
+      : [...selectedProductIds, productId]
+
+    setSelectedProductIds(newSelectedIds)
+    const newProducts = newSelectedIds
+      .map((id) => allProducts.find((p) => p.id === Number(id)))
+      .filter(Boolean) as ProductListItem[]
+    setTempProducts(newProducts)
+    setSortChanged(true)
   }
 
   const handleRemoveFromSort = (index: number) => {
@@ -144,6 +211,41 @@ export default function ArrayItemProductsModal({
     ]
     setTempProducts(newProducts)
     setSortChanged(true)
+  }
+
+  // 拖动排序处理
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDropOnProduct = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault()
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null)
+      return
+    }
+
+    const newProducts = [...tempProducts]
+    const draggedProduct = newProducts[draggedIndex]
+
+    // 移除被拖动的元素
+    newProducts.splice(draggedIndex, 1)
+    // 在目标位置插入
+    newProducts.splice(targetIndex, 0, draggedProduct)
+
+    setTempProducts(newProducts)
+    setSortChanged(true)
+    setDraggedIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null)
   }
 
   const productColumns = [
@@ -218,90 +320,327 @@ export default function ArrayItemProductsModal({
     },
   ]
 
+  const filteredProducts = getFilteredProducts()
+
   return (
-    <Modal
+    <Drawer
       title="卡片商品管理"
+      placement="right"
+      onClose={handleCancel}
       open={visible}
-      onCancel={handleCancel}
-      width={1400}
-      footer={[
-        <Button key="cancel" onClick={handleCancel}>
-          取消
-        </Button>,
-        <Button
-          key="save"
-          type="primary"
-          icon={<SaveOutlined />}
-          onClick={handleSaveChanges}
-          loading={loading}
-          disabled={!sortChanged}
-        >
-          保存更改
-        </Button>,
-      ]}
+      width="90vw"
+      footer={
+        <Space style={{ float: 'right' }}>
+          <Button onClick={handleCancel}>取消</Button>
+          <Button
+            type="primary"
+            icon={<SaveOutlined />}
+            onClick={handleSaveChanges}
+            loading={loading}
+            disabled={!sortChanged}
+          >
+            保存更改
+          </Button>
+        </Space>
+      }
     >
       <Spin spinning={loading}>
-        <Tabs
-          tabPosition="top"
-          items={categories.map((category) => ({
-            key: `${category.id}`,
-            label: `${category.name}`,
-            children: (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
-                <Transfer
-                  dataSource={getProductsByCategory(category.id).map((p) => ({
-                    key: `${p.id}`,
-                    title: p.name,
-                    description: `${p.sku} | ¥${(p.currentPrice / 100).toFixed(2)}`,
-                  }))}
-                  titles={['可用商品', '已选商品']}
-                  targetKeys={selectedProductIds.map((id) => `${id}`)}
-                  onChange={(newKeys) => {
-                    setSelectedProductIds(newKeys.map((k) => Number(k)))
-                    const newProducts = newKeys
-                      .map((key) =>
-                        allProducts.find((p) => p.id === Number(key))
-                      )
-                      .filter(Boolean) as ProductListItem[]
-                    setTempProducts(newProducts)
-                    setSortChanged(true)
-                  }}
-                  listStyle={{ height: 400, width: '45%' }}
-                  render={(item: any) => (
-                    <div>
-                      <div style={{ fontWeight: 500 }}>{item.title}</div>
-                      <small style={{ color: '#999' }}>{item.description}</small>
-                    </div>
-                  )}
-                  operations={['添加', '移除']}
-                  locale={{
-                    itemUnit: '项',
-                    itemsUnit: '项',
-                  }}
-                />
-              </div>
-            ),
-          }))}
-        />
-
-        {tempProducts.length > 0 && (
-          <div style={{ marginTop: 24 }}>
+        <Row gutter={[16, 16]} style={{ minHeight: '70vh' }}>
+          {/* 左侧：商品选择 */}
+          <Col xs={24} sm={24} md={12} lg={12}>
             <Card
-              title={`排序 (共 ${tempProducts.length} 个已选商品)`}
-              extra={sortChanged && <span style={{ color: '#ff4d4f' }}>有未保存的更改</span>}
+              title={
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>商品选择</span>
+                  <Badge count={filteredProducts.length} style={{ backgroundColor: '#1890ff' }} />
+                </div>
+              }
               size="small"
+              style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+              bodyStyle={{ flex: 1, overflowY: 'auto' }}
             >
-              <Table
-                columns={productColumns}
-                dataSource={tempProducts}
-                rowKey="id"
-                pagination={false}
-                size="small"
-              />
+              {/* 搜索和分类筛选 */}
+              <div style={{ marginBottom: 12 }}>
+                <Input.Search
+                  placeholder="搜索商品名称或SKU"
+                  allowClear
+                  value={searchText}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  style={{ marginBottom: 8 }}
+                  prefix={<SearchOutlined />}
+                />
+                <Space wrap style={{ width: '100%' }}>
+                  <Button
+                    size="small"
+                    type={selectedCategory === null ? 'primary' : 'default'}
+                    onClick={() => handleCategoryChange(null)}
+                  >
+                    全部
+                  </Button>
+                  {categories.map((cat) => (
+                    <Button
+                      key={cat.id}
+                      size="small"
+                      type={selectedCategory === cat.id ? 'primary' : 'default'}
+                      onClick={() => handleCategoryChange(cat.id)}
+                    >
+                      {cat.name}
+                    </Button>
+                  ))}
+                </Space>
+              </div>
+
+              {filteredProducts.length > 0 ? (
+                <>
+                  <List
+                    dataSource={filteredProducts}
+                    renderItem={(product) => (
+                      <List.Item
+                        key={product.id}
+                        style={{
+                          padding: '8px 0',
+                          borderBottom: '1px solid #f0f0f0',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ width: '100%' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Checkbox
+                              checked={selectedProductIds.includes(product.id)}
+                              onChange={() => toggleProduct(product.id)}
+                            />
+                            {/* 商品图片 */}
+                            <div
+                              style={{
+                                width: 60,
+                                height: 60,
+                                flexShrink: 0,
+                                background: '#f0f0f0',
+                                borderRadius: '4px',
+                                overflow: 'hidden',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              {product.coverImageUrl ? (
+                                <img
+                                  src={product.coverImageUrl}
+                                  alt={product.name}
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                  }}
+                                />
+                              ) : (
+                                <span style={{ fontSize: '12px', color: '#999' }}>无图</span>
+                              )}
+                            </div>
+                            {/* 商品信息 */}
+                            <div style={{ flex: 1 }}>
+                              <div
+                                style={{
+                                  fontWeight: 500,
+                                  fontSize: '13px',
+                                  marginBottom: '4px',
+                                }}
+                              >
+                                {product.name}
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>
+                                SKU: {product.sku}
+                              </div>
+                              <div style={{ fontSize: '13px', fontWeight: 500, color: '#ff6b35' }}>
+                                ¥{(product.currentPrice / 100).toFixed(2)}
+                                {product.originalPrice > product.currentPrice && (
+                                  <span style={{ marginLeft: 4, textDecoration: 'line-through', color: '#999', fontSize: '12px' }}>
+                                    ¥{(product.originalPrice / 100).toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </List.Item>
+                    )}
+                  />
+                  <div style={{ marginTop: 12, textAlign: 'center' }}>
+                    <Pagination
+                      current={pagination.current}
+                      pageSize={pagination.pageSize}
+                      total={pagination.total}
+                      onChange={handlePaginationChange}
+                      showSizeChanger
+                      pageSizeOptions={[10, 20, 50]}
+                      size="small"
+                    />
+                  </div>
+                </>
+              ) : (
+                <Empty description="暂无商品" />
+              )}
             </Card>
-          </div>
-        )}
+          </Col>
+
+          {/* 右侧：已选商品和排序 */}
+          <Col xs={24} sm={24} md={12} lg={12}>
+            <Card
+              title={
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>已选商品</span>
+                  <Badge
+                    count={tempProducts.length}
+                    style={{ backgroundColor: '#52c41a' }}
+                  />
+                  {sortChanged && (
+                    <Tag color="red" style={{ marginLeft: 'auto' }}>
+                      未保存
+                    </Tag>
+                  )}
+                </div>
+              }
+              size="small"
+              style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+              bodyStyle={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: '8px 12px',
+              }}
+            >
+              {tempProducts.length > 0 ? (
+                <div style={{ userSelect: 'none' }}>
+                  {tempProducts.map((product, index) => (
+                    <div
+                      key={product.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, index)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDropOnProduct(e, index)}
+                      onDragEnd={handleDragEnd}
+                      style={{
+                        padding: '8px',
+                        marginBottom: '8px',
+                        borderBottom: '1px solid #f0f0f0',
+                        borderRadius: '4px',
+                        background: draggedIndex === index ? '#e6f7ff' : 'transparent',
+                        opacity: draggedIndex === index ? 0.6 : 1,
+                        cursor: draggedIndex !== null && draggedIndex !== index ? 'grabbing' : 'grab',
+                        border: draggedIndex === index ? '2px dashed #1890ff' : 'none',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                        }}
+                      >
+                        {/* 排序编号 */}
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            color: '#fff',
+                            background: '#1890ff',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 500,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {index + 1}
+                        </div>
+
+                        {/* 商品图片 */}
+                        <div
+                          style={{
+                            width: 48,
+                            height: 48,
+                            flexShrink: 0,
+                            background: '#f0f0f0',
+                            borderRadius: '4px',
+                            overflow: 'hidden',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {product.coverImageUrl ? (
+                            <img
+                              src={product.coverImageUrl}
+                              alt={product.name}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                              }}
+                            />
+                          ) : (
+                            <span style={{ fontSize: '10px', color: '#999' }}>无图</span>
+                          )}
+                        </div>
+
+                        {/* 商品信息 */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontWeight: 500,
+                              fontSize: '13px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {product.name}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: '12px',
+                              color: '#999',
+                              marginBottom: '2px',
+                            }}
+                          >
+                            {product.sku}
+                          </div>
+                          <div style={{ fontSize: '12px', fontWeight: 500, color: '#ff6b35' }}>
+                            ¥{(product.currentPrice / 100).toFixed(2)}
+                          </div>
+                        </div>
+
+                        {/* 操作按钮 */}
+                        <Popconfirm
+                          title="移除商品"
+                          description="确定要移除此商品吗？"
+                          okText="确定"
+                          cancelText="取消"
+                          onConfirm={() => handleRemoveFromSort(index)}
+                        >
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                          />
+                        </Popconfirm>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Empty
+                  description="暂未选择商品"
+                  style={{ marginTop: '50%', transform: 'translateY(-50%)' }}
+                />
+              )}
+            </Card>
+          </Col>
+        </Row>
       </Spin>
-    </Modal>
+    </Drawer>
   )
 }

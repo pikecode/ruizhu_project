@@ -28,6 +28,7 @@ export class ArrayCollectionItemDto {
 export class ArrayCollectionDetailResponseDto {
   id: number;
   title: string;
+  slug?: string | null;
   description: string;
   sortOrder: number;
   isActive: boolean;

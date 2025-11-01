@@ -108,6 +108,26 @@ export class ArrayCollectionsController {
     await this.service.deleteItem(itemId);
   }
 
+  /**
+   * 获取单个卡片项目的详情（包括商品列表）
+   */
+  @Get('items/:itemId')
+  async getItemDetail(@Param('itemId') itemId: number) {
+    return await this.service.getItemDetail(itemId);
+  }
+
+  /**
+   * 更新集合内项目的排序
+   */
+  @Put(':collectionId/items/sort')
+  async updateItemsSort(
+    @Param('collectionId') collectionId: number,
+    @Body() body: { items: Array<{ itemId: number; sortOrder: number }> },
+  ) {
+    await this.service.updateItemsSort(collectionId, body.items);
+    return { message: '排序已更新' };
+  }
+
   // ==================== 商品管理 ====================
 
   /**

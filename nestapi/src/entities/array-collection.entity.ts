@@ -24,6 +24,9 @@ export class ArrayCollection {
   @Column({ type: 'varchar', length: 100, nullable: false })
   title: string; // 数组集合的标题，如"品牌故事"
 
+  @Column({ type: 'varchar', length: 100, nullable: true, unique: true })
+  slug: string; // 数组集合的slug，用于URL和查询，如"brand-story"
+
   @Column({ type: 'varchar', length: 500, nullable: true })
   description: string; // 数组集合的描述
 

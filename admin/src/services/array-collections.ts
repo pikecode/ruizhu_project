@@ -55,6 +55,20 @@ export const arrayCollectionsService = {
   deleteItem: (itemId: number) =>
     api.delete(`/array-collections/items/${itemId}`),
 
+  /**
+   * 获取单个卡片项目的详情（包括商品列表）
+   */
+  getItemDetail: (itemId: number) =>
+    api.get(`/array-collections/items/${itemId}`).then((res: any) => res.data),
+
+  /**
+   * 更新集合内项目的排序
+   */
+  updateItemsSort: (collectionId: number, items: any[]) =>
+    api
+      .put(`/array-collections/${collectionId}/items/sort`, { items })
+      .then((res: any) => res.data),
+
   // ==================== 商品管理 ====================
 
   /**

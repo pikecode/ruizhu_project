@@ -131,6 +131,19 @@ export interface CollectionDetail extends Collection {
   productCount: number
 }
 
+// Array Collection
+export interface ArrayCollection {
+  id: number
+  title: string
+  slug?: string | null
+  description?: string
+  sortOrder: number
+  isActive: boolean
+  remark?: string
+  createdAt: string
+  updatedAt: string
+}
+
 // Order
 export interface Order {
   id: string

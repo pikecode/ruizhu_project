@@ -17,6 +17,7 @@ import {
   Image,
   Tag,
   Progress,
+  Radio,
 } from 'antd'
 import {
   PlusOutlined,
@@ -39,8 +40,7 @@ interface Banner {
   videoThumbnailUrl?: string
   isActive: boolean
   sortOrder: number
-  linkType: 'none' | 'product' | 'category' | 'collection' | 'url'
-  linkValue?: string
+  linkType: 'product' | 'news'
   createdAt: string
   updatedAt: string
 }
@@ -52,8 +52,7 @@ interface CreateBannerPayload {
   type?: 'image' | 'video'
   sortOrder?: number
   isActive?: boolean
-  linkType?: 'none' | 'product' | 'category' | 'collection' | 'url'
-  linkValue?: string
+  linkType?: 'product' | 'news'
 }
 
 export default function BannerManager() {
@@ -97,18 +96,13 @@ export default function BannerManager() {
         mainTitle: banner.mainTitle,
         subtitle: banner.subtitle,
         description: banner.description,
-        sortOrder: banner.sortOrder,
-        isActive: banner.isActive,
         linkType: banner.linkType,
-        linkValue: banner.linkValue,
       })
     } else {
       setEditingBanner(null)
       form.resetFields()
       form.setFieldsValue({
-        sortOrder: 0,
-        isActive: true,
-        linkType: 'none',
+        linkType: 'product',
       })
     }
     setFormVisible(true)
@@ -128,6 +122,12 @@ export default function BannerManager() {
       setUploadStatus('')
       let response
       const bannerId = editingBanner?.id
+
+      // 新增时添加默认值
+      if (!bannerId) {
+        values.sortOrder = 0
+        values.isActive = true
+      }
 
       // 编辑时：先上传媒体，再保存基本信息
       // 创建时：先保存基本信息获得ID，再上传媒体
@@ -283,25 +283,6 @@ export default function BannerManager() {
       ),
     },
     {
-      title: '状态',
-      dataIndex: 'isActive',
-      key: 'isActive',
-      width: 80,
-      render: (isActive: boolean) =>
-        isActive ? (
-          <Tag color="green">启用</Tag>
-        ) : (
-          <Tag color="red">禁用</Tag>
-        ),
-    },
-    {
-      title: '排序',
-      dataIndex: 'sortOrder',
-      key: 'sortOrder',
-      width: 60,
-      sorter: (a: Banner, b: Banner) => a.sortOrder - b.sortOrder,
-    },
-    {
       title: '操作',
       key: 'action',
       width: 240,
@@ -380,9 +361,7 @@ export default function BannerManager() {
           onFinish={handleSaveBanner}
           initialValues={{
             type: 'image',
-            sortOrder: 0,
-            isActive: true,
-            linkType: 'none',
+            linkType: 'product',
           }}
         >
           <Form.Item
@@ -390,14 +369,14 @@ export default function BannerManager() {
             name="type"
             rules={[{ required: true, message: '请选择类型' }]}
           >
-            <Select>
-              <Select.Option value="image">
+            <Radio.Group>
+              <Radio value="image">
                 <PictureOutlined /> 图片
-              </Select.Option>
-              <Select.Option value="video">
+              </Radio>
+              <Radio value="video">
                 <VideoCameraOutlined /> 视频
-              </Select.Option>
-            </Select>
+              </Radio>
+            </Radio.Group>
           </Form.Item>
 
           <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.type !== currentValues.type}>
@@ -476,38 +455,11 @@ export default function BannerManager() {
             <Input.TextArea placeholder="例：限时优惠详情" rows={3} />
           </Form.Item>
 
-          <Form.Item label="排序" name="sortOrder">
-            <InputNumber min={0} placeholder="排序号越小越靠前" />
-          </Form.Item>
-
-          <Form.Item label="状态" name="isActive" valuePropName="checked">
-            <Checkbox>启用</Checkbox>
-          </Form.Item>
-
           <Form.Item label="链接类型" name="linkType">
-            <Select>
-              <Select.Option value="none">无</Select.Option>
-              <Select.Option value="product">产品</Select.Option>
-              <Select.Option value="category">分类</Select.Option>
-              <Select.Option value="collection">专题</Select.Option>
-              <Select.Option value="url">自定义URL</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.linkType !== currentValues.linkType}>
-            {({ getFieldValue }) =>
-              getFieldValue('linkType') !== 'none' ? (
-                <Form.Item label="链接值" name="linkValue">
-                  <Input
-                    placeholder={
-                      getFieldValue('linkType') === 'url'
-                        ? '例：https://example.com'
-                        : '例：123 (ID或标识)'
-                    }
-                  />
-                </Form.Item>
-              ) : null
-            }
+            <Radio.Group>
+              <Radio value="product">商品</Radio>
+              <Radio value="news">资讯</Radio>
+            </Radio.Group>
           </Form.Item>
         </Form>
       </Modal>
