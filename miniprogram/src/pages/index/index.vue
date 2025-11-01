@@ -190,23 +190,40 @@
       </swiper>
     </view>
 
-    <!-- 商品资讯区域 -->
+    <!-- 商品资讯区域（Swiper 效果 - 一屏3个） -->
     <view class="news-section">
       <text class="section-title">商品资讯</text>
-      <view class="news-grid">
-        <view
-          v-for="(item, index) in newsItems"
-          :key="index"
-          class="news-card"
-          @tap="onNewsTap(item)"
+
+      <!-- Swiper 容器 -->
+      <swiper
+        class="news-swiper"
+        :indicator-dots="false"
+        :autoplay="false"
+        :circular="false"
+        scroll-with-animation
+      >
+        <!-- 每个 swiper-item 显示3个产品（1行3列） -->
+        <swiper-item
+          v-for="(_, pageIndex) in Math.ceil(newsItems.length / 3)"
+          :key="pageIndex"
         >
-          <view class="news-image-wrapper">
-            <image class="news-image" :src="item.image" mode="aspectFill"></image>
-            <view v-if="item.tag" class="news-tag">{{ item.tag }}</view>
+          <view class="news-page">
+            <view class="news-grid">
+              <view
+                v-for="(item, i) in newsItems.slice(pageIndex * 3, pageIndex * 3 + 3)"
+                :key="i"
+                class="news-card"
+                @tap="onNewsTap(item)"
+              >
+                <view class="news-image-wrapper">
+                  <image class="news-image" :src="item.image" mode="aspectFill"></image>
+                </view>
+                <text class="news-title">{{ item.title }}</text>
+              </view>
+            </view>
           </view>
-          <text class="news-title">{{ item.title }}</text>
-        </view>
-      </view>
+        </swiper-item>
+      </swiper>
     </view>
 
     <!-- 推荐商品区域（3列） -->
@@ -241,6 +258,7 @@ import GridSection from '@/components/GridSection.vue'
 import CustomNavbar from '@/components/CustomNavbar.vue'
 import { bannerService } from '@/services/banner'
 import { collectionService } from '@/services/collection'
+import { newsService } from '@/services/news'
 
 export default {
   components: {
@@ -399,6 +417,10 @@ export default {
     this.loadShelfProducts()
     // 加载珠宝商品数据
     this.loadJewelryProducts()
+    // 加载资讯数据
+    this.loadNews()
+    // 加载推荐商品数据
+    this.loadRecommendedProducts()
   },
   methods: {
     /**
@@ -495,6 +517,62 @@ export default {
         }
       } catch (error) {
         console.error('加载珠宝商品失败:', error)
+      }
+    },
+
+    /**
+     * 加载资讯数据
+     * 从 API 获取资讯列表
+     */
+    async loadNews() {
+      try {
+        const news = await newsService.getNewsList(1, 3)
+
+        if (news && news.length > 0) {
+          // 转换资讯数据格式
+          this.newsItems = news.map(item => ({
+            id: item.id,
+            title: item.title,
+            subtitle: item.subtitle || '',
+            desc: item.description || '',
+            image: item.coverImageUrl || '',
+            tag: item.subtitle || '',
+            date: item.createdAt ? new Date(item.createdAt).toLocaleDateString('zh-CN') : '',
+            readCount: '0'
+          }))
+
+          console.log('资讯加载成功:', this.newsItems)
+        } else {
+          console.warn('未获取到资讯数据')
+        }
+      } catch (error) {
+        console.error('加载资讯失败:', error)
+      }
+    },
+
+    /**
+     * 加载推荐商品数据
+     * 从 API 获取 recommended-products 集合数据
+     */
+    async loadRecommendedProducts() {
+      try {
+        const collection = await collectionService.getCollectionBySlug('recommended-products')
+
+        if (collection && collection.products && collection.products.length > 0) {
+          // 转换产品数据格式
+          this.recommendProducts = collection.products.map(product => ({
+            id: product.id,
+            name: product.name,
+            price: product.currentPrice ? `${product.currentPrice}` : '¥0',
+            image: product.coverImageUrl || ''
+          }))
+
+          console.log('推荐商品加载成功:', this.recommendProducts)
+        } else {
+          console.warn('未获取到推荐商品数据')
+        }
+      } catch (error) {
+        console.error('加载推荐商品失败:', error)
       }
     },
 
@@ -1025,10 +1103,25 @@ export default {
     letter-spacing: 2rpx;
   }
 
+  .news-swiper {
+    width: 100%;
+    height: 440rpx;
+    margin-bottom: 20rpx;
+  }
+
+  .news-page {
+    width: 100%;
+    height: 440rpx;
+    display: flex;
+    align-items: center;
+    padding: 0 20rpx;
+  }
+
   .news-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 16rpx;
+    width: 100%;
   }
 
   .news-card {
@@ -1045,7 +1138,7 @@ export default {
     .news-image-wrapper {
       position: relative;
       width: 100%;
-      aspect-ratio: 1;
+      height: 300rpx;
       background: #f5f5f5;
       border-radius: 8rpx;
       overflow: hidden;
@@ -1069,6 +1162,12 @@ export default {
       }
     }
 
+    .news-content {
+      display: flex;
+      flex-direction: column;
+      gap: 6rpx;
+    }
+
     .news-title {
       display: block;
       font-size: 26rpx;
@@ -1079,6 +1178,18 @@ export default {
       text-overflow: ellipsis;
       display: -webkit-box;
       -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .news-subtitle {
+      display: block;
+      font-size: 22rpx;
+      color: #999999;
+      line-height: 1.2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
       -webkit-box-orient: vertical;
     }
   }
