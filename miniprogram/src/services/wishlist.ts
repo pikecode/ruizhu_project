@@ -1,18 +1,33 @@
 import { api } from './api'
 
 /**
+ * 心愿单项产品信息（从API返回的关联产品数据）
+ */
+export interface WishlistItemProduct {
+  id: number
+  name: string
+  coverImageUrl: string | null        // 第一张图片URL
+  currentPrice: number | null         // 现价（分为单位）
+  originalPrice: number | null        // 原价（分为单位）
+  discountRate: number                // 折扣率 0-100
+  isNew: boolean
+  isSaleOn: boolean
+}
+
+/**
  * 心愿单项数据结构（从API返回，包含产品信息）
  */
 export interface WishlistItem {
   id: number                           // 心愿单项ID
   userId: number                       // 用户ID
   productId: number                    // 商品ID
+  product: WishlistItemProduct         // 关联的产品信息
   createdAt: string
   updatedAt: string
 }
 
 /**
- * 心愿单产品数据结构
+ * 心愿单产品数据结构（前端组件使用的格式）
  */
 export interface WishlistProduct {
   id: number
@@ -23,8 +38,6 @@ export interface WishlistProduct {
   discountRate?: number
   isNew?: boolean
   isSaleOn?: boolean
-  createdAt?: string
-  updatedAt?: string
 }
 
 /**
