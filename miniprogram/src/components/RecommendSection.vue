@@ -30,6 +30,8 @@
 </template>
 
 <script>
+import { wishlistService } from '../services/wishlist'
+
 export default {
   name: 'RecommendSection',
   props: {
@@ -48,14 +50,65 @@ export default {
       validator: (val) => [2, 3].includes(val)
     }
   },
+  data() {
+    return {
+      loadingFavorite: {} // Track loading state for each product: { productId: true/false }
+    }
+  },
   methods: {
-    toggleFavorite(index) {
-      this.items[index].isFavorite = !this.items[index].isFavorite
-      this.$emit('favorite-change', {
-        index: index,
-        item: this.items[index],
-        isFavorite: this.items[index].isFavorite
-      })
+    /**
+     * 切换收藏状态
+     * 同时更新本地状态和远程API
+     */
+    async toggleFavorite(index) {
+      const item = this.items[index]
+      const productId = item.id
+
+      // 防止重复点击
+      if (this.loadingFavorite[productId]) {
+        return
+      }
+
+      try {
+        this.loadingFavorite[productId] = true
+        const currentFavorite = item.isFavorite
+
+        // 立即更新UI（乐观更新）
+        item.isFavorite = !currentFavorite
+
+        // 调用API更新远程状态
+        await wishlistService.toggleWishlist(productId, currentFavorite)
+
+        // 触发事件通知父组件
+        this.$emit('favorite-change', {
+          index: index,
+          item: item,
+          isFavorite: item.isFavorite
+        })
+
+        console.log(`Product ${productId} favorite toggled to ${item.isFavorite}`)
+      } catch (error) {
+        // API调用失败，回滚UI状态
+        const item = this.items[index]
+        item.isFavorite = !item.isFavorite
+
+        console.error('Failed to toggle favorite:', error)
+        uni.showToast({
+          title: '操作失败，请重试',
+          icon: 'error',
+          duration: 2000
+        })
+
+        // 触发失败事件
+        this.$emit('favorite-change', {
+          index: index,
+          item: item,
+          isFavorite: item.isFavorite,
+          error: error
+        })
+      } finally {
+        this.loadingFavorite[productId] = false
+      }
     }
   }
 }

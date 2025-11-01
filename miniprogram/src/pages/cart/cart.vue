@@ -119,6 +119,7 @@
 import RecommendSection from '../../components/RecommendSection.vue'
 import { cartService } from '../../services/cart'
 import { collectionService } from '../../services/collection'
+import { wishlistService } from '../../services/wishlist'
 
 export default {
   components: {
@@ -204,6 +205,9 @@ export default {
             imageCount: 1, // RecommendSection组件需要此字段
             isFavorite: false // 初始化收藏状态
           }))
+
+          // 加载推荐商品的收藏状态
+          await this.loadRecommendedProductsFavoriteStatus()
         }
       } catch (error) {
         console.error('Failed to load cart data:', error)
@@ -213,6 +217,28 @@ export default {
         })
       } finally {
         this.isLoading = false
+      }
+    },
+
+    /**
+     * 加载推荐商品的收藏状态
+     */
+    async loadRecommendedProductsFavoriteStatus() {
+      try {
+        const productIds = this.recommendProducts.map(p => p.id)
+        if (productIds.length === 0) return
+
+        const favoriteStatus = await wishlistService.checkMultipleWishlists(productIds)
+
+        // 更新推荐商品的收藏状态
+        this.recommendProducts.forEach((product, index) => {
+          this.$set(this.recommendProducts[index], 'isFavorite', favoriteStatus[product.id] || false)
+        })
+
+        console.log('Loaded favorite status for recommended products:', favoriteStatus)
+      } catch (error) {
+        console.error('Failed to load favorite status:', error)
+        // 加载失败，保持初始值（全部未收藏）
       }
     },
 
