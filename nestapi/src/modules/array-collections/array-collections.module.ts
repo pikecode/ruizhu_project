@@ -5,6 +5,7 @@ import { ArrayCollectionItem } from '../../entities/array-collection-item.entity
 import { ArrayCollectionItemProduct } from '../../entities/array-collection-item-product.entity';
 import { ArrayCollectionsService } from './array-collections.service';
 import { ArrayCollectionsController } from './array-collections.controller';
+import { AdminArrayCollectionsController } from './admin-array-collections.controller';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { ArrayCollectionsController } from './array-collections.controller';
       ArrayCollectionItemProduct,
     ]),
   ],
-  controllers: [ArrayCollectionsController],
+  controllers: [ArrayCollectionsController, AdminArrayCollectionsController],
   providers: [ArrayCollectionsService],
   exports: [ArrayCollectionsService],
 })

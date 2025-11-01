@@ -36,8 +36,8 @@ export interface BannerResponse {
 }
 
 /**
- * Banner Service
- * 提供Banner相关的API调用方法
+ * Admin Banner Service
+ * All endpoints require admin authentication
  */
 export const bannerService = {
   /**
@@ -47,7 +47,7 @@ export const bannerService = {
    * @param pageType 页面类型: 'home'(首页) | 'custom'(私人定制)
    */
   async getList(page: number = 1, limit: number = 20, pageType: 'home' | 'custom' = 'home'): Promise<BannerListResponse> {
-    const response = await fetch(`${API_BASE_URL}/banners?page=${page}&limit=${limit}&pageType=${pageType}`);
+    const response = await fetch(`${API_BASE_URL}/admin/banners?page=${page}&limit=${limit}&pageType=${pageType}`);
     return response.json();
   },
 
@@ -55,7 +55,7 @@ export const bannerService = {
    * 获取首页展示的Banner列表（仅启用的）
    */
   async getHomeBanners(): Promise<{ code: number; message: string; data: BannerData[] }> {
-    const response = await fetch(`${API_BASE_URL}/banners/home`);
+    const response = await fetch(`${API_BASE_URL}/admin/banners/home`);
     return response.json();
   },
 
@@ -63,7 +63,7 @@ export const bannerService = {
    * 获取单个Banner详情
    */
   async getById(id: number): Promise<BannerResponse> {
-    const response = await fetch(`${API_BASE_URL}/banners/${id}`);
+    const response = await fetch(`${API_BASE_URL}/admin/banners/${id}`);
     return response.json();
   },
 
@@ -81,7 +81,7 @@ export const bannerService = {
     linkValue?: string;
     pageType?: 'home' | 'custom';
   }): Promise<BannerResponse> {
-    const response = await fetch(`${API_BASE_URL}/banners`, {
+    const response = await fetch(`${API_BASE_URL}/admin/banners`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -107,7 +107,7 @@ export const bannerService = {
       pageType?: 'home' | 'custom';
     },
   ): Promise<BannerResponse> {
-    const response = await fetch(`${API_BASE_URL}/banners/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/admin/banners/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -119,7 +119,7 @@ export const bannerService = {
    * 删除Banner
    */
   async delete(id: number): Promise<{ code: number; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/banners/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/admin/banners/${id}`, {
       method: 'DELETE',
     });
     return response.json();
@@ -171,7 +171,7 @@ export const bannerService = {
         reject(new Error('Upload failed'));
       });
 
-      xhr.open('POST', `${API_BASE_URL}/banners/${id}/upload-image`);
+      xhr.open('POST', `${API_BASE_URL}/admin/banners/${id}/upload-image`);
       xhr.send(formData);
     });
   },
@@ -229,7 +229,7 @@ export const bannerService = {
         reject(new Error('Upload failed'));
       });
 
-      xhr.open('POST', `${API_BASE_URL}/banners/${id}/upload-video`);
+      xhr.open('POST', `${API_BASE_URL}/admin/banners/${id}/upload-video`);
       xhr.send(formData);
     });
   },

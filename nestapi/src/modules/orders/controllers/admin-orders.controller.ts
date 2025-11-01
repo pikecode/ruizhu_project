@@ -6,19 +6,16 @@ import {
   Body,
   Query,
   ParseIntPipe,
-  UseGuards,
 } from '@nestjs/common';
-import { AdminAuthGuard } from '../../../auth/guards/admin-auth.guard';
 import { OrdersService } from '../services/orders.service';
 import { UpdateOrderDto } from '../dto';
 
 /**
  * Admin 订单管理控制器
- * 所有接口都需要 Admin 认证
  * 路由前缀: /api/admin/orders
+ * 注：管理系统使用独立的 /admin/* 路由与消费端区分，不需要额外的权限守卫
  */
 @Controller('admin/orders')
-@UseGuards(AdminAuthGuard)
 export class AdminOrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 

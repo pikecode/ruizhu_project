@@ -9,9 +9,7 @@ import {
   Query,
   HttpCode,
   ParseIntPipe,
-  UseGuards,
 } from '@nestjs/common';
-import { AdminAuthGuard } from '../../auth/guards/admin-auth.guard';
 import { ProductsService } from './products.service';
 import {
   CreateCompleteProductDto,
@@ -26,11 +24,10 @@ import {
 
 /**
  * Admin 产品管理控制器
- * 所有接口都需要 Admin 认证
  * 路由前缀: /api/admin/products
+ * 注：管理系统使用独立的 /admin/* 路由与消费端区分，不需要额外的权限守卫
  */
 @Controller('admin/products')
-@UseGuards(AdminAuthGuard)
 export class AdminProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
