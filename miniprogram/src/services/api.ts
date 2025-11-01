@@ -6,13 +6,23 @@
 /**
  * API 基础 URL 配置
  * 根据环境切换不同的后端地址
- * 修改这里来切换开发/生产环境
+ *
+ * 开发流程：
+ * 1. 开发阶段：使用本地 NestAPI (http://localhost:8888/api)
+ * 2. 测试完成：切换到生产环境 (https://yunjie.online/api)
+ *
+ * 注意：小程序的 request 请求会自动使用当前配置，无需重新编译
  */
-// 开发环境配置（本地测试）
-// const BASE_URL = 'http://localhost:8888/api/v1'
 
-// 生产环境配置
-const BASE_URL = 'https://yunjie.online/api'
+// 开发环境配置（本地 NestAPI 开发）
+const DEV_URL = 'http://localhost:8888/api'
+
+// 生产环境配置（云服务器）
+const PROD_URL = 'https://yunjie.online/api'
+
+// 根据环境选择 API 地址
+// 修改这里来切换开发/生产环境
+const BASE_URL = DEV_URL  // 开发时使用本地，完成后改为 PROD_URL
 
 interface RequestOptions {
   method?: string

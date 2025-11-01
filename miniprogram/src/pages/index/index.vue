@@ -17,7 +17,10 @@
         <!-- 所有轮播项：统一结构 -->
         <swiper-item v-for="(item, index) in allBanners" :key="index">
           <view class="banner-item" @tap="onBannerTap(item)">
-            <image class="banner-image" :src="item.image" mode="aspectFill"></image>
+            <!-- 视频类型：显示视频，使用封面图作为 poster -->
+            <video v-if="item.type === 'video'" class="banner-video" :src="item.image" :poster="item.videoThumbnail" controls="false" autoplay muted loop></video>
+            <!-- 图片类型：显示图片 -->
+            <image v-else class="banner-image" :src="item.image" mode="aspectFill"></image>
             <view class="banner-overlay">
               <text class="banner-title" @tap.stop="onBannerTap(item)">{{ item.title }}</text>
               <view class="banner-subtitle">
@@ -183,6 +186,7 @@
 <script>
 import GridSection from '@/components/GridSection.vue'
 import CustomNavbar from '@/components/CustomNavbar.vue'
+import { bannerService } from '@/services/banner'
 
 export default {
   components: {
@@ -195,37 +199,11 @@ export default {
       indicatorActiveColor: '#ffffff',
       currentBannerIndex: 0,
 
-      // 统一的轮播数据：包含动画和banner
-      allBanners: [
-        {
-          id: 'animation-1',
-          type: 'animation',
-          title: 'Prada Natural系列',
-          subtitle: '新品首发',
-          image: 'https://ompeak.com/banner-animation.webp'
-        },
-        {
-          id: 'banner-1',
-          type: 'banner',
-          title: 'Ruizhu Collection',
-          subtitle: '即刻探索',
-          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80'
-        },
-        {
-          id: 'banner-2',
-          type: 'banner',
-          title: '新品上市',
-          subtitle: '限时优惠',
-          image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=80'
-        },
-        {
-          id: 'banner-3',
-          type: 'banner',
-          title: '经典系列',
-          subtitle: '永恒之选',
-          image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80'
-        }
-      ],
+      // 轮播数据：从 API 获取
+      allBanners: [],
+
+      // 从 API 加载数据的加载状态
+      bannerLoading: false,
 
       // 首页：陈列货架模块（两行 × 两列）
       shelfProducts: [
@@ -358,8 +336,48 @@ export default {
   },
   onLoad() {
     console.log('Ruizhu 首页加载完成')
+    // 加载轮播图数据
+    this.loadBanners()
   },
   methods: {
+    /**
+     * 加载轮播图数据
+     * 从 API 获取首页 banner 数据
+     */
+    async loadBanners() {
+      try {
+        this.bannerLoading = true
+        const banners = await bannerService.getHomeBanners()
+
+        if (banners && banners.length > 0) {
+          // 转换 API 返回的数据格式为前端需要的格式
+          this.allBanners = banners.map(banner => ({
+            id: banner.id,
+            type: banner.type, // 'image' 或 'video'
+            title: banner.mainTitle,
+            subtitle: banner.subtitle,
+            // 如果是视频，显示视频 URL；如果是图片，显示图片 URL
+            image: bannerService.getDisplayUrl(banner),
+            // 视频封面图（用于 video 的 poster 属性）
+            videoThumbnail: banner.videoThumbnailUrl || '',
+            // 保存完整的 banner 数据用于点击处理
+            linkType: banner.linkType,
+            linkValue: banner.linkValue,
+            videoUrl: bannerService.getVideoUrl(banner)
+          }))
+
+          console.log('轮播图加载成功:', this.allBanners)
+        } else {
+          console.warn('未获取到轮播图数据')
+        }
+      } catch (error) {
+        console.error('加载轮播图失败:', error)
+        uni.showToast({ title: '轮播图加载失败', icon: 'none' })
+      } finally {
+        this.bannerLoading = false
+      }
+    },
+
     onJoinNow() {
       // 跳转至入会资料完善页
       uni.navigateTo({
@@ -394,23 +412,63 @@ export default {
       this.currentBannerIndex = e.detail.current
     },
     onBannerTap(banner) {
-      // 根据banner类型进行不同的处理
-      if (banner.type === 'animation') {
-        // 动画banner：可跳转到新品页面或collection详情
-        uni.navigateTo({
-          url: `/pages/collection/detail?collection=${encodeURIComponent(banner.title)}`,
-          fail: () => {
-            uni.showToast({
-              title: '页面开发中',
-              icon: 'none'
+      // 根据 linkType 处理跳转逻辑
+      const { linkType, linkValue, title } = banner
+
+      switch (linkType) {
+        case 'product':
+          // 跳转到商品详情
+          if (linkValue) {
+            uni.navigateTo({
+              url: `/pages/product/detail?id=${linkValue}`,
+              fail: () => {
+                uni.showToast({ title: '页面开发中', icon: 'none' })
+              }
             })
           }
-        })
-      } else {
-        // 普通banner：跳转到collection详情
-        uni.navigateTo({
-          url: `/pages/collection/detail?collection=${encodeURIComponent(banner.title)}`
-        })
+          break
+
+        case 'category':
+          // 跳转到分类页面
+          if (linkValue) {
+            uni.navigateTo({
+              url: `/pages/category/list?categoryId=${linkValue}`,
+              fail: () => {
+                uni.showToast({ title: '页面开发中', icon: 'none' })
+              }
+            })
+          }
+          break
+
+        case 'collection':
+          // 跳转到集合/专题详情
+          if (linkValue) {
+            uni.navigateTo({
+              url: `/pages/collection/detail?id=${linkValue}`,
+              fail: () => {
+                uni.showToast({ title: '页面开发中', icon: 'none' })
+              }
+            })
+          }
+          break
+
+        case 'url':
+          // 跳转到外部链接（使用 web-view 或其他方式）
+          if (linkValue) {
+            uni.navigateTo({
+              url: `/pages/webview/index?url=${encodeURIComponent(linkValue)}`,
+              fail: () => {
+                uni.showToast({ title: '页面开发中', icon: 'none' })
+              }
+            })
+          }
+          break
+
+        case 'none':
+        default:
+          // 无链接，可以只显示 banner 或跳转到首页
+          console.log('Banner 无关联链接:', title)
+          break
       }
     },
     onJewelryProductTap(product) {
@@ -654,6 +712,12 @@ export default {
   .banner-image {
     width: 100%;
     height: 100%;
+  }
+
+  .banner-video {
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
   }
 
   .banner-overlay {
