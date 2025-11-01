@@ -43,11 +43,17 @@ export class OrdersController {
     @Query('page', ParseIntPipe) page: number = 1,
     @Query('limit', ParseIntPipe) limit: number = 20,
   ) {
-    return await this.ordersService.getUserOrders(
+    const result = await this.ordersService.getUserOrders(
       req.user.id,
       page,
       limit,
     );
+
+    return {
+      code: 200,
+      message: 'Success',
+      data: result,
+    };
   }
 
   /**

@@ -43,11 +43,6 @@ export default function Layout({ children }: LayoutProps) {
   // 使用useMemo来缓存menuItems，避免每次都重新创建
   const menuItems = useMemo(() => [
     {
-      key: '/dashboard',
-      label: '仪表板',
-      onClick: () => handleNavigate('/dashboard'),
-    },
-    {
       key: '/products',
       label: '产品',
       onClick: () => handleNavigate('/products'),
@@ -84,13 +79,13 @@ export default function Layout({ children }: LayoutProps) {
     },
     {
       key: '/users',
-      label: '用户',
+      label: '🔐 Admin用户',
       onClick: () => handleNavigate('/users'),
     },
     {
-      key: '/settings',
-      label: '设置',
-      onClick: () => handleNavigate('/settings'),
+      key: '/consumer-users',
+      label: '👥 消费者用户',
+      onClick: () => handleNavigate('/consumer-users'),
     },
   ], [handleNavigate])
 

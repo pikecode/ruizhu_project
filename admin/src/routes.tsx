@@ -4,7 +4,6 @@ import Loading from '@/components/Loading'
 
 // Lazy load pages
 const LoginPage = lazy(() => import('@/pages/Login'))
-const DashboardPage = lazy(() => import('@/pages/Dashboard'))
 const ProductsPage = lazy(() => import('@/pages/Products'))
 const CollectionsPage = lazy(() => import('@/pages/Collections'))
 const ArrayCollectionsPage = lazy(() => import('@/pages/ArrayCollections'))
@@ -13,7 +12,7 @@ const CustomBannersPage = lazy(() => import('@/pages/CustomBanners'))
 const NewsPage = lazy(() => import('@/pages/News'))
 const OrdersPage = lazy(() => import('@/pages/Orders'))
 const UsersPage = lazy(() => import('@/pages/Users'))
-const SettingsPage = lazy(() => import('@/pages/Settings'))
+const ConsumerUsersPage = lazy(() => import('@/pages/ConsumerUsers'))
 const NotFoundPage = lazy(() => import('@/pages/NotFound'))
 
 const withSuspense = (Component: React.LazyExoticComponent<() => JSX.Element>) => (
@@ -26,10 +25,6 @@ export const routes = [
   {
     path: '/login',
     element: withSuspense(LoginPage),
-  },
-  {
-    path: '/dashboard',
-    element: withSuspense(DashboardPage),
   },
   {
     path: '/products',
@@ -64,12 +59,12 @@ export const routes = [
     element: withSuspense(UsersPage),
   },
   {
-    path: '/settings',
-    element: withSuspense(SettingsPage),
+    path: '/consumer-users',
+    element: withSuspense(ConsumerUsersPage),
   },
   {
     path: '/',
-    element: <Navigate to="/dashboard" replace />,
+    element: <Navigate to="/products" replace />,
   },
   {
     path: '*',

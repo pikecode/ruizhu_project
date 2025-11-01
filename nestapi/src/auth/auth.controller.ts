@@ -1,13 +1,27 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { AdminAuthService } from '../modules/auth/admin-auth.service';
 import { WechatPhoneLoginDto } from '../users/dto/wechat-phone-login.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private adminAuthService: AdminAuthService,
+  ) {}
 
   /**
-   * 用户名密码登录
+   * Admin 后台系统登录
+   * 用于 Admin 管理系统的身份验证
+   */
+  @Post('admin/login')
+  @HttpCode(HttpStatus.OK)
+  async adminLogin(@Body() loginDto: { username: string; password: string }) {
+    return this.adminAuthService.adminLogin(loginDto);
+  }
+
+  /**
+   * 用户名密码登录（小程序用户）
    */
   @Post('login')
   @HttpCode(HttpStatus.OK)

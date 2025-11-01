@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Table, Button, Space, Card, Tag, message } from 'antd'
-import { EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Table, Button, Space, Card, Tag, message, Popconfirm } from 'antd'
+import { DeleteOutlined, ReloadOutlined, LockOutlined } from '@ant-design/icons'
 import Layout from '@/components/Layout'
-import { usersService } from '@/services/users'
-import { User } from '@/types'
+import { consumerUsersService, ConsumerUser } from '@/services/consumer-users'
 
-export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([])
+export default function ConsumerUsersPage() {
+  const [users, setUsers] = useState<ConsumerUser[]>([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
 
@@ -17,28 +16,39 @@ export default function UsersPage() {
   const loadUsers = async () => {
     setLoading(true)
     try {
-      const response = await usersService.getUsers({
-        page: pagination.current,
-        limit: pagination.pageSize,
-      })
+      const response = await consumerUsersService.getUsers(pagination.current, pagination.pageSize)
       setUsers(response.items)
       setPagination({ ...pagination, total: response.total })
     } catch (error) {
-      message.error('加载用户列表失败')
+      message.error('加载消费者用户列表失败')
       console.error(error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleDeleteUser = async (id: string) => {
+  const handleDeleteUser = async (id: number) => {
     try {
       setLoading(true)
-      await usersService.deleteUser(id)
+      await consumerUsersService.deleteUser(id)
       message.success('用户删除成功')
       loadUsers()
     } catch (error) {
       message.error('删除用户失败')
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBanUser = async (id: number) => {
+    try {
+      setLoading(true)
+      await consumerUsersService.banUser(id)
+      message.success('用户已禁用')
+      loadUsers()
+    } catch (error) {
+      message.error('禁用用户失败')
       console.error(error)
     } finally {
       setLoading(false)
@@ -53,12 +63,6 @@ export default function UsersPage() {
       width: 80,
     },
     {
-      title: '用户名',
-      dataIndex: 'username',
-      key: 'username',
-      width: 150,
-    },
-    {
       title: '昵称',
       dataIndex: 'nickname',
       key: 'nickname',
@@ -66,24 +70,38 @@ export default function UsersPage() {
       render: (text: string) => text || '-',
     },
     {
-      title: '邮箱',
-      dataIndex: 'email',
-      key: 'email',
-      width: 180,
+      title: '手机号',
+      dataIndex: 'phone',
+      key: 'phone',
+      width: 150,
       render: (text: string) => text || '-',
     },
     {
-      title: '角色',
-      dataIndex: 'role',
-      key: 'role',
+      title: '邮箱',
+      dataIndex: 'email',
+      key: 'email',
+      width: 150,
+      render: (text: string) => text || '-',
+    },
+    {
+      title: '微信',
+      dataIndex: 'openId',
+      key: 'openId',
+      width: 180,
+      render: (text: string) => (text ? text.substring(0, 20) + '...' : '-'),
+    },
+    {
+      title: '注册来源',
+      dataIndex: 'registrationSource',
+      key: 'registrationSource',
       width: 120,
-      render: (role: string) => {
-        const roleMap: Record<string, { label: string; color: string }> = {
-          admin: { label: '超级管理员', color: 'red' },
-          manager: { label: '经理', color: 'blue' },
-          operator: { label: '操作员', color: 'cyan' },
+      render: (source: string) => {
+        const sourceMap: Record<string, { label: string; color: string }> = {
+          wechat_mini_program: { label: '微信小程序', color: 'green' },
+          web: { label: 'Web', color: 'blue' },
+          admin: { label: '管理员创建', color: 'orange' },
         }
-        const config = roleMap[role] || { label: role, color: 'default' }
+        const config = sourceMap[source] || { label: source, color: 'default' }
         return <Tag color={config.color}>{config.label}</Tag>
       },
     },
@@ -94,9 +112,9 @@ export default function UsersPage() {
       width: 100,
       render: (status: string) => {
         const statusMap: Record<string, { label: string; color: string }> = {
-          active: { label: '启用', color: 'green' },
-          inactive: { label: '禁用', color: 'red' },
-          banned: { label: '封禁', color: 'volcano' },
+          active: { label: '活跃', color: 'green' },
+          banned: { label: '禁用', color: 'red' },
+          deleted: { label: '已删除', color: 'default' },
         }
         const config = statusMap[status] || { label: status, color: 'default' }
         return <Tag color={config.color}>{config.label}</Tag>
@@ -118,12 +136,28 @@ export default function UsersPage() {
     {
       title: '操作',
       key: 'actions',
-      width: 100,
+      width: 150,
       fixed: 'right',
-      render: (_: any, record: User) => (
+      render: (_: any, record: ConsumerUser) => (
         <Space size="small">
-          <Button type="primary" size="small" icon={<EditOutlined />} disabled />
-          <Button danger size="small" icon={<DeleteOutlined />} onClick={() => handleDeleteUser(record.id)} />
+          <Popconfirm
+            title="禁用用户"
+            description="确定要禁用这个用户吗？"
+            onConfirm={() => handleBanUser(record.id)}
+            okText="禁用"
+            cancelText="取消"
+          >
+            <Button type="primary" size="small" icon={<LockOutlined />} />
+          </Popconfirm>
+          <Popconfirm
+            title="删除用户"
+            description="确定要删除这个用户吗？此操作不可恢复。"
+            onConfirm={() => handleDeleteUser(record.id)}
+            okText="删除"
+            cancelText="取消"
+          >
+            <Button danger size="small" icon={<DeleteOutlined />} />
+          </Popconfirm>
         </Space>
       ),
     },
@@ -134,7 +168,7 @@ export default function UsersPage() {
       <div className="p-3">
         <Card style={{ marginTop: 24 }}>
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0 }}>🔐 Admin 管理员用户</h2>
+            <h2 style={{ margin: 0 }}>小程序消费者用户</h2>
             <Button icon={<ReloadOutlined />} onClick={() => loadUsers()} loading={loading}>
               刷新
             </Button>
@@ -152,7 +186,7 @@ export default function UsersPage() {
                 setPagination({ ...pagination, current: page, pageSize })
               },
             }}
-            scroll={{ x: 1200 }}
+            scroll={{ x: 1800 }}
           />
         </Card>
       </div>

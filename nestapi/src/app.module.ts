@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { AdminUsersModule } from './modules/admin-users/admin-users.module';
 import { RolesModule } from './roles/roles.module';
 import { ProductsModule } from './modules/products/products.module';
 import { CategoriesModule } from './modules/categories/categories.module';
@@ -36,6 +37,7 @@ import { getDatabaseConfig } from './database/database.config';
     // 业务模块
     AuthModule,
     UsersModule,
+    AdminUsersModule, // Admin 系统用户管理模块
     RolesModule,
     CategoriesModule,
     ProductsModule,

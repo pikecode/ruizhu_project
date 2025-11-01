@@ -128,7 +128,7 @@ export class OrdersService {
     page: number = 1,
     limit: number = 20,
   ): Promise<{
-    orders: Order[];
+    items: Order[];
     total: number;
     page: number;
     totalPages: number;
@@ -143,7 +143,7 @@ export class OrdersService {
     });
 
     return {
-      orders,
+      items: orders,
       total,
       page,
       totalPages: Math.ceil(total / limit),

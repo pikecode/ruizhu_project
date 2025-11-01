@@ -11,8 +11,8 @@ export default function NotFoundPage() {
         title="404"
         subTitle="Sorry, the page you are looking for does not exist."
         extra={
-          <Button type="primary" onClick={() => navigate('/dashboard')}>
-            Back to Dashboard
+          <Button type="primary" onClick={() => navigate('/products')}>
+            Back to Home
           </Button>
         }
       />

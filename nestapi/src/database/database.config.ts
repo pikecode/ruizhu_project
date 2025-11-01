@@ -27,6 +27,7 @@ import { ArrayCollectionItemProduct } from '../entities/array-collection-item-pr
 import { Banner } from '../entities/banner.entity';
 import { News } from '../entities/news.entity';
 import { User } from '../entities/user.entity';
+import { AdminUser } from '../entities/admin-user.entity';
 import { Role } from '../entities/role.entity';
 import { Permission } from '../entities/permission.entity';
 import { UserAddress } from '../modules/addresses/entities/user-address.entity';
@@ -90,6 +91,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
     // 实体配置
     entities: [
       User,
+      AdminUser,
       UserAddress,
       Role,
       Permission,

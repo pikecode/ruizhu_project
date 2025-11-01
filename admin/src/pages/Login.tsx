@@ -19,9 +19,9 @@ export default function LoginPage() {
   const onFinish = async (values: LoginFormValues) => {
     try {
       setIsLoading(true)
-      const response = await authService.login(values)
+      const response = await authService.adminLogin(values)
 
-      setToken(response.accessToken)
+      setToken(response.access_token)
       setUser(response.user)
 
       message.success('登录成功')
@@ -74,7 +74,12 @@ export default function LoginPage() {
         </Form>
 
         <div className={styles.footer}>
-          <p>演示: 使用任何用户名/密码进行测试</p>
+          <p>💡 默认测试账户：</p>
+          <p style={{ fontSize: '12px', color: '#666' }}>
+            超级管理员 admin / admin123456<br/>
+            经理 manager / manager123456<br/>
+            操作员 operator / operator123456
+          </p>
         </div>
       </Card>
     </div>
