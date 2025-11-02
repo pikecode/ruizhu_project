@@ -38,6 +38,10 @@ export class CreateProductDto {
   @IsInt()
   categoryId: number;
 
+  @IsOptional()
+  @IsIn(['standard', 'custom'], { message: '产品类型必须是 standard 或 custom 之一' })
+  productType?: 'standard' | 'custom'; // 产品类型: standard(标准产品) custom(私人定制专属)
+
   // 新的库存状态字段（单选）- 优先使用这个字段
   @IsOptional()
   @IsIn(['normal', 'outOfStock', 'soldOut'], { message: '库存状态必须是 normal、outOfStock 或 soldOut 之一' })

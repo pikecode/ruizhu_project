@@ -63,6 +63,17 @@ class CollectionsService {
     }
   }
 
+  // 创建集合
+  async createCollection(data: Partial<Collection>) {
+    try {
+      const response = await api.post(`/collections`, data)
+      return response.data.data
+    } catch (error) {
+      console.error('创建集合失败:', error)
+      throw error
+    }
+  }
+
   // 删除集合（系统集合无法删除）
   async deleteCollection(id: number) {
     try {
@@ -158,10 +169,10 @@ class CollectionsService {
     }
   }
 
-  // 更新集合产品排序
+  // 更新集合产品排序和子类别
   async updateProductsSort(
     collectionId: number,
-    sortData: Array<{ productId: number; sortOrder: number }>
+    sortData: Array<{ productId: number; sortOrder: number; subCategory?: string | null }>
   ) {
     try {
       const response = await api.put(

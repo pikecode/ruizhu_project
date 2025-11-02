@@ -56,4 +56,9 @@ export class QueryProductDto {
   @IsOptional()
   @IsString()
   tag?: string; // 标签搜索 (new, hot, limited, discount)
+
+  @IsOptional()
+  @IsString()
+  @IsEnum(['standard', 'custom'])
+  productType?: string; // 产品类型筛选: standard(标准产品) custom(私人定制专属)
 }

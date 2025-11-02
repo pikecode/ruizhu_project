@@ -122,8 +122,12 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
       Wishlist,
     ],
 
-    // 禁用自动同步 - 使用 migration 或手动创建表
+    // 禁用自动同步，手动管理数据库迁移
     synchronize: false,
+
+    // 不运行迁移
+    migrationsRun: false,
+    migrations: ['dist/database/migrations/*.js'],
 
     // 根据环境配置日志
     logging: nodeEnv === 'development' ? ['query', 'error'] : ['error'],

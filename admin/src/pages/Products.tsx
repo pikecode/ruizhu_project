@@ -1,4 +1,4 @@
-import { Table, Button, Space, Card, Input, Select, Popconfirm, message, Row, Col, Image, Modal } from 'antd'
+import { Table, Button, Space, Card, Input, Select, Popconfirm, message, Row, Col, Image, Modal, Tabs } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, PictureOutlined, VideoCameraOutlined } from '@ant-design/icons'
 import { useState, useEffect } from 'react'
 import Layout from '@/components/Layout'
@@ -14,6 +14,7 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | undefined>()
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>()
   const [searchKeyword, setSearchKeyword] = useState('')
+  const [productType, setProductType] = useState<'standard' | 'custom'>('standard')
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -26,7 +27,7 @@ export default function ProductsPage() {
   // Load products when filters change
   useEffect(() => {
     loadProducts()
-  }, [selectedCategory, pagination.current, pagination.pageSize])
+  }, [selectedCategory, pagination.current, pagination.pageSize, productType])
 
   const loadCategories = async () => {
     try {
@@ -45,6 +46,7 @@ export default function ProductsPage() {
         limit: pagination.pageSize,
         keyword: searchKeyword || undefined,
         categoryId: selectedCategory,
+        productType: productType,
       })
       setProducts(data.items)
       setPagination({ ...pagination, total: data.total })
@@ -67,6 +69,7 @@ export default function ProductsPage() {
         limit: pagination.pageSize,
         keyword: value || undefined,
         categoryId: selectedCategory,
+        productType: productType,
       })
       setProducts(data.items)
       setPagination({ ...pagination, current: 1, total: data.total })
@@ -88,6 +91,7 @@ export default function ProductsPage() {
         limit: pagination.pageSize,
         keyword: searchKeyword || undefined,
         categoryId: categoryId,
+        productType: productType,
       })
       setProducts(data.items)
       setPagination({ ...pagination, current: 1, total: data.total })
@@ -107,6 +111,7 @@ export default function ProductsPage() {
       const data = await productsService.getProducts({
         page: 1,
         limit: pagination.pageSize,
+        productType: productType,
       })
       setProducts(data.items)
       setPagination({ ...pagination, current: 1, total: data.total })
@@ -316,6 +321,28 @@ export default function ProductsPage() {
         {/* Header - 仅显示标题 */}
         <h1 style={{ margin: '0 0 24px 0' }}>产品管理</h1>
 
+        {/* Product Type Tabs */}
+        <Card style={{ marginBottom: '16px' }}>
+          <Tabs
+            activeKey={productType}
+            onChange={(key) => {
+              setProductType(key as 'standard' | 'custom')
+              setSelectedRowKeys([])
+              setPagination({ ...pagination, current: 1 })
+            }}
+            items={[
+              {
+                key: 'standard',
+                label: '标准产品',
+              },
+              {
+                key: 'custom',
+                label: '私人定制专属',
+              },
+            ]}
+          />
+        </Card>
+
         {/* Filters Card - 整合搜索、筛选、添加产品 */}
         <Card style={{ marginBottom: '16px' }}>
           <Row gutter={16}>
@@ -421,6 +448,7 @@ export default function ProductsPage() {
           onClose={handleCloseForm}
           onSubmit={handleSubmitForm}
           categories={categories}
+          defaultProductType={productType}
         />
       </div>
     </Layout>

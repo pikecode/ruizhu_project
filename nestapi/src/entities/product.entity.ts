@@ -25,6 +25,7 @@ import {
 @Index(['isSaleOn', 'stockStatus'])
 @Index(['stockStatus'])
 @Index(['createdAt'])
+@Index(['productType'])
 export class Product {
   @PrimaryGeneratedColumn()
   id: number;
@@ -37,6 +38,14 @@ export class Product {
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   sku: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 50,
+    default: 'standard',
+    name: 'product_type',
+  })
+  productType: 'standard' | 'custom' = 'standard'; // 产品类型: standard(标准产品) custom(私人定制专属)
 
   @Column({ type: 'text', nullable: true })
   description: string;

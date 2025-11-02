@@ -187,6 +187,7 @@ export class CollectionsService {
   private async getCollectionProducts(
     collectionId: number,
     limit?: number,
+    productType?: string, // 可选：按产品类型过滤
   ): Promise<CollectionProductItemDto[]> {
     const query = this.dataSource
       .createQueryBuilder()
@@ -206,6 +207,11 @@ export class CollectionsService {
       .where('cp.collection_id = :collectionId', { collectionId })
       .orderBy('cp.sort_order', 'ASC')
       .addOrderBy('cp.created_at', 'DESC');
+
+    // 可选：按产品类型过滤
+    if (productType) {
+      query.andWhere('p.product_type = :productType', { productType });
+    }
 
     if (limit) {
       query.limit(limit);
@@ -265,6 +271,7 @@ export class CollectionsService {
       collectionId,
       productId,
       sortOrder: startSortOrder + index,
+      subCategory: addDto.subCategory || null, // 添加子类别
     }));
 
     // 使用批量插入，忽略重复的记录（product已经在collection中）
@@ -317,22 +324,29 @@ export class CollectionsService {
       throw new NotFoundException(`集合 ID ${collectionId} 不存在`);
     }
 
-    // 批量更新sort_order
+    // 批量更新sort_order 和 sub_category
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
       for (const item of updateDto.products) {
+        const updateData: any = {
+          sortOrder: item.sortOrder,
+        };
+
+        // 如果提供了subCategory，则更新它
+        if (item.subCategory !== undefined) {
+          updateData.subCategory = item.subCategory;
+        }
+
         await queryRunner.manager.update(
           CollectionProduct,
           {
             collectionId,
             productId: item.productId,
           },
-          {
-            sortOrder: item.sortOrder,
-          },
+          updateData,
         );
       }
 

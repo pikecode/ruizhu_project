@@ -98,6 +98,7 @@ export class ProductsService {
       sku: createDto.sku,
       description: createDto.description,
       categoryId: createDto.categoryId,
+      productType: createDto.productType || 'standard', // 产品类型
       isNew: createDto.isNew || false,
       isSaleOn: createDto.isSaleOn !== false,
       isOutOfStock,
@@ -156,6 +157,7 @@ export class ProductsService {
       description: product.description,
       categoryId: product.categoryId,
       categoryName: category?.name,
+      productType: product.productType || 'standard', // 产品类型
       isNew: product.isNew,
       isSaleOn: product.isSaleOn,
       isOutOfStock: product.isOutOfStock,
@@ -197,7 +199,7 @@ export class ProductsService {
    * 获取商品列表（带分页、搜索、筛选）
    */
   async getProductList(query: QueryProductDto): Promise<ProductListResponseDto> {
-    const { page, limit, keyword, categoryId, minPrice, maxPrice, sort, isNew, onSale, tag } = query;
+    const { page, limit, keyword, categoryId, minPrice, maxPrice, sort, isNew, onSale, tag, productType } = query;
 
     // 构建查询条件
     let where: any = {};
@@ -214,6 +216,9 @@ export class ProductsService {
     if (categoryId) {
       where.categoryId = categoryId;
     }
+
+    // 产品类型筛选 - 默认只显示标准产品，除非明确要求私人定制
+    where.productType = productType || 'standard';
 
     // 新品筛选
     if (isNew === 'true') {
@@ -303,6 +308,7 @@ export class ProductsService {
         subtitle: product.subtitle,
         sku: product.sku,
         categoryId: product.categoryId,
+        productType: product.productType || 'standard', // 产品类型
         currentPrice: product.currentPrice || 0,
         originalPrice: product.originalPrice || 0,
         discountRate: product.discountRate || 100,
@@ -432,6 +438,7 @@ export class ProductsService {
       .leftJoinAndSelect('product.tags', 'tags')
       .where('product.categoryId = :categoryId', { categoryId })
       .andWhere('product.isSaleOn = :isSaleOn', { isSaleOn: true })
+      .andWhere('product.productType = :productType', { productType: 'standard' }) // 默认只显示标准产品
       .orderBy('product.createdAt', 'DESC')
       .take(limit)
       .getMany();
@@ -444,6 +451,7 @@ export class ProductsService {
         subtitle: product.subtitle,
         sku: product.sku,
         categoryId: product.categoryId,
+        productType: product.productType || 'standard', // 产品类型
         currentPrice: product.currentPrice || 0,
         originalPrice: product.originalPrice || 0,
         discountRate: product.discountRate || 100,
@@ -471,6 +479,7 @@ export class ProductsService {
     const products = await this.productRepository
       .createQueryBuilder('product')
       .where('product.isSaleOn = :isSaleOn', { isSaleOn: true })
+      .andWhere('product.productType = :productType', { productType: 'standard' }) // 默认只显示标准产品
       .orderBy('product.salesCount', 'DESC')
       .take(limit)
       .getMany();
@@ -483,6 +492,7 @@ export class ProductsService {
         subtitle: product.subtitle,
         sku: product.sku,
         categoryId: product.categoryId,
+        productType: product.productType || 'standard', // 产品类型
         currentPrice: product.currentPrice || 0,
         originalPrice: product.originalPrice || 0,
         discountRate: product.discountRate || 100,
@@ -512,6 +522,7 @@ export class ProductsService {
         keyword: `%${keyword}%`,
       })
       .andWhere('product.isSaleOn = :isSaleOn', { isSaleOn: true })
+      .andWhere('product.productType = :productType', { productType: 'standard' }) // 默认只显示标准产品
       .orderBy('product.createdAt', 'DESC')
       .take(limit)
       .getMany();
@@ -524,6 +535,7 @@ export class ProductsService {
         subtitle: product.subtitle,
         sku: product.sku,
         categoryId: product.categoryId,
+        productType: product.productType || 'standard', // 产品类型
         currentPrice: product.currentPrice || 0,
         originalPrice: product.originalPrice || 0,
         discountRate: product.discountRate || 100,

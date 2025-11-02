@@ -40,6 +40,10 @@ export default function CollectionProductsModal({
   const [tempProducts, setTempProducts] = useState<ProductListItem[]>([])
   const [searchText, setSearchText] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null)
+  const [productSubCategories, setProductSubCategories] = useState<Record<number, string>>({}) // 产品的子类别映射
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null) // 当前选中的子类别过滤器
+
+  const SUB_CATEGORIES = ['clothing', 'jewelry', 'shoes', 'perfume'] // 子类别选项
 
   useEffect(() => {
     if (visible) {
@@ -108,10 +112,11 @@ export default function CollectionProductsModal({
         await collectionsService.removeProductsFromCollection(collectionId, toRemove)
       }
 
-      // 保存排序
+      // 保存排序和子类别
       const sortData = tempProducts.map((p, index) => ({
         productId: p.id,
         sortOrder: index,
+        subCategory: productSubCategories[p.id] || null, // 包含子类别
       }))
       await collectionsService.updateProductsSort(collectionId, sortData)
 
@@ -380,6 +385,31 @@ export default function CollectionProductsModal({
           <div>¥{(record.currentPrice / 100).toFixed(2)}</div>
           <small style={{ color: '#999' }}>¥{(record.originalPrice / 100).toFixed(2)}</small>
         </div>
+      ),
+    },
+    {
+      title: '子类别',
+      key: 'subCategory',
+      width: 110,
+      render: (_: any, record: ProductListItem) => (
+        <Select
+          size="small"
+          placeholder="选择子类别"
+          value={productSubCategories[record.id] || undefined}
+          onChange={(value) => {
+            setProductSubCategories({
+              ...productSubCategories,
+              [record.id]: value,
+            })
+            setSortChanged(true)
+          }}
+          allowClear
+          options={SUB_CATEGORIES.map(cat => ({
+            label: cat,
+            value: cat,
+          }))}
+          style={{ width: '100%' }}
+        />
       ),
     },
     {

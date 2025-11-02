@@ -1,4 +1,4 @@
-import { IsNumber, IsArray, ValidateNested, IsOptional } from 'class-validator';
+import { IsNumber, IsArray, ValidateNested, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 /**
@@ -10,6 +10,10 @@ export class CollectionProductSortItemDto {
 
   @IsNumber()
   sortOrder: number;
+
+  @IsOptional()
+  @IsString()
+  subCategory?: string; // 子类别：clothing, jewelry, shoes, perfume 等
 }
 
 /**
@@ -33,6 +37,10 @@ export class AddProductsToCollectionDto {
   @IsOptional()
   @IsNumber()
   startSortOrder?: number = 0; // 添加产品时的起始排序号
+
+  @IsOptional()
+  @IsString()
+  subCategory?: string; // 子类别：clothing, jewelry, shoes, perfume 等（所有产品都使用同一子类别）
 }
 
 /**

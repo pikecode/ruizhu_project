@@ -11,6 +11,7 @@ interface ProductFormProps {
   onClose: () => void
   onSubmit: (data: any) => Promise<void>
   categories: Category[]
+  defaultProductType?: 'standard' | 'custom'
 }
 
 interface MediaFile {
@@ -38,6 +39,12 @@ const productTagOptions = [
   { label: 'VIP专享', value: 'isVipOnly' },
 ]
 
+// 产品类型选项
+const productTypeOptions = [
+  { label: '标准产品', value: 'standard' },
+  { label: '私人定制专属', value: 'custom' },
+]
+
 export default function ProductForm({
   visible,
   loading = false,
@@ -45,6 +52,7 @@ export default function ProductForm({
   onClose,
   onSubmit,
   categories,
+  defaultProductType = 'standard',
 }: ProductFormProps) {
   const [form] = Form.useForm()
   const [submitting, setSubmitting] = useState(false)
@@ -71,6 +79,7 @@ export default function ProductForm({
         subtitle: product.subtitle,
         description: product.description,
         categoryId: product.categoryId,
+        productType: (product as any).productType || 'standard', // 产品类型
         stockStatus: stockStatus,
         productTags: tags,
         price: product.price?.currentPrice ? product.price.currentPrice / 100 : 0,
@@ -110,9 +119,9 @@ export default function ProductForm({
     } else if (visible && !product) {
       form.resetFields()
       setMediaFiles([])
-      form.setFieldsValue({ stockQuantity: 1, stockStatus: 'normal', productTags: [] })
+      form.setFieldsValue({ stockQuantity: 1, stockStatus: 'normal', productTags: [], productType: defaultProductType })
     }
-  }, [product, visible, form])
+  }, [product, visible, form, defaultProductType])
 
   // Wrapper function to upload media and return just the URL
   const handleUploadToCloud = async (file: File): Promise<string> => {
@@ -232,12 +241,30 @@ export default function ProductForm({
           <Row gutter={12}>
             <Col xs={24} sm={12}>
               <Form.Item
+                label="产品类型"
+                name="productType"
+                style={{ marginBottom: '8px' }}
+                rules={[{ required: true, message: '请选择产品类型' }]}>
+                <Select placeholder="选择产品类型">
+                  {productTypeOptions.map((opt) => (
+                    <Select.Option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
                 label="副标题"
                 name="subtitle"
                 style={{ marginBottom: '8px' }}>
                 <Input placeholder="可选的副标题" />
               </Form.Item>
             </Col>
+          </Row>
+
+          <Row gutter={12}>
             <Col xs={24} sm={12}>
               <Form.Item
                 label="价格 (¥)"

@@ -18,6 +18,7 @@ import { Collection } from './collection.entity';
 @Entity('collection_products')
 @Unique(['collectionId', 'productId'])
 @Index(['collectionId', 'sortOrder'])
+@Index(['collectionId', 'subCategory'])
 @Index(['productId'])
 export class CollectionProduct {
   @PrimaryGeneratedColumn()
@@ -31,6 +32,14 @@ export class CollectionProduct {
 
   @Column({ type: 'int', default: 0, name: 'sort_order' })
   sortOrder: number; // 该集合内的显示顺序
+
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    name: 'sub_category',
+  })
+  subCategory: string | null; // 子类别: clothing, jewelry, shoes, perfume 等
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

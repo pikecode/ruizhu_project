@@ -9,6 +9,7 @@ export class ProductDetailResponseDto {
   description?: string;
   categoryId: number;
   categoryName?: string;
+  productType?: 'standard' | 'custom'; // 产品类型
 
   // 状态字段
   isNew: boolean;
@@ -72,6 +73,7 @@ export class ProductListItemDto {
   subtitle?: string;
   sku?: string | null;
   categoryId: number;
+  productType?: 'standard' | 'custom'; // 产品类型
 
   // 价格（分）
   currentPrice: number;
