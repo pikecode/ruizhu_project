@@ -113,6 +113,33 @@ export class ArrayCollectionsService {
   }
 
   /**
+   * 按 slug 获取数组集合详情（小程序用）
+   */
+  async getArrayCollectionBySlug(slug: string): Promise<ArrayCollectionDetailResponseDto> {
+    const collection = await this.arrayCollectionRepository.findOne({ where: { slug } });
+
+    if (!collection) {
+      throw new NotFoundException(`数组集合 slug ${slug} 不存在`);
+    }
+
+    const items = await this.getCollectionItems(collection.id);
+
+    return {
+      id: collection.id,
+      title: collection.title,
+      slug: collection.slug,
+      description: collection.description,
+      sortOrder: collection.sortOrder,
+      isActive: collection.isActive,
+      remark: collection.remark,
+      items,
+      itemCount: items.length,
+      createdAt: collection.createdAt,
+      updatedAt: collection.updatedAt,
+    };
+  }
+
+  /**
    * 删除数组集合
    */
   async deleteArrayCollection(id: number): Promise<void> {

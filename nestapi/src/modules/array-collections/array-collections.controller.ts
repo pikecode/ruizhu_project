@@ -47,6 +47,19 @@ export class ArrayCollectionsController {
   }
 
   /**
+   * 按 slug 获取数组集合详情（小程序用）
+   */
+  @Get('slug/:slug')
+  async getArrayCollectionBySlug(@Param('slug') slug: string) {
+    const data = await this.service.getArrayCollectionBySlug(slug);
+    return {
+      code: 200,
+      message: 'Successfully retrieved array collection by slug',
+      data,
+    };
+  }
+
+  /**
    * 获取数组集合详情
    */
   @Get(':id')

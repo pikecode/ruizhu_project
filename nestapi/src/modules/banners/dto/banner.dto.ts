@@ -20,8 +20,8 @@ export class CreateBannerDto {
   type?: 'image' | 'video';
 
   @IsOptional()
-  @IsEnum(['home', 'custom', 'profile', 'about'])
-  pageType?: 'home' | 'custom' | 'profile' | 'about';
+  @IsEnum(['home', 'custom', 'profile', 'about', 'featured'])
+  pageType?: 'home' | 'custom' | 'profile' | 'about' | 'featured';
 
   @IsOptional()
   @IsNumber()
@@ -61,8 +61,8 @@ export class UpdateBannerDto {
   type?: 'image' | 'video';
 
   @IsOptional()
-  @IsEnum(['home', 'custom', 'profile', 'about'])
-  pageType?: 'home' | 'custom' | 'profile' | 'about';
+  @IsEnum(['home', 'custom', 'profile', 'about', 'featured'])
+  pageType?: 'home' | 'custom' | 'profile' | 'about' | 'featured';
 
   @IsOptional()
   @IsNumber()
@@ -105,7 +105,7 @@ export class BannerResponseDto {
   videoUrl?: string | null;
   videoThumbnailUrl?: string | null;
 
-  pageType: 'home' | 'custom' | 'profile' | 'about';
+  pageType: 'home' | 'custom' | 'profile' | 'about' | 'featured';
   isActive: boolean;
   sortOrder: number;
 

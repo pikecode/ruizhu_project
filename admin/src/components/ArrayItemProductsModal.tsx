@@ -129,6 +129,8 @@ export default function ArrayItemProductsModal({
       message.success('商品已更新')
       setSortChanged(false)
       await loadItemProducts()
+      // 保存成功后关闭弹窗
+      onClose()
     } catch (error) {
       message.error('更新商品失败')
     } finally {

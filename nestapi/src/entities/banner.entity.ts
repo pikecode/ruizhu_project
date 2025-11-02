@@ -100,12 +100,12 @@ export class Banner {
   // 页面类型
   @Column({
     type: 'enum',
-    enum: ['home', 'custom', 'profile', 'about'],
+    enum: ['home', 'custom', 'profile', 'about', 'featured'],
     default: 'home',
     name: 'page_type',
-    comment: '页面类型：home(首页) custom(私人定制) profile(个人页面) about(关于页面)',
+    comment: '页面类型：home(首页) custom(私人定制) profile(个人页面) about(关于页面) featured(精选系列)',
   })
-  pageType: 'home' | 'custom' | 'profile' | 'about';
+  pageType: 'home' | 'custom' | 'profile' | 'about' | 'featured';
 
   // 状态字段
   @Column({

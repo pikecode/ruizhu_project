@@ -46,7 +46,7 @@ export const bannerService = {
    * @param limit 每页数量
    * @param pageType 页面类型: 'home'(首页) | 'custom'(私人定制) | 'profile'(个人页面) | 'about'(关于页面)
    */
-  async getList(page: number = 1, limit: number = 20, pageType?: 'home' | 'custom' | 'profile' | 'about'): Promise<BannerListResponse> {
+  async getList(page: number = 1, limit: number = 20, pageType?: 'home' | 'custom' | 'profile' | 'about' | 'featured'): Promise<BannerListResponse> {
     let url = `${API_BASE_URL}/admin/banners?page=${page}&limit=${limit}`;
     if (pageType) {
       url += `&pageType=${pageType}`;
@@ -83,7 +83,7 @@ export const bannerService = {
     isActive?: boolean;
     linkType?: string;
     linkValue?: string;
-    pageType?: 'home' | 'custom' | 'profile' | 'about';
+    pageType?: 'home' | 'custom' | 'profile' | 'about' | 'featured';
   }): Promise<BannerResponse> {
     const response = await fetch(`${API_BASE_URL}/admin/banners`, {
       method: 'POST',
@@ -108,7 +108,7 @@ export const bannerService = {
       isActive?: boolean;
       linkType?: string;
       linkValue?: string | null;
-      pageType?: 'home' | 'custom' | 'profile' | 'about';
+      pageType?: 'home' | 'custom' | 'profile' | 'about' | 'featured';
     },
   ): Promise<BannerResponse> {
     const response = await fetch(`${API_BASE_URL}/admin/banners/${id}`, {

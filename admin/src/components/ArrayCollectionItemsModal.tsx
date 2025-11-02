@@ -57,6 +57,7 @@ export default function ArrayCollectionItemsModal({
   const [uploadProgress, setUploadProgress] = useState(0)
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [sortChanged, setSortChanged] = useState(false)
+  const [uploadedFileList, setUploadedFileList] = useState([])
 
   useEffect(() => {
     if (visible) {
@@ -86,6 +87,8 @@ export default function ArrayCollectionItemsModal({
       setEditingItem(undefined)
       form.resetFields()
     }
+    // 清除上传文件列表
+    setUploadedFileList([])
     setFormVisible(true)
   }
 
@@ -93,11 +96,19 @@ export default function ArrayCollectionItemsModal({
     setFormVisible(false)
     setEditingItem(undefined)
     form.resetFields()
+    // 清除上传文件列表
+    setUploadedFileList([])
   }
 
   const handleSubmitForm = async () => {
     try {
       const values = await form.validateFields()
+
+      // 手动添加 coverImageUrl 字段，因为表单项被隐藏了
+      const coverImageUrl = form.getFieldValue('coverImageUrl')
+      if (coverImageUrl) {
+        values.coverImageUrl = coverImageUrl
+      }
 
       if (editingItem) {
         await arrayCollectionsService.updateItem(editingItem.id, values)
@@ -150,6 +161,8 @@ export default function ArrayCollectionItemsModal({
       console.error(error)
     } finally {
       setUploading(false)
+      // 上传完成后清除文件列表，防止重复显示
+      setUploadedFileList([])
     }
   }
 
@@ -409,22 +422,16 @@ export default function ArrayCollectionItemsModal({
 
           <Divider>图片设置</Divider>
 
-          <Form.Item
-            label="封面图片URL"
-            name="coverImageUrl"
-            rules={[
-              { type: 'url', message: '请输入有效的URL' },
-            ]}
-          >
-            <Input placeholder="https://..." />
-          </Form.Item>
-
           <Form.Item label="上传图片">
             <Upload
               maxCount={1}
+              fileList={uploadedFileList}
               beforeUpload={(file) => {
                 handleImageUpload(file)
                 return false
+              }}
+              onRemove={() => {
+                setUploadedFileList([])
               }}
               disabled={uploading}
               accept="image/*"

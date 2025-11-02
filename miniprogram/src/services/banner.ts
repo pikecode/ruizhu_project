@@ -12,7 +12,7 @@ export interface Banner {
   imageUrl?: string
   videoUrl?: string
   videoThumbnailUrl?: string
-  pageType: 'home' | 'custom' | 'profile' | 'about'
+  pageType: 'home' | 'custom' | 'profile' | 'about' | 'featured'
   isActive: boolean
   sortOrder: number
   linkType: 'url' | 'none' | 'product' | 'category' | 'collection'
@@ -69,7 +69,7 @@ export const bannerService = {
    *
    * API: GET /banners?page=1&limit=10&pageType=home|custom|profile|about
    */
-  getBanners: async (page: number = 1, limit: number = 10, pageType?: 'home' | 'custom' | 'profile' | 'about') => {
+  getBanners: async (page: number = 1, limit: number = 10, pageType?: 'home' | 'custom' | 'profile' | 'about' | 'featured') => {
     try {
       // 直接在 URL 中构造查询参数（小程序不支持 params 自动转换）
       let url = `/banners?page=${page}&limit=${limit}`
@@ -79,10 +79,32 @@ export const bannerService = {
 
       console.log('📡 [Banner] 请求 URL:', url)
       const response = await api.get<any>(url)
-      return response.data || { items: [], total: 0 }
+
+      console.log('📡 [Banner] 原始响应:', response)
+
+      // 处理 API 返回的数据
+      // API 返回格式可能是：
+      // 1. { code, message, data: { items: [...], total, page, totalPages } }
+      // 2. { code, message, data: [...] }
+      if (response && response.data) {
+        if (Array.isArray(response.data)) {
+          // 如果直接是数组，包装成分页格式
+          return {
+            items: response.data,
+            total: response.data.length,
+            page: page,
+            totalPages: 1
+          }
+        } else if (response.data.items) {
+          // 如果已经是分页格式，直接返回
+          return response.data
+        }
+      }
+
+      return { items: [], total: 0, page, totalPages: 0 }
     } catch (error) {
       console.error('Failed to fetch banners:', error)
-      return { items: [], total: 0 }
+      return { items: [], total: 0, page, totalPages: 0 }
     }
   },
 
