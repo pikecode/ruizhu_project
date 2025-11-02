@@ -1,10 +1,6 @@
 <template>
   <view class="page">
-    <!-- 页面头部 -->
-    <view class="payment-header">
-      <text class="header-title">支付方式</text>
-    </view>
-
+   
     <!-- 订单金额 -->
     <view class="payment-amount-section">
       <text class="amount-label">应付金额</text>
@@ -14,61 +10,14 @@
       </view>
     </view>
 
-    <!-- 支付方式选择 -->
+    <!-- 微信支付说明 -->
     <view class="payment-methods-section">
-      <view class="section-title">选择支付方式</view>
-
-      <!-- 微信支付 -->
-      <view
-        class="payment-method-item"
-        :class="{ selected: selectedMethod === 'wechat' }"
-        @tap="selectPaymentMethod('wechat')"
-      >
+      <view class="section-title">支付方式</view>
+      <view class="wechat-payment-info">
         <view class="method-icon">微</view>
-        <view class="method-info">
+        <view class="method-details">
           <text class="method-name">微信支付</text>
-          <text class="method-desc">使用微信钱包付款</text>
-        </view>
-        <view class="method-radio">
-          <view class="radio" :class="{ checked: selectedMethod === 'wechat' }">
-            <text v-if="selectedMethod === 'wechat'">✓</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 支付宝（可选） -->
-      <view
-        class="payment-method-item"
-        :class="{ selected: selectedMethod === 'alipay', disabled: true }"
-        @tap="showDisabledTip"
-      >
-        <view class="method-icon">支</view>
-        <view class="method-info">
-          <text class="method-name">支付宝支付</text>
-          <text class="method-desc">使用支付宝付款（开发中）</text>
-        </view>
-        <view class="method-radio">
-          <view class="radio" :class="{ checked: selectedMethod === 'alipay' }">
-            <text v-if="selectedMethod === 'alipay'">✓</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 银行卡（可选） -->
-      <view
-        class="payment-method-item"
-        :class="{ selected: selectedMethod === 'card', disabled: true }"
-        @tap="showDisabledTip"
-      >
-        <view class="method-icon">卡</view>
-        <view class="method-info">
-          <text class="method-name">银行卡支付</text>
-          <text class="method-desc">使用银行卡付款（开发中）</text>
-        </view>
-        <view class="method-radio">
-          <view class="radio" :class="{ checked: selectedMethod === 'card' }">
-            <text v-if="selectedMethod === 'card'">✓</text>
-          </view>
+          <text class="method-desc">使用微信钱包安全快捷支付</text>
         </view>
       </view>
     </view>
@@ -100,6 +49,8 @@
 </template>
 
 <script>
+import wechatPaymentService from '../../services/wechatPayment'
+
 export default {
   data() {
     return {
@@ -107,7 +58,8 @@ export default {
       itemCount: 0,
       address: '',
       orderId: '',
-      selectedMethod: 'wechat'
+      order: null,
+      isLoading: false
     }
   },
   onLoad() {
@@ -117,79 +69,154 @@ export default {
     loadPaymentInfo() {
       try {
         const order = uni.getStorageSync('currentOrder')
+        console.log('📡 [Payment] 加载订单信息:', order)
+
         if (order) {
+          this.order = order
           this.totalAmount = order.total.toString()
-          this.itemCount = order.items.length
-          this.address = `${order.address.city} ${order.address.district}`
+          this.itemCount = order.items ? order.items.length : 0
+
+          // 安全地处理地址信息
+          if (order.address && typeof order.address === 'object') {
+            const city = order.address.city || ''
+            const district = order.address.district || ''
+            this.address = `${city} ${district}`.trim()
+          } else {
+            this.address = '地址待完善'
+          }
+
           this.orderId = order.orderId
+          console.log('✅ [Payment] 订单信息加载成功')
+        } else {
+          console.warn('⚠️ [Payment] 订单信息为空')
         }
       } catch (e) {
-        console.error('Failed to load payment info:', e)
-      }
-    },
-    selectPaymentMethod(method) {
-      if (method === 'wechat') {
-        this.selectedMethod = method
-      }
-    },
-    showDisabledTip() {
-      uni.showToast({
-        title: '此支付方式开发中',
-        icon: 'none'
-      })
-    },
-    processPayment() {
-      if (!this.selectedMethod) {
+        console.error('❌ Failed to load payment info:', e)
         uni.showToast({
-          title: '请选择支付方式',
+          title: '加载订单信息失败',
+          icon: 'none'
+        })
+      }
+    },
+    async processPayment() {
+      if (!this.order) {
+        uni.showToast({
+          title: '订单信息缺失',
           icon: 'none'
         })
         return
       }
 
-      if (this.selectedMethod === 'wechat') {
-        this.requestWechatPayment()
-      }
-    },
-    requestWechatPayment() {
-      // 模拟支付流程
-      uni.showLoading({
-        title: '正在处理支付...'
-      })
+      if (this.isLoading) return
+      this.isLoading = true
 
-      // 模拟延迟，实际应该调用后端接口获取支付参数
-      setTimeout(() => {
-        uni.hideLoading()
-
-        // 模拟支付成功
-        uni.showToast({
-          title: '支付成功',
-          icon: 'success',
-          duration: 1500
+      try {
+        // 调用后端创建支付订单
+        console.log('📡 [Payment] 正在请求支付订单...')
+        const paymentOrder = await wechatPaymentService.createPaymentOrder({
+          outTradeNo: this.order.orderId,
+          totalFee: Math.round(parseFloat(this.order.total) * 100), // 转换为分
+          body: `订单 ${this.order.orderId}`,
+          metadata: {
+            orderId: this.order.id,
+            userId: this.order.userId
+          }
         })
 
-        // 延迟后跳转到订单确认页或订单列表
-        setTimeout(() => {
-          uni.switchTab({
-            url: '/pages/profile/profile'
+        if (!paymentOrder) {
+          uni.showToast({
+            title: '创建支付订单失败',
+            icon: 'none'
           })
-        }, 1500)
-      }, 2000)
+          return
+        }
 
-      // 实际微信支付调用（需要后端支持）：
-      // wx.requestPayment({
-      //   timeStamp: data.timeStamp,
-      //   nonceStr: data.nonceStr,
-      //   package: data.package,
-      //   signType: 'MD5',
-      //   paySign: data.paySign,
-      //   success: (res) => {
-      //     // 支付成功
-      //   },
-      //   fail: (err) => {
-      //     // 支付失败
-      //   }
-      // })
+        console.log('📡 [Payment] 支付参数:', paymentOrder)
+
+        // 调起微信支付
+        this.requestWechatPayment(paymentOrder)
+      } catch (error) {
+        console.error('Failed to process payment:', error)
+        uni.showToast({
+          title: error.message || '支付失败，请重试',
+          icon: 'none'
+        })
+      } finally {
+        this.isLoading = false
+      }
+    },
+    requestWechatPayment(paymentData) {
+      console.log('📡 [Payment] 调起微信支付，参数:', {
+        timeStamp: paymentData.timeStamp,
+        nonceStr: paymentData.nonceStr,
+        package: paymentData.prepayId ? `prepay_id=${paymentData.prepayId}` : 'prepay_id=mock',
+        signType: paymentData.signType || 'MD5',
+        paySign: '***'
+      })
+
+      wx.requestPayment({
+        timeStamp: paymentData.timeStamp,
+        nonceStr: paymentData.nonceStr,
+        package: `prepay_id=${paymentData.prepayId}`,
+        signType: paymentData.signType || 'MD5',
+        paySign: paymentData.paySign,
+        success: async (res) => {
+          console.log('✅ [Payment] 微信支付成功:', res)
+          // 支付成功后查询订单状态确认
+          await this.confirmPaymentSuccess(paymentData.outTradeNo)
+        },
+        fail: (err) => {
+          console.error('❌ [Payment] 微信支付失败:', err)
+          if (err.errMsg?.includes('cancel')) {
+            uni.showToast({
+              title: '已取消支付',
+              icon: 'none'
+            })
+          } else {
+            uni.showToast({
+              title: '支付失败，请重试',
+              icon: 'none'
+            })
+          }
+        }
+      })
+    },
+    async confirmPaymentSuccess(outTradeNo) {
+      try {
+        // 查询支付状态确认
+        console.log('📡 [Payment] 查询支付状态...')
+        const status = await wechatPaymentService.queryPaymentStatus(outTradeNo)
+
+        if (status === 'success') {
+          uni.showToast({
+            title: '支付成功',
+            icon: 'success',
+            duration: 1500
+          })
+
+          // 延迟后跳转到订单列表
+          setTimeout(() => {
+            uni.switchTab({
+              url: '/pages/orders/orders'
+            })
+          }, 1500)
+        } else {
+          uni.showToast({
+            title: '支付状态确认中，请稍候',
+            icon: 'none'
+          })
+          // 重试查询
+          setTimeout(() => {
+            this.confirmPaymentSuccess(outTradeNo)
+          }, 2000)
+        }
+      } catch (error) {
+        console.error('Failed to confirm payment:', error)
+        uni.showToast({
+          title: '确认支付状态失败',
+          icon: 'none'
+        })
+      }
     }
   }
 }
@@ -201,20 +228,7 @@ export default {
   padding-bottom: 120rpx;
 }
 
-/* 页面头部 */
-.payment-header {
-  background: #ffffff;
-  padding: 16rpx 24rpx;
-  border-bottom: 1px solid #f0f0f0;
-
-  .header-title {
-    display: block;
-    font-size: 32rpx;
-    font-weight: 600;
-    color: #000000;
-    text-align: center;
-  }
-}
+ 
 
 /* 订单金额 */
 .payment-amount-section {
@@ -266,41 +280,30 @@ export default {
     margin-bottom: 16rpx;
   }
 
-  .payment-method-item {
+  .wechat-payment-info {
     display: flex;
     align-items: center;
     gap: 16rpx;
     padding: 16rpx;
-    margin-bottom: 12rpx;
-    border: 2px solid #f0f0f0;
+    border: 2px solid #000000;
     border-radius: 8rpx;
-    cursor: pointer;
-
-    &.selected {
-      border-color: #000000;
-      background: #f9f9f9;
-    }
-
-    &.disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
+    background: #f9f9f9;
 
     .method-icon {
       width: 48rpx;
       height: 48rpx;
-      background: #f0f0f0;
+      background: #000000;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 24rpx;
       font-weight: 600;
-      color: #666666;
+      color: #ffffff;
       flex-shrink: 0;
     }
 
-    .method-info {
+    .method-details {
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -317,35 +320,6 @@ export default {
         display: block;
         font-size: 22rpx;
         color: #999999;
-      }
-    }
-
-    .method-radio {
-      flex-shrink: 0;
-
-      .radio {
-        width: 24rpx;
-        height: 24rpx;
-        border: 2px solid #d0d0d0;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        text {
-          font-size: 14rpx;
-          color: transparent;
-          font-weight: 600;
-        }
-
-        &.checked {
-          background: #000000;
-          border-color: #000000;
-
-          text {
-            color: #ffffff;
-          }
-        }
       }
     }
   }

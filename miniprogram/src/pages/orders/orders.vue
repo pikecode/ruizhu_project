@@ -1,9 +1,6 @@
 <template>
   <view class="page">
-    <!-- 页面头部 -->
-    <view class="orders-header">
-      <text class="header-title">我的订单</text>
-    </view>
+  
 
     <!-- 订单标签页 -->
     <view class="order-tabs">
@@ -144,30 +141,43 @@ export default {
         console.log('开始加载订单数据...')
 
         const response = await ordersService.getUserOrders(this.page, this.pageSize)
+        console.log('📡 [Orders] API 返回的原始 response:', response)
+        console.log('📡 [Orders] response.items:', response?.items)
+        console.log('📡 [Orders] response.data:', response?.data)
 
-        if (response && response.orders) {
+        if (response && response.items) {
           console.log('获取订单列表成功:', response)
+          console.log('第一个订单对象:', response.items[0])
 
-          // 转换API返回的数据结构以适配前端显示
-          this.orders = response.orders.map(order => ({
-            id: order.id,
-            orderId: order.orderNumber,
-            items: order.items.map(item => ({
-              id: item.id,
-              name: item.product.name,
-              image: item.product.coverImageUrl || 'https://via.placeholder.com/400x400?text=No+Image',
-              quantity: item.quantity,
-              price: (item.unitPrice / 100).toFixed(2), // 转换为元
-              color: '默认' // 后端暂时没有颜色信息，使用默认值
-            })),
-            total: (order.totalAmount / 100).toFixed(2), // 转换为元
-            subtotal: (order.subtotalAmount / 100).toFixed(2),
-            expressPrice: (order.shippingAmount / 100).toFixed(2),
-            discount: (order.discountAmount / 100).toFixed(2),
-            status: order.status,
-            statusText: this.getStatusText(order.status),
-            createdAt: order.createdAt
-          }))
+          try {
+            // 转换API返回的数据结构以适配前端显示
+            this.orders = response.items.map((order, index) => {
+              console.log(`映射第 ${index} 个订单:`, order)
+              return {
+                id: order.id,
+                orderId: order.orderNumber,
+                items: order.items ? order.items.map(item => ({
+                  id: item.id,
+                  name: item.product.name,
+                  image: item.product.coverImageUrl || 'https://via.placeholder.com/400x400?text=No+Image',
+                  quantity: item.quantity,
+                  price: (item.unitPrice / 100).toFixed(2), // 转换为元
+                  color: '默认' // 后端暂时没有颜色信息，使用默认值
+                })) : [],
+                total: (order.totalAmount / 100).toFixed(2), // 转换为元
+                subtotal: (order.subtotalAmount / 100).toFixed(2),
+                expressPrice: (order.shippingAmount / 100).toFixed(2),
+                discount: (order.discountAmount / 100).toFixed(2),
+                status: order.status,
+                statusText: this.getStatusText(order.status),
+                createdAt: order.createdAt
+              }
+            })
+            console.log('✅ 订单列表映射成功，共', this.orders.length, '个订单')
+          } catch (mapError) {
+            console.error('❌ 订单映射出错:', mapError)
+            this.orders = []
+          }
 
           this.hasMore = response.page < response.totalPages
         } else {
@@ -232,11 +242,11 @@ export default {
 
         const response = await ordersService.getOrdersByStatus(status, this.page, this.pageSize)
 
-        if (response && response.orders) {
+        if (response && response.items) {
           console.log(`获取${status}状态订单成功:`, response)
 
           // 转换数据结构
-          this.orders = response.orders.map(order => ({
+          this.orders = response.items.map(order => ({
             id: order.id,
             orderId: order.orderNumber,
             items: order.items.map(item => ({
@@ -341,20 +351,7 @@ export default {
   padding-bottom: 20rpx;
 }
 
-/* 页面头部 */
-.orders-header {
-  background: #ffffff;
-  padding: 20rpx 24rpx;
-  border-bottom: 1px solid #f0f0f0;
-
-  .header-title {
-    display: block;
-    font-size: 32rpx;
-    font-weight: 600;
-    color: #000000;
-    text-align: center;
-  }
-}
+ 
 
 /* 订单标签页 */
 .order-tabs {

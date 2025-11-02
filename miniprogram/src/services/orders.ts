@@ -45,7 +45,7 @@ export interface Order {
  * 订单列表响应数据结构
  */
 export interface OrdersResponse {
-  orders: Order[]
+  items: Order[]
   total: number
   page: number
   totalPages: number
@@ -98,7 +98,9 @@ const ordersService = {
         `/orders?page=${page}&limit=${limit}`
       )
 
-      console.log('获取订单列表成功:', response)
+      console.log('📡 [OrdersService] 原始 API response:', response)
+      console.log('📡 [OrdersService] response.data:', response.data)
+      console.log('📡 [OrdersService] 即将返回:', response.data || null)
       return response.data || null
     } catch (error) {
       console.error('Failed to get user orders:', error)
