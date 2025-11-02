@@ -121,8 +121,9 @@ export async function getProducts(options: {
   limit?: number
   categoryId?: number
   sortBy?: 'recommend' | 'new' | 'hot' | 'price_asc' | 'price_desc'
+  productType?: 'standard' | 'custom'
 } = {}): Promise<Product[]> {
-  const { page = 1, limit = 20, categoryId, sortBy = 'recommend' } = options
+  const { page = 1, limit = 20, categoryId, sortBy = 'recommend', productType } = options
 
   try {
     const params: Record<string, string | number> = {
@@ -133,6 +134,11 @@ export async function getProducts(options: {
     // 构建查询参数
     if (categoryId && categoryId !== 0) {
       params.categoryId = categoryId
+    }
+
+    // 添加产品类型参数
+    if (productType) {
+      params.productType = productType
     }
 
     // 根据排序方式处理
@@ -159,18 +165,26 @@ export async function getProducts(options: {
     }
 
     const queryString = buildQueryString(params)
-    const response = await api.get<{ data: ProductListResponse }>(
-      `/products${queryString ? '?' + queryString : ''}`
-    )
+    const url = `/products${queryString ? '?' + queryString : ''}`
+    console.log('[products.ts] 请求URL:', url)
+    console.log('[products.ts] 请求参数:', params)
+
+    const response = await api.get<{ data: ProductListResponse }>(url)
+
+    console.log('[products.ts] API响应:', response)
+    console.log('[products.ts] 响应中的items数量:', response.data?.items?.length || 0)
 
     // 将后端数据转换为前端格式
     const products = response.data.items.map(item =>
       mapProductToFrontend(item, CATEGORY_MAP[item.categoryId])
     )
 
+    console.log('[products.ts] 转换后的产品数量:', products.length)
+    console.log('[products.ts] 转换后的产品:', products)
+
     return products
   } catch (error) {
-    console.error('Failed to fetch products:', error)
+    console.error('[products.ts] 获取产品失败:', error)
     return []
   }
 }

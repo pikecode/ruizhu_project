@@ -19,7 +19,6 @@
             :class="['tab-item', { active: selectedCategory === category.id }]"
             @tap="selectCategory(category.id)"
           >
-            <view class="tab-icon" v-if="category.icon">{{ category.icon }}</view>
             <text class="tab-name">{{ category.name }}</text>
           </view>
         </view>
@@ -76,16 +75,6 @@
             <text class="product-price">¥{{ product.price }}</text>
           </view>
 
-          <!-- 颜色选择 -->
-          <view class="color-dots">
-            <view
-              v-for="(color, i) in product.colors"
-              :key="i"
-              class="color-dot"
-              :style="{ backgroundColor: color.value }"
-              :title="color.name"
-            ></view>
-          </view>
         </view>
       </view>
 
@@ -173,6 +162,7 @@
 
 <script>
 import ConsultationNavbar from '@/components/ConsultationNavbar.vue'
+import { getProducts } from '@/services/products'
 
 export default {
   components: {
@@ -182,12 +172,13 @@ export default {
     return {
       // UI状态
       selectedProduct: null,
-      selectedCategory: 1,
+      selectedCategory: 0, // 0表示全部
       searchKeyword: '',
       isLoading: false,
       currentPage: 1,
       pageSize: 8,
       hasMore: true,
+      totalProducts: 0,
 
       // 表单数据
       consultForm: {
@@ -200,245 +191,15 @@ export default {
 
       // 分类数据
       categories: [
-        { id: 1, name: '全部', icon: '🎯' },
-        { id: 2, name: '服装', icon: '👔' },
-        { id: 3, name: '珠宝', icon: '✨' },
-        { id: 4, name: '鞋履', icon: '👞' },
-        { id: 5, name: '香水', icon: '🌸' }
+        { id: 0, name: '全部', icon: '🎯' },
+        { id: 1, name: '服装', icon: '👔' },
+        { id: 2, name: '珠宝', icon: '✨' },
+        { id: 3, name: '鞋履', icon: '👞' },
+        { id: 4, name: '香水', icon: '🌸' }
       ],
 
-      // 所有产品数据（模拟后端数据）
-      allProducts: [
-        // 服装系列
-        {
-          id: 1,
-          name: '再生尼龙羽绒夹克',
-          color: '棕色',
-          price: '28,400',
-          image: 'https://images.unsplash.com/photo-1551028719-00167b16ebc5?w=400&q=80',
-          categoryId: 2,
-          isNew: true,
-          isFavorite: false,
-          colors: [
-            { name: '棕色', value: '#8B4513' },
-            { name: '黑色', value: '#000000' },
-            { name: '深绿', value: '#2F5233' }
-          ]
-        },
-        {
-          id: 11,
-          name: '纯羊毛针织衫',
-          color: '米色',
-          price: '12,800',
-          image: 'https://images.unsplash.com/photo-1556821552-5f9c4d0c5a9d?w=400&q=80',
-          categoryId: 2,
-          isNew: true,
-          isFavorite: false,
-          colors: [
-            { name: '米色', value: '#F5DEB3' },
-            { name: '灰色', value: '#808080' }
-          ]
-        },
-        {
-          id: 12,
-          name: '贴身棉质T恤',
-          color: '白色',
-          price: '6,900',
-          image: 'https://images.unsplash.com/photo-1568826065481-e80fcf6a9398?w=400&q=80',
-          categoryId: 2,
-          isNew: false,
-          isFavorite: false,
-          colors: [
-            { name: '白色', value: '#FFFFFF' },
-            { name: '黑色', value: '#000000' },
-            { name: '灰色', value: '#D3D3D3' }
-          ]
-        },
-        {
-          id: 13,
-          name: '高腰直筒牛仔裤',
-          color: '深蓝',
-          price: '9,900',
-          image: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&q=80',
-          categoryId: 2,
-          isNew: false,
-          isFavorite: false,
-          colors: [
-            { name: '深蓝', value: '#00008B' },
-            { name: '浅蓝', value: '#87CEEB' }
-          ]
-        },
-
-        // 珠宝系列
-        {
-          id: 2,
-          name: '精致珍珠项链',
-          color: '银色',
-          price: '18,900',
-          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80',
-          categoryId: 3,
-          isNew: true,
-          isFavorite: false,
-          colors: [
-            { name: '银色', value: '#C0C0C0' },
-            { name: '金色', value: '#FFD700' }
-          ]
-        },
-        {
-          id: 21,
-          name: '钻石手镯',
-          color: '白金',
-          price: '45,800',
-          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80',
-          categoryId: 3,
-          isNew: true,
-          isFavorite: false,
-          colors: [
-            { name: '白金', value: '#E8E8E8' },
-            { name: '黄金', value: '#FFD700' }
-          ]
-        },
-        {
-          id: 22,
-          name: '翡翠玉石耳坠',
-          color: '深绿',
-          price: '22,500',
-          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80',
-          categoryId: 3,
-          isNew: false,
-          isFavorite: false,
-          colors: [
-            { name: '深绿', value: '#2F5233' },
-            { name: '浅绿', value: '#90EE90' }
-          ]
-        },
-        {
-          id: 23,
-          name: '珍珠戒指',
-          color: '银色',
-          price: '15,600',
-          image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=400&q=80',
-          categoryId: 3,
-          isNew: false,
-          isFavorite: false,
-          colors: [
-            { name: '银色', value: '#C0C0C0' }
-          ]
-        },
-
-        // 鞋履系列
-        {
-          id: 3,
-          name: '亮面牛皮革乐福鞋',
-          color: '棕色',
-          price: '10,300',
-          image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&q=80',
-          categoryId: 4,
-          isNew: true,
-          isFavorite: false,
-          colors: [
-            { name: '棕色', value: '#8B4513' },
-            { name: '黑色', value: '#000000' }
-          ]
-        },
-        {
-          id: 31,
-          name: '高跟皮鞋',
-          color: '黑色',
-          price: '12,800',
-          image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&q=80',
-          categoryId: 4,
-          isNew: true,
-          isFavorite: false,
-          colors: [
-            { name: '黑色', value: '#000000' },
-            { name: '红色', value: '#FF0000' }
-          ]
-        },
-        {
-          id: 32,
-          name: '运动休闲鞋',
-          color: '白色',
-          price: '8,900',
-          image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&q=80',
-          categoryId: 4,
-          isNew: false,
-          isFavorite: false,
-          colors: [
-            { name: '白色', value: '#FFFFFF' },
-            { name: '灰色', value: '#808080' }
-          ]
-        },
-        {
-          id: 33,
-          name: '长靴',
-          color: '棕色',
-          price: '16,500',
-          image: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&q=80',
-          categoryId: 4,
-          isNew: false,
-          isFavorite: false,
-          colors: [
-            { name: '棕色', value: '#8B4513' },
-            { name: '黑色', value: '#000000' }
-          ]
-        },
-
-        // 香水系列
-        {
-          id: 4,
-          name: '经典香水系列',
-          color: '透明',
-          price: '15,600',
-          image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&q=80',
-          categoryId: 5,
-          isNew: false,
-          isFavorite: false,
-          colors: [
-            { name: '透明', value: '#FFFFFF' },
-            { name: '琥珀', value: '#FFBF00' }
-          ]
-        },
-        {
-          id: 41,
-          name: '玫瑰香水',
-          color: '粉色',
-          price: '12,500',
-          image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&q=80',
-          categoryId: 5,
-          isNew: true,
-          isFavorite: false,
-          colors: [
-            { name: '粉色', value: '#FFB6C1' }
-          ]
-        },
-        {
-          id: 42,
-          name: '花香调香水',
-          color: '淡蓝',
-          price: '14,800',
-          image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&q=80',
-          categoryId: 5,
-          isNew: true,
-          isFavorite: false,
-          colors: [
-            { name: '淡蓝', value: '#ADD8E6' }
-          ]
-        },
-        {
-          id: 43,
-          name: '木质香水',
-          color: '琥珀色',
-          price: '16,900',
-          image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&q=80',
-          categoryId: 5,
-          isNew: false,
-          isFavorite: false,
-          colors: [
-            { name: '琥珀色', value: '#FFBF00' }
-          ]
-        }
-      ],
+      // 所有产品数据（从API加载）
+      allProducts: [],
 
       // 当前显示的产品（分页）
       displayProducts: []
@@ -454,6 +215,28 @@ export default {
     this.loadProducts()
   },
   methods: {
+    // 将后端产品数据转换为前端格式
+    mapApiProductToFrontend(apiProduct) {
+      // 默认颜色选项
+      const defaultColors = [
+        { name: '颜色选项', value: '#999999' }
+      ]
+
+      console.log('转换产品数据:', apiProduct)
+
+      return {
+        id: apiProduct.id,
+        name: apiProduct.name,
+        color: apiProduct.category || '标准款', // 使用 category 代替 subtitle
+        price: apiProduct.price, // 已经是元为单位的格式
+        image: apiProduct.image || 'https://via.placeholder.com/300',
+        categoryId: apiProduct.categoryId,
+        isNew: apiProduct.isNew || false,
+        isFavorite: false,
+        colors: defaultColors
+      }
+    },
+
     // 选择分类
     selectCategory(categoryId) {
       this.selectedCategory = categoryId
@@ -463,42 +246,66 @@ export default {
       this.loadProducts()
     },
 
-    // 加载产品
-    loadProducts() {
+    // 加载产品（从API获取私人定制产品）
+    async loadProducts() {
       this.isLoading = true
+      console.log('[consultation] 开始加载产品...')
 
-      // 模拟网络请求延迟
-      setTimeout(() => {
-        // 根据分类和搜索关键词过滤产品
-        let filteredProducts = this.allProducts
-
-        // 如果不是"全部"，按分类过滤
-        if (this.selectedCategory !== 1) {
-          filteredProducts = filteredProducts.filter(p => p.categoryId === this.selectedCategory)
+      try {
+        // 构建查询选项
+        const options = {
+          page: this.currentPage,
+          limit: this.pageSize,
+          productType: 'custom' // 获取私人定制产品
         }
 
-        // 按搜索关键词过滤
-        if (this.searchKeyword.trim()) {
-          const keyword = this.searchKeyword.toLowerCase()
-          filteredProducts = filteredProducts.filter(p =>
-            p.name.toLowerCase().includes(keyword) ||
-            p.color.toLowerCase().includes(keyword)
+        // 如果选择了特定分类（非全部），添加分类参数
+        if (this.selectedCategory !== 0) {
+          options.categoryId = this.selectedCategory
+        }
+
+        console.log('[consultation] 查询选项:', options)
+
+        // 调用API获取产品
+        const apiProducts = await getProducts(options)
+        console.log('[consultation] 从API获取的产品数量:', apiProducts.length)
+        console.log('[consultation] API返回的产品数据:', apiProducts)
+
+        if (!apiProducts || apiProducts.length === 0) {
+          console.warn('[consultation] 没有获取到私人定制产品')
+        }
+
+        // 转换数据格式
+        const frontendProducts = apiProducts.map(p => this.mapApiProductToFrontend(p))
+        console.log('[consultation] 转换后的产品数据:', frontendProducts)
+
+        // 如果是第一页，替换数据；否则追加
+        if (this.currentPage === 1) {
+          this.allProducts = frontendProducts
+          this.displayProducts = frontendProducts.slice(0, this.pageSize)
+        } else {
+          this.allProducts = this.allProducts.concat(frontendProducts)
+          this.displayProducts = this.displayProducts.concat(
+            frontendProducts.slice(0, this.pageSize)
           )
         }
 
-        // 分页处理
-        const startIndex = (this.currentPage - 1) * this.pageSize
-        const endIndex = startIndex + this.pageSize
-        const pageProducts = filteredProducts.slice(startIndex, endIndex)
-
-        // 添加到显示列表
-        this.displayProducts = this.displayProducts.concat(pageProducts)
-
         // 检查是否还有更多数据
-        this.hasMore = endIndex < filteredProducts.length
+        this.totalProducts = this.allProducts.length
+        this.hasMore = this.displayProducts.length < this.totalProducts
 
+        console.log('[consultation] 当前显示产品数:', this.displayProducts.length)
+        console.log('[consultation] 总产品数:', this.totalProducts)
+
+      } catch (error) {
+        console.error('[consultation] 加载产品失败:', error)
+        uni.showToast({
+          title: '加载失败，请重试',
+          icon: 'none'
+        })
+      } finally {
         this.isLoading = false
-      }, 300)
+      }
     },
 
     // 加载更多
@@ -509,9 +316,12 @@ export default {
 
     // 搜索输入
     onSearchInput() {
+      // 实时搜索可能需要调用搜索API，目前简化处理
+      // 如果需要实时搜索，可以调用 searchProducts API
       this.currentPage = 1
       this.displayProducts = []
       this.hasMore = true
+      // 注：当前实现简化，如需搜索功能需调用搜索API
       this.loadProducts()
     },
 
@@ -529,18 +339,23 @@ export default {
 
     // 切换收藏
     toggleFavorite(productId) {
+      // 在所有产品中查找
       const productIndex = this.allProducts.findIndex(p => p.id === productId)
       if (productIndex !== -1) {
-        this.$set(this.allProducts[productIndex], 'isFavorite', !this.allProducts[productIndex].isFavorite)
+        const newFavoriteState = !this.allProducts[productIndex].isFavorite
+        this.$set(this.allProducts[productIndex], 'isFavorite', newFavoriteState)
 
         // 同步到显示列表
         const displayIndex = this.displayProducts.findIndex(p => p.id === productId)
         if (displayIndex !== -1) {
-          this.$set(this.displayProducts[displayIndex], 'isFavorite', this.allProducts[productIndex].isFavorite)
+          this.$set(this.displayProducts[displayIndex], 'isFavorite', newFavoriteState)
         }
 
+        // 这里可以调用后端API保存收藏状态
+        // await addToWishlist(productId) 或 removeFromWishlist(productId)
+
         uni.showToast({
-          title: this.allProducts[productIndex].isFavorite ? '已收藏' : '已移除收藏',
+          title: newFavoriteState ? '已收藏' : '已移除收藏',
           icon: 'none',
           duration: 1000
         })
@@ -664,10 +479,6 @@ export default {
       color: #000000;
       font-weight: 600;
       border-bottom-color: #000000;
-    }
-
-    .tab-icon {
-      font-size: 28rpx;
     }
 
     .tab-name {
@@ -811,19 +622,6 @@ export default {
     }
   }
 
-  .color-dots {
-    padding: 0 16rpx 16rpx;
-    display: flex;
-    gap: 8rpx;
-
-    .color-dot {
-      width: 24rpx;
-      height: 24rpx;
-      border-radius: 50%;
-      border: 2rpx solid #e0e0e0;
-      cursor: pointer;
-    }
-  }
 }
 
 /* 空状态 */
