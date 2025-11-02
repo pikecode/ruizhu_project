@@ -291,13 +291,6 @@ export default {
         this.isLoading = false
       }
     },
-    saveOrders() {
-      try {
-        uni.setStorageSync('orderHistory', this.orders)
-      } catch (e) {
-        console.error('Failed to save orders:', e)
-      }
-    },
     updateTabCounts() {
       const counts = {
         all: this.orders.length,
@@ -333,9 +326,21 @@ export default {
       })
     },
     goToPayment(order) {
-      // 保存当前订单到存储，供支付页面使用
+      // 保存当前订单到存储供支付页面使用（临时缓存）
+      // 流程结束后会被清除（见 payment.vue）
       try {
-        uni.setStorageSync('currentOrder', order)
+        const paymentOrder = {
+          id: order.id,
+          orderId: order.orderId,
+          items: order.items,
+          address: order.address,
+          total: order.total,
+          status: order.status,
+          paymentStatus: order.paymentStatus,
+          createdAt: order.createdAt
+        }
+        uni.setStorageSync('currentOrder', paymentOrder)
+        console.log('✅ [Orders] 订单已保存到临时缓存，供支付页使用')
       } catch (e) {
         console.error('Failed to save order:', e)
       }

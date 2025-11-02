@@ -231,25 +231,23 @@ export default {
               const freshOrder = await ordersService.getOrderDetail(this.order.id)
               if (freshOrder) {
                 console.log('✅ [Payment] 订单已从后端刷新:', freshOrder)
-                // 用后端返回的最新数据更新本地缓存
-                uni.setStorageSync('currentOrder', {
-                  id: freshOrder.id,
-                  orderId: freshOrder.orderNo,
-                  items: this.order.items,
-                  address: this.order.address,
-                  total: freshOrder.totalAmount / 100, // 从分转换为元
-                  status: freshOrder.status,
-                  paymentStatus: freshOrder.paymentStatus,
-                  createdAt: freshOrder.createdAt
-                })
               }
             }
           } catch (error) {
             console.warn('⚠️ [Payment] 刷新订单信息失败:', error)
-            // 刷新失败也不中断，继续跳转
           }
 
-          // 延迟后跳转到首页
+          // 清除所有临时缓存（流程完成，不再需要本地缓存）
+          try {
+            uni.removeStorageSync('currentOrder')
+            uni.removeStorageSync('buyNowOrder')
+            uni.removeStorageSync('checkoutItems')
+            console.log('✅ [Payment] 已清除临时缓存')
+          } catch (e) {
+            console.warn('⚠️ [Payment] 清除缓存出错:', e)
+          }
+
+          // 延迟后跳转到首页，订单列表会从 API 获取最新数据
           setTimeout(() => {
             uni.switchTab({
               url: '/pages/index/index'
