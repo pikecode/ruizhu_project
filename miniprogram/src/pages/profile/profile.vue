@@ -96,10 +96,9 @@
 
     <!-- 账户操作 -->
     <view class="account-actions-section">
-      <button class="logout-button" @tap="handleLogout">
-        <text class="logout-icon">🚪</text>
-        <text class="logout-text">退出登录</text>
-      </button>
+      <view class="logout-button" @tap="handleLogout">
+        <text>退出登录</text>
+      </view>
     </view>
 
     <!-- 猜你喜欢推荐 -->
@@ -638,33 +637,24 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12rpx;
     width: 100%;
-    padding: 28rpx 24rpx;
-    background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
+    padding: 20rpx 24rpx;
+    background: #000000;
     border: none;
     border-radius: 8rpx;
     cursor: pointer;
-    box-shadow: 0 4rpx 12rpx rgba(255, 107, 107, 0.2);
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 
-    &:active {
-      transform: scale(0.98);
-      box-shadow: 0 2rpx 6rpx rgba(255, 107, 107, 0.15);
-    }
-
-    .logout-icon {
-      display: block;
-      font-size: 32rpx;
-      line-height: 1;
-    }
-
-    .logout-text {
+    text {
       display: block;
       font-size: 28rpx;
       color: #ffffff;
       font-weight: 500;
-      letter-spacing: 1rpx;
+      letter-spacing: 0.5rpx;
+    }
+
+    &:active {
+      background: #333333;
     }
   }
 }
