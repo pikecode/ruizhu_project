@@ -111,6 +111,17 @@ export default {
       this.isLoading = true
 
       try {
+        // 验证订单信息完整性
+        if (!this.order || !this.order.orderId) {
+          console.error('❌ [Payment] 订单信息不完整:', this.order)
+          uni.showToast({
+            title: '订单号缺失，无法发起支付',
+            icon: 'none'
+          })
+          this.isLoading = false
+          return
+        }
+
         // 获取用户的 openid
         const openid = uni.getStorageSync('openId')
         if (!openid) {
@@ -124,6 +135,9 @@ export default {
 
         // 调用后端创建支付订单
         console.log('📡 [Payment] 正在请求支付订单...')
+        console.log('📡 [Payment] 订单ID:', this.order.orderId)
+        console.log('📡 [Payment] 订单对象:', this.order)
+
         const paymentOrder = await wechatPaymentService.createPaymentOrder({
           openid,
           outTradeNo: this.order.orderId,
@@ -209,10 +223,10 @@ export default {
             duration: 1500
           })
 
-          // 延迟后跳转到订单列表
+          // 延迟后跳转到首页
           setTimeout(() => {
             uni.switchTab({
-              url: '/pages/orders/orders'
+              url: '/pages/index/index'
             })
           }, 1500)
         } else {
