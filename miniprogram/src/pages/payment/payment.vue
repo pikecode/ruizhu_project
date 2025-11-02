@@ -223,13 +223,30 @@ export default {
             duration: 1500
           })
 
-          // 更新本地订单状态为已支付
-          const currentOrder = uni.getStorageSync('currentOrder')
-          if (currentOrder) {
-            currentOrder.paymentStatus = 'paid'
-            currentOrder.status = '已支付'
-            uni.setStorageSync('currentOrder', currentOrder)
-            console.log('✅ [Payment] 订单状态已更新:', currentOrder)
+          // 从后端刷新最新的订单信息（后端已通过微信回调更新了订单状态）
+          try {
+            const ordersService = require('../../services/orders').default
+            if (this.order && this.order.id) {
+              console.log('📡 [Payment] 从后端刷新订单信息...')
+              const freshOrder = await ordersService.getOrderDetail(this.order.id)
+              if (freshOrder) {
+                console.log('✅ [Payment] 订单已从后端刷新:', freshOrder)
+                // 用后端返回的最新数据更新本地缓存
+                uni.setStorageSync('currentOrder', {
+                  id: freshOrder.id,
+                  orderId: freshOrder.orderNo,
+                  items: this.order.items,
+                  address: this.order.address,
+                  total: freshOrder.totalAmount / 100, // 从分转换为元
+                  status: freshOrder.status,
+                  paymentStatus: freshOrder.paymentStatus,
+                  createdAt: freshOrder.createdAt
+                })
+              }
+            }
+          } catch (error) {
+            console.warn('⚠️ [Payment] 刷新订单信息失败:', error)
+            // 刷新失败也不中断，继续跳转
           }
 
           // 延迟后跳转到首页
