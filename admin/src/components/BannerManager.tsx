@@ -54,7 +54,7 @@ interface CreateBannerPayload {
   isActive?: boolean
   linkType?: 'product' | 'news' | 'none' | 'category' | 'collection'
   linkValue?: string
-  pageType?: string
+  pageType?: 'about' | 'profile' | 'custom' | 'home' | 'featured'
 }
 
 interface BannerManagerProps {
@@ -96,7 +96,7 @@ export default function BannerManager({
       const response = await bannerService.getList(
         pagination.current,
         pagination.pageSize,
-        pageType !== 'default' ? pageType : undefined
+        pageType !== 'default' ? (pageType as 'about' | 'profile' | 'custom' | 'home' | 'featured') : undefined
       )
       if (response.code === 200) {
         setBanners(response.data.items)
@@ -151,7 +151,7 @@ export default function BannerManager({
         values.sortOrder = 0
         values.isActive = true
         if (pageType !== 'default') {
-          values.pageType = pageType
+          values.pageType = pageType as 'about' | 'profile' | 'custom' | 'home' | 'featured'
         }
       }
 
