@@ -29,7 +29,12 @@ export class OrdersController {
   @Post()
   @ApiOperation({ summary: 'Create new order' })
   async createOrder(@Request() req, @Body() createDto: CreateOrderDto) {
-    return await this.ordersService.createOrder(req.user.id, createDto);
+    const order = await this.ordersService.createOrder(req.user.id, createDto);
+    return {
+      code: 201,
+      message: 'Order created successfully',
+      data: order,
+    };
   }
 
   /**
@@ -64,7 +69,12 @@ export class OrdersController {
   @Get('stats/summary')
   @ApiOperation({ summary: 'Get order statistics' })
   async getOrderStats(@Request() req) {
-    return await this.ordersService.getUserOrderStats(req.user.id);
+    const stats = await this.ordersService.getUserOrderStats(req.user.id);
+    return {
+      code: 200,
+      message: 'Success',
+      data: stats,
+    };
   }
 
   /**
@@ -81,7 +91,11 @@ export class OrdersController {
       1,
       1000,
     );
-    return { pendingCount: orders.length };
+    return {
+      code: 200,
+      message: 'Success',
+      data: { pendingCount: orders.length },
+    };
   }
 
   /**
@@ -97,12 +111,17 @@ export class OrdersController {
     @Query('page', ParseIntPipe) page: number = 1,
     @Query('limit', ParseIntPipe) limit: number = 20,
   ) {
-    return await this.ordersService.getOrdersByStatus(
+    const result = await this.ordersService.getOrdersByStatus(
       req.user.id,
       status,
       page,
       limit,
     );
+    return {
+      code: 200,
+      message: 'Success',
+      data: result,
+    };
   }
 
   /**
@@ -116,7 +135,12 @@ export class OrdersController {
     @Request() req,
     @Param('orderId', ParseIntPipe) orderId: number,
   ) {
-    return await this.ordersService.getOrder(req.user.id, orderId);
+    const order = await this.ordersService.getOrder(req.user.id, orderId);
+    return {
+      code: 200,
+      message: 'Success',
+      data: order,
+    };
   }
 
   /**
@@ -130,11 +154,16 @@ export class OrdersController {
     @Param('orderId', ParseIntPipe) orderId: number,
     @Body() updateDto: UpdateOrderDto,
   ) {
-    return await this.ordersService.updateOrder(
+    const order = await this.ordersService.updateOrder(
       req.user.id,
       orderId,
       updateDto,
     );
+    return {
+      code: 200,
+      message: 'Order updated successfully',
+      data: order,
+    };
   }
 
   /**
@@ -148,6 +177,10 @@ export class OrdersController {
     @Param('orderId', ParseIntPipe) orderId: number,
   ) {
     await this.ordersService.cancelOrder(req.user.id, orderId);
-    return { message: 'Order cancelled successfully' };
+    return {
+      code: 200,
+      message: 'Order cancelled successfully',
+      data: null,
+    };
   }
 }
