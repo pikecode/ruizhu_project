@@ -70,6 +70,7 @@ const wechatPaymentService = {
   /**
    * 查询支付状态
    * API: GET /wechat/payment/query-status?tradeNo=XXX&openid=XXX
+   * API 返回: {code: 200, message: string, data: {outTradeNo, status, totalFee, payTime?, transactionId?}}
    */
   queryPaymentStatus: async (
     outTradeNo: string,
@@ -78,12 +79,23 @@ const wechatPaymentService = {
     try {
       console.log('📡 [WechatPayment] 查询支付状态:', outTradeNo)
 
-      const response = await api.get<ApiResponse<{ status: string }>>(
+      const response = await api.get<{
+        code: number
+        message: string
+        data: {
+          outTradeNo: string
+          status: string
+          totalFee: number
+          payTime?: string
+          transactionId?: string
+        }
+      }>(
         `/wechat/payment/query-status?tradeNo=${outTradeNo}&openid=${openid}`
       )
 
       console.log('📡 [WechatPayment] 支付状态查询响应:', response)
 
+      // 后端返回: {code, message, data: {status, ...}}
       if (response?.data?.status) {
         return response.data.status as 'pending' | 'success' | 'failed' | 'cancelled'
       }

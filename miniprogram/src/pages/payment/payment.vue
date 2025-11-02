@@ -223,6 +223,15 @@ export default {
             duration: 1500
           })
 
+          // 更新本地订单状态为已支付
+          const currentOrder = uni.getStorageSync('currentOrder')
+          if (currentOrder) {
+            currentOrder.paymentStatus = 'paid'
+            currentOrder.status = '已支付'
+            uni.setStorageSync('currentOrder', currentOrder)
+            console.log('✅ [Payment] 订单状态已更新:', currentOrder)
+          }
+
           // 延迟后跳转到首页
           setTimeout(() => {
             uni.switchTab({
