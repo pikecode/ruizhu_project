@@ -58,6 +58,8 @@
 </template>
 
 <script>
+import ordersService from '../../services/orders'
+
 export default {
   data() {
     return {
@@ -76,38 +78,42 @@ export default {
   },
   onLoad() {
     this.loadCartItems()
-    this.loadAddresses()
   },
   methods: {
     loadCartItems() {
-      // 从购物车页面传递或从本地存储获取
       try {
-        const pending = uni.getStorageSync('checkoutItems')
-        if (pending && Array.isArray(pending)) {
-          this.cartItems = pending
+        // 优先检查立即购买订单（来自商品详情页）
+        const buyNowOrder = uni.getStorageSync('buyNowOrder')
+        if (buyNowOrder && Array.isArray(buyNowOrder.items)) {
+          console.log('📦 [Checkout] 加载立即购买订单:', buyNowOrder)
+          this.cartItems = buyNowOrder.items
+          return
         }
+
+        // 其次检查购物车API数据（来自购物车页面）
+        const cartItems = uni.getStorageSync('checkoutItems')
+        if (cartItems && Array.isArray(cartItems)) {
+          console.log('📦 [Checkout] 加载购物车数据:', cartItems)
+          this.cartItems = cartItems
+          return
+        }
+
+        // 都没有则为空购物车
+        console.warn('⚠️ [Checkout] 未找到订单或购物车数据')
+        this.cartItems = []
       } catch (e) {
         console.error('Failed to load cart items:', e)
-      }
-    },
-    loadAddresses() {
-      // 模拟加载地址（实际应从后端或本地存储获取）
-      try {
-        const addresses = uni.getStorageSync('userAddresses') || []
-        if (addresses.length > 0) {
-          this.selectedAddress = addresses[0] // 选择第一个地址为默认
-        }
-      } catch (e) {
-        console.error('Failed to load addresses:', e)
+        this.cartItems = []
       }
     },
     navigateToAddresses() {
       uni.navigateTo({
         url: '/pages/addresses/addresses',
         success: (res) => {
+          console.log('🏪 [Checkout] 成功打开地址页面')
           // 监听来自 addresses 页面的地址选择事件
           res.eventChannel.on('selectAddress', (data) => {
-            console.log('选中的地址:', data)
+            console.log('🏪 [Checkout] 收到选中的地址:', data)
             this.selectedAddress = {
               id: data.id,
               name: data.name || data.receiverName,
@@ -117,11 +123,19 @@ export default {
               district: data.district,
               detail: data.detail || data.addressDetail
             }
+            console.log('🏪 [Checkout] selectedAddress 已更新:', this.selectedAddress)
+          })
+        },
+        fail: (err) => {
+          console.error('🏪 [Checkout] 打开地址页面失败:', err)
+          uni.showToast({
+            title: '打开地址页面失败',
+            icon: 'none'
           })
         }
       })
     },
-    confirmOrder() {
+    async confirmOrder() {
       if (!this.selectedAddress) {
         uni.showToast({
           title: '请选择收货地址',
@@ -138,35 +152,119 @@ export default {
         return
       }
 
-      // 生成订单号
-      const orderId = 'ORD' + Date.now()
+      // 验证 addressId 是否有效
+      const addressId = parseInt(this.selectedAddress.id)
+      console.log('🏪 [Checkout] 调试信息:')
+      console.log('  - selectedAddress:', this.selectedAddress)
+      console.log('  - selectedAddress.id 原始值:', this.selectedAddress.id)
+      console.log('  - selectedAddress.id 类型:', typeof this.selectedAddress.id)
+      console.log('  - parseInt 结果:', addressId)
+      console.log('  - isNaN 检查:', isNaN(addressId))
 
-      // 保存订单信息
-      const order = {
-        orderId,
-        items: this.cartItems,
-        address: this.selectedAddress,
-        total: parseFloat(this.totalAmount),
-        status: '待支付',
-        createdAt: new Date().toISOString()
+      if (!addressId || isNaN(addressId)) {
+        uni.showToast({
+          title: '地址ID无效，请重新选择',
+          icon: 'none'
+        })
+        return
       }
+
+      uni.showLoading({
+        title: '正在生成订单...'
+      })
 
       try {
-        uni.setStorageSync('currentOrder', order)
-      } catch (e) {
-        console.error('Failed to save order:', e)
-      }
+        // 计算订单总金额（以分为单位）
+        const totalAmountInFen = this.cartItems.reduce((sum, item) => {
+          // item.price 应该已经是分（整数），直接计算
+          return sum + (item.price * item.quantity)
+        }, 0)
 
-      // 跳转到订单确认页
-      uni.navigateTo({
-        url: '/pages/order/confirmation',
-        fail: () => {
+        // 构造创建订单的请求数据
+        const createOrderData = {
+          items: this.cartItems.map(item => {
+            // 确保 price 是整数（以分为单位）
+            // item.price 应该已经是分了，如果是字符串则转换
+            const price = typeof item.price === 'string' ? parseInt(item.price) : item.price
+            if (price < 0 || !Number.isInteger(price)) {
+              throw new Error(`商品价格无效: ${item.price}，必须是正整数（分为单位）`)
+            }
+            return {
+              productId: item.id || item.productId,
+              quantity: item.quantity,
+              price: price  // 后端字段名是 price，以分为单位
+            }
+          }),
+          addressId: addressId,  // 使用 addressId 而不是 shippingAddressId
+          totalAmount: totalAmountInFen,  // 添加总金额
+          finalAmount: totalAmountInFen,  // 最终支付金额（暂时等于总金额，不考虑优惠）
+          paymentMethod: 'wechat'
+        }
+
+        console.log('🏪 [Checkout] 选中的地址:', this.selectedAddress)
+        console.log('🏪 [Checkout] addressId 类型:', typeof addressId, '值:', addressId)
+        console.log('🏪 [Checkout] 创建订单请求数据:', createOrderData)
+        console.log('🏪 [Checkout] 总金额（分）:', totalAmountInFen)
+
+        // 调用后端 API 创建订单
+        const createdOrder = await ordersService.createOrder(createOrderData)
+
+        uni.hideLoading()
+
+        if (!createdOrder) {
           uni.showToast({
-            title: '页面开发中',
+            title: '创建订单失败，请重试',
             icon: 'none'
           })
+          return
         }
-      })
+
+        console.log('✅ [Checkout] 订单创建成功:', createdOrder)
+
+        // 保存真实的订单数据到本地存储
+        const orderData = {
+          id: createdOrder.id,
+          orderId: createdOrder.orderNo,  // 后端返回的是 orderNo，不是 orderNumber
+          items: this.cartItems,
+          address: this.selectedAddress,
+          total: parseFloat(this.totalAmount),
+          status: createdOrder.status || '待支付',
+          paymentStatus: createdOrder.paymentStatus || 'pending',
+          createdAt: createdOrder.createdAt || new Date().toISOString()
+        }
+
+        try {
+          uni.setStorageSync('currentOrder', orderData)
+
+          // 清除立即购买订单（如果存在），防止下次购物混淆
+          try {
+            uni.removeStorageSync('buyNowOrder')
+            console.log('✅ [Checkout] 立即购买订单已清除')
+          } catch (e) {
+            console.warn('Failed to clear buyNowOrder:', e)
+          }
+        } catch (e) {
+          console.error('Failed to save order to storage:', e)
+        }
+
+        // 跳转到订单确认页
+        uni.navigateTo({
+          url: '/pages/order/confirmation',
+          fail: () => {
+            uni.showToast({
+              title: '页面开发中',
+              icon: 'none'
+            })
+          }
+        })
+      } catch (error) {
+        uni.hideLoading()
+        console.error('Failed to create order:', error)
+        uni.showToast({
+          title: error.message || '创建订单失败，请重试',
+          icon: 'none'
+        })
+      }
     }
   }
 }
