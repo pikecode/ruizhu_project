@@ -125,10 +125,18 @@ export default {
       if (this.activeTab === 'all') {
         return this.orders
       }
+      // 已完成标签包括 'completed' 和 'paid' 状态
+      if (this.activeTab === 'completed') {
+        return this.orders.filter((order) => order.status === 'completed' || order.status === 'paid')
+      }
       return this.orders.filter((order) => order.status === this.activeTab)
     }
   },
   onLoad() {
+    this.loadOrders()
+  },
+  onShow() {
+    // 每次显示页面时刷新订单列表
     this.loadOrders()
   },
   methods: {
@@ -294,7 +302,7 @@ export default {
       const counts = {
         all: this.orders.length,
         pending: this.orders.filter((o) => o.status === 'pending').length,
-        completed: this.orders.filter((o) => o.status === 'completed').length,
+        completed: this.orders.filter((o) => o.status === 'completed' || o.status === 'paid').length,
         cancelled: this.orders.filter((o) => o.status === 'cancelled').length
       }
 

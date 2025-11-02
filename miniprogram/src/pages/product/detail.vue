@@ -70,9 +70,6 @@
       <view class="action-btn buy-now" @tap="buyNow">
         <text>立即购买</text>
       </view>
-      <view class="action-btn payment-test" @tap="testPayment">
-        <text>测试支付 ¥0.01</text>
-      </view>
     </view>
   </view>
 </template>
@@ -286,41 +283,40 @@ export default {
     },
 
     /**
-     * 执行立即购买操作
+     * 执行立即购买操作 - 直接生成订单，不涉及购物车
+     * 购物车是独立的功能，与立即购买流程无关
      */
     async proceedBuyNow() {
       try {
         uni.showLoading({
-          title: '添加中...'
+          title: '正在跳转...'
         })
 
-        // 调用API添加到购物车
-        const result = await cartService.addToCart(
-          this.productData.id,
-          this.quantity
-        )
+        // 直接生成订单对象，仅包含当前商品
+        const buyNowOrder = {
+          items: [
+            {
+              id: this.productData.id,
+              name: this.productData.name,
+              price: Math.round(parseFloat(this.productData.price) * 100),  // 从productData获取元，转换为分（乘以100后四舍五入）
+              quantity: this.quantity,
+              image: this.productImages[0] || '',
+              color: '默认'
+            }
+          ],
+          source: 'buyNow'  // 标记为立即购买来源
+        }
+
+        // 保存到本地存储供结账页面使用
+        uni.setStorageSync('buyNowOrder', buyNowOrder)
+        console.log('✅ [BuyNow] 订单已生成并保存:', buyNowOrder)
 
         uni.hideLoading()
 
-        if (result) {
-          uni.showToast({
-            title: '前往结算',
-            icon: 'none',
-            duration: 1000
-          })
-
-          // 延迟后跳转到购物车或结算页面
-          setTimeout(() => {
-            uni.navigateTo({
-              url: '/pages/checkout/checkout'
-            })
-          }, 1000)
-        } else {
-          uni.showToast({
-            title: '操作失败，请重试',
-            icon: 'none'
-          })
-        }
+        // 直接跳转到结算页面，不显示toast
+        uni.navigateTo({
+          url: '/pages/checkout/checkout'
+        })
       } catch (error) {
         uni.hideLoading()
         console.error('Failed to proceed with purchase:', error)
@@ -639,7 +635,7 @@ export default {
     font-size: 28rpx;
     font-weight: 600;
     cursor: pointer;
-    min-width: 0;  // 允许按钮缩小
+    min-width: 0;
 
     &:active {
       opacity: 0.9;
@@ -654,12 +650,6 @@ export default {
   .buy-now {
     background: #000000;
     color: #ffffff;
-  }
-
-  .payment-test {
-    background: #ff6b35;
-    color: #ffffff;
-    font-size: 24rpx;
   }
 }
 </style>

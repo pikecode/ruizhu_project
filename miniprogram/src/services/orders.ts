@@ -77,9 +77,11 @@ export interface CreateOrderDto {
   items: Array<{
     productId: number
     quantity: number
-    unitPrice: number
+    price: number  // 商品价格（以分为单位）
   }>
   shippingAddressId: number
+  totalAmount: number  // 订单总金额（以分为单位）
+  finalAmount: number  // 最终支付金额（以分为单位）
   paymentMethod?: string
   remark?: string
 }

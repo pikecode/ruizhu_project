@@ -238,13 +238,14 @@ export class WechatPaymentService {
 
   /**
    * 查询订单状态
+   * 如果本地状态为pending，尝试从微信查询最新状态
    */
   async queryOrderStatus(
     dto: QueryOrderStatusDto,
   ): Promise<OrderStatusResponseDto> {
     try {
       // 从数据库查询支付记录
-      const payment = await this.paymentRepository.findOne({
+      let payment = await this.paymentRepository.findOne({
         where: { outTradeNo: dto.tradeNo },
       });
 
@@ -254,6 +255,37 @@ export class WechatPaymentService {
 
       if (payment.openid !== dto.openid) {
         throw new BadRequestException('用户信息不匹配');
+      }
+
+      // 如果本地状态为pending，主动查询微信支付状态
+      if (payment.status === 'pending') {
+        try {
+          this.logger.log(
+            `本地状态为pending，主动查询微信支付状态: ${dto.tradeNo}`,
+          );
+          const wechatTradeState = await this.queryWechatOrderStatus(dto.tradeNo);
+
+          // 更新本地状态
+          if (wechatTradeState === 'SUCCESS') {
+            payment.status = 'success';
+            await this.paymentRepository.save(payment);
+            this.logger.log(
+              `从微信查询得到支付成功状态，已更新本地记录: ${dto.tradeNo}`,
+            );
+          } else if (wechatTradeState === 'NOTPAY') {
+            payment.status = 'pending';
+            this.logger.log(`微信显示订单未支付: ${dto.tradeNo}`);
+          } else if (wechatTradeState === 'FAILED') {
+            payment.status = 'failed';
+            await this.paymentRepository.save(payment);
+            this.logger.log(`微信显示订单支付失败: ${dto.tradeNo}`);
+          }
+        } catch (wechatError) {
+          this.logger.warn(
+            `主动查询微信支付状态失败 (可以继续返回本地状态): ${wechatError.message}`,
+          );
+          // 不中断，继续使用本地状态
+        }
       }
 
       return {
@@ -268,6 +300,65 @@ export class WechatPaymentService {
         `查询订单状态失败: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  /**
+   * 查询微信支付状态
+   * 调用微信订单查询API获取最新支付状态
+   */
+  private async queryWechatOrderStatus(
+    outTradeNo: string,
+  ): Promise<string> {
+    try {
+      const nonceStr = this.generateNonceStr();
+      const queryData = {
+        appid: this.appId,
+        mch_id: this.mchId,
+        nonce_str: nonceStr,
+        out_trade_no: outTradeNo,
+      };
+
+      const sign = this.generateSign(queryData);
+      queryData['sign'] = sign;
+
+      const xmlData = this.jsonToXml(queryData);
+
+      this.logger.log(`调用微信订单查询API: ${outTradeNo}`);
+      const response = await axios.post(this.WECHAT_ORDER_QUERY, xmlData, {
+        headers: { 'Content-Type': 'application/xml' },
+      });
+
+      const result = await this.parseXmlResponse(response.data as string);
+
+      if (result.return_code !== 'SUCCESS') {
+        throw new Error(`微信API返回错误: ${result.return_msg}`);
+      }
+
+      // 返回trade_state: SUCCESS, REFUND, NOTPAY, CLOSED, REVOKED, NOPAY, USERPAYING, PAYERROR
+      const tradeState = result.trade_state || 'UNKNOWN';
+      this.logger.log(
+        `微信返回订单状态: ${outTradeNo} -> ${tradeState} (transaction_id: ${result.transaction_id})`,
+      );
+
+      // 保存微信返回的transaction_id
+      if (tradeState === 'SUCCESS' && result.transaction_id) {
+        const payment = await this.paymentRepository.findOne({
+          where: { outTradeNo },
+        });
+        if (payment) {
+          payment.transactionId = result.transaction_id;
+          payment.wechatCallback = result;
+          await this.paymentRepository.save(payment);
+        }
+      }
+
+      return tradeState;
+    } catch (error) {
+      this.logger.error(
+        `查询微信支付状态失败: ${error.message}`,
+      );
+      throw error;
     }
   }
 

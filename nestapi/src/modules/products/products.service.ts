@@ -170,12 +170,12 @@ export class ProductsService {
       shippingTemplateId: product.shippingTemplateId,
       freeShippingThreshold: product.freeShippingThreshold,
       coverImageUrl: product.coverImageUrl,
-      // 价格信息直接从 product 对象获取
+      // 价格信息直接从 product 对象获取（提供默认值0避免返回undefined）
       price: {
-        originalPrice: product.originalPrice ?? undefined,
-        currentPrice: product.currentPrice ?? undefined,
-        discountRate: product.discountRate,
-        currency: product.currency,
+        originalPrice: product.originalPrice ?? 0,
+        currentPrice: product.currentPrice ?? 0,
+        discountRate: product.discountRate || 100,
+        currency: product.currency || 'CNY',
         vipDiscountRate: product.vipDiscountRate ?? undefined,
       },
       stats: {

@@ -146,10 +146,14 @@ export default {
     selectAddress(index) {
       const address = this.addresses[index]
 
+      console.log('📍 [Addresses] 选择地址:', address)
+
       // 通过 eventChannel 返回选中的地址
       const eventChannel = this.getOpenerEventChannel?.()
+      console.log('📍 [Addresses] eventChannel 是否存在:', !!eventChannel)
+
       if (eventChannel) {
-        eventChannel.emit('selectAddress', {
+        const addressData = {
           id: address.id,
           name: address.name,
           phone: address.phone,
@@ -160,7 +164,9 @@ export default {
           receiverName: address.name,
           receiverPhone: address.phone,
           addressDetail: address.detail
-        })
+        }
+        console.log('📍 [Addresses] 发送地址数据:', addressData)
+        eventChannel.emit('selectAddress', addressData)
       }
 
       // 返回到上一页面
