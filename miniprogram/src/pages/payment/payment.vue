@@ -111,9 +111,21 @@ export default {
       this.isLoading = true
 
       try {
+        // 获取用户的 openid
+        const openid = uni.getStorageSync('openId')
+        if (!openid) {
+          uni.showToast({
+            title: '缺少微信认证信息，请重新登录',
+            icon: 'none'
+          })
+          this.isLoading = false
+          return
+        }
+
         // 调用后端创建支付订单
         console.log('📡 [Payment] 正在请求支付订单...')
         const paymentOrder = await wechatPaymentService.createPaymentOrder({
+          openid,
           outTradeNo: this.order.orderId,
           totalFee: Math.round(parseFloat(this.order.total) * 100), // 转换为分
           body: `订单 ${this.order.orderId}`,
@@ -183,9 +195,12 @@ export default {
     },
     async confirmPaymentSuccess(outTradeNo) {
       try {
+        // 获取用户的 openid
+        const openid = uni.getStorageSync('openId')
+
         // 查询支付状态确认
         console.log('📡 [Payment] 查询支付状态...')
-        const status = await wechatPaymentService.queryPaymentStatus(outTradeNo)
+        const status = await wechatPaymentService.queryPaymentStatus(outTradeNo, openid)
 
         if (status === 'success') {
           uni.showToast({

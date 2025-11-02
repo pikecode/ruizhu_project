@@ -4,6 +4,7 @@ import { api } from './api'
  * 创建支付订单请求
  */
 export interface CreatePaymentOrderRequest {
+  openid: string            // 用户微信 openId（必需）
   outTradeNo: string        // 商户订单号
   totalFee: number          // 支付金额（分）
   body: string              // 商品描述
@@ -68,16 +69,17 @@ const wechatPaymentService = {
 
   /**
    * 查询支付状态
-   * API: GET /wechat/payment/query-status?tradeNo=XXX
+   * API: GET /wechat/payment/query-status?tradeNo=XXX&openid=XXX
    */
   queryPaymentStatus: async (
-    outTradeNo: string
+    outTradeNo: string,
+    openid: string
   ): Promise<'pending' | 'success' | 'failed' | 'cancelled' | null> => {
     try {
       console.log('📡 [WechatPayment] 查询支付状态:', outTradeNo)
 
       const response = await api.get<ApiResponse<{ status: string }>>(
-        `/wechat/payment/query-status?tradeNo=${outTradeNo}`
+        `/wechat/payment/query-status?tradeNo=${outTradeNo}&openid=${openid}`
       )
 
       console.log('📡 [WechatPayment] 支付状态查询响应:', response)
