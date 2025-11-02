@@ -52,10 +52,27 @@ interface CreateBannerPayload {
   type?: 'image' | 'video'
   sortOrder?: number
   isActive?: boolean
-  linkType?: 'product' | 'news'
+  linkType?: 'product' | 'news' | 'none' | 'category' | 'collection'
+  linkValue?: string
+  pageType?: string
 }
 
-export default function BannerManager() {
+interface BannerManagerProps {
+  title?: string
+  pageType?: 'default' | 'custom' | 'profile' | string
+  showLinkType?: boolean
+  linkTypeOptions?: Array<{ label: string; value: string }>
+}
+
+export default function BannerManager({
+  title = '首页Banner管理',
+  pageType = 'default',
+  showLinkType = true,
+  linkTypeOptions = [
+    { label: '商品', value: 'product' },
+    { label: '资讯', value: 'news' },
+  ],
+}: BannerManagerProps) {
   const [banners, setBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(false)
   const [formVisible, setFormVisible] = useState(false)
@@ -76,7 +93,11 @@ export default function BannerManager() {
   const loadBanners = async () => {
     setLoading(true)
     try {
-      const response = await bannerService.getList(pagination.current, pagination.pageSize)
+      const response = await bannerService.getList(
+        pagination.current,
+        pagination.pageSize,
+        pageType !== 'default' ? pageType : undefined
+      )
       if (response.code === 200) {
         setBanners(response.data.items)
         setPagination({ ...pagination, total: response.data.total })
@@ -104,7 +125,7 @@ export default function BannerManager() {
       setEditingBanner(null)
       form.resetFields()
       form.setFieldsValue({
-        linkType: 'product',
+        linkType: linkTypeOptions[0]?.value || 'product',
       })
     }
     setFormVisible(true)
@@ -129,6 +150,9 @@ export default function BannerManager() {
       if (!bannerId) {
         values.sortOrder = 0
         values.isActive = true
+        if (pageType !== 'default') {
+          values.pageType = pageType
+        }
       }
 
       // 编辑时：先上传媒体，再保存基本信息
@@ -391,7 +415,7 @@ export default function BannerManager() {
   return (
     <Card>
       <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
-        <h2 style={{ margin: 0 }}>首页Banner管理</h2>
+        <h2 style={{ margin: 0 }}>{title}</h2>
         <Space>
           <Button icon={<ReloadOutlined />} onClick={() => loadBanners()}>
             刷新
@@ -464,7 +488,7 @@ export default function BannerManager() {
           onFinish={handleSaveBanner}
           initialValues={{
             type: 'image',
-            linkType: 'product',
+            linkType: linkTypeOptions[0]?.value || 'product',
           }}
         >
           <Form.Item
@@ -558,12 +582,17 @@ export default function BannerManager() {
             <Input.TextArea placeholder="例：限时优惠详情" rows={3} />
           </Form.Item>
 
-          <Form.Item label="链接类型" name="linkType">
-            <Radio.Group>
-              <Radio value="product">商品</Radio>
-              <Radio value="news">资讯</Radio>
-            </Radio.Group>
-          </Form.Item>
+          {showLinkType && (
+            <Form.Item label="链接类型" name="linkType">
+              <Radio.Group>
+                {linkTypeOptions.map((option) => (
+                  <Radio key={option.value} value={option.value}>
+                    {option.label}
+                  </Radio>
+                ))}
+              </Radio.Group>
+            </Form.Item>
+          )}
         </Form>
       </Modal>
     </Card>

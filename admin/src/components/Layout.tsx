@@ -68,6 +68,16 @@ export default function Layout({ children }: LayoutProps) {
       onClick: () => handleNavigate('/custom-banners'),
     },
     {
+      key: '/profile-banners',
+      label: '我的页面Banner',
+      onClick: () => handleNavigate('/profile-banners'),
+    },
+    {
+      key: '/about-banners',
+      label: '关于页面Banner',
+      onClick: () => handleNavigate('/about-banners'),
+    },
+    {
       key: '/news',
       label: '资讯',
       onClick: () => handleNavigate('/news'),

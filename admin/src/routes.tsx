@@ -9,6 +9,8 @@ const CollectionsPage = lazy(() => import('@/pages/Collections'))
 const ArrayCollectionsPage = lazy(() => import('@/pages/ArrayCollections'))
 const BannersPage = lazy(() => import('@/pages/Banners'))
 const CustomBannersPage = lazy(() => import('@/pages/CustomBanners'))
+const ProfileBannersPage = lazy(() => import('@/pages/ProfileBanners'))
+const AboutBannersPage = lazy(() => import('@/pages/AboutBanners'))
 const NewsPage = lazy(() => import('@/pages/News'))
 const OrdersPage = lazy(() => import('@/pages/Orders'))
 const UsersPage = lazy(() => import('@/pages/Users'))
@@ -45,6 +47,14 @@ export const routes = [
   {
     path: '/custom-banners',
     element: withSuspense(CustomBannersPage),
+  },
+  {
+    path: '/profile-banners',
+    element: withSuspense(ProfileBannersPage),
+  },
+  {
+    path: '/about-banners',
+    element: withSuspense(AboutBannersPage),
   },
   {
     path: '/news',

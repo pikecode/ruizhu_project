@@ -14,7 +14,23 @@
         <!-- 轮播项 -->
         <swiper-item v-for="(banner, index) in banners" :key="index">
           <view class="banner-item">
-            <image :src="banner.image" class="banner-image" mode="aspectFill"></image>
+            <!-- 视频类型的 banner -->
+            <video
+              v-if="banner.type === 'video' && banner.videoUrl"
+              :src="banner.videoUrl"
+              class="banner-video"
+              controls="false"
+              autoplay
+              muted
+              loop
+            ></video>
+            <!-- 图片类型的 banner （默认） -->
+            <image
+              v-else
+              :src="banner.image"
+              class="banner-image"
+              mode="aspectFill"
+            ></image>
             <view class="banner-text-overlay">
               <text class="banner-brand">RUIZHU</text>
               <view class="banner-welcome">
@@ -101,6 +117,7 @@ import RecommendSection from '../../components/RecommendSection.vue'
 import { authService } from '../../services/auth'
 import { collectionService } from '../../services/collection'
 import wishlistService from '../../services/wishlist'
+import { bannerService } from '../../services/banner'
 
 export default {
   components: {
@@ -134,13 +151,66 @@ export default {
     }
   },
   onLoad() {
+    this.loadProfileBanners()
     this.loadRecommendedProducts()
   },
   onShow() {
-    // 每次显示页面时重新加载推荐商品
+    // 每次显示页面时重新加载推荐商品和轮播图
+    this.loadProfileBanners()
     this.loadRecommendedProducts()
   },
   methods: {
+    /**
+     * 加载个人页面的轮播图数据（从admin维护的profile-banners）
+     */
+    async loadProfileBanners() {
+      try {
+        console.log('📊 [Profile] 开始加载 profile banners...')
+        console.log('📊 [Profile] 当前默认 banners 数量:', this.banners.length)
+
+        const response = await bannerService.getBanners(1, 100, 'profile')
+        console.log('📊 [Profile] API 返回响应:', response)
+
+        if (response && response.items && Array.isArray(response.items) && response.items.length > 0) {
+          console.log('📊 [Profile] API 返回了', response.items.length, '条 banner 数据')
+
+          // 筛选启用的 banner，并按 sortOrder 排序
+          const activeBanners = response.items
+            .filter(banner => banner.isActive === true)
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+
+          console.log('📊 [Profile] 筛选后的活跃 banner 数量:', activeBanners.length)
+
+          // 将 banner 数据映射到 swiper 格式 - 完全替换原有数据
+          const newBanners = activeBanners.map(banner => ({
+            id: banner.id,
+            image: bannerService.getDisplayUrl(banner),
+            title: banner.mainTitle,
+            subtitle: banner.subtitle,
+            type: banner.type,
+            videoUrl: banner.videoUrl,
+            linkType: banner.linkType,
+            linkValue: banner.linkValue
+          }))
+
+          // 使用 this.$set 确保数据完全替换
+          this.$set(this, 'banners', newBanners)
+
+          console.log('✅ [Profile] 已加载 profile banners:', this.banners.length, '条')
+          console.log('✅ [Profile] 最终 banners 数据:', this.banners)
+        } else {
+          console.warn('⚠️ [Profile] API 返回数据不可用，保留默认数据')
+          console.log('📊 [Profile] response:', response)
+          console.log('📊 [Profile] response.items:', response?.items)
+          console.log('📊 [Profile] response.items length:', response?.items?.length)
+        }
+      } catch (error) {
+        console.error('❌ [Profile] 加载 profile banners 失败:', error)
+        console.error('❌ [Profile] 错误堆栈:', error.stack)
+        // 加载失败时保持原有的默认数据
+      }
+    },
+
     /**
      * 加载推荐商品（与购物车页面相同）
      */
@@ -321,6 +391,12 @@ export default {
   .banner-image {
     width: 100%;
     height: 100%;
+  }
+
+  .banner-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .banner-text-overlay {

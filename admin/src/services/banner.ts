@@ -44,10 +44,14 @@ export const bannerService = {
    * 获取Banner列表
    * @param page 页码
    * @param limit 每页数量
-   * @param pageType 页面类型: 'home'(首页) | 'custom'(私人定制)
+   * @param pageType 页面类型: 'home'(首页) | 'custom'(私人定制) | 'profile'(个人页面) | 'about'(关于页面)
    */
-  async getList(page: number = 1, limit: number = 20, pageType: 'home' | 'custom' = 'home'): Promise<BannerListResponse> {
-    const response = await fetch(`${API_BASE_URL}/admin/banners?page=${page}&limit=${limit}&pageType=${pageType}`);
+  async getList(page: number = 1, limit: number = 20, pageType?: 'home' | 'custom' | 'profile' | 'about'): Promise<BannerListResponse> {
+    let url = `${API_BASE_URL}/admin/banners?page=${page}&limit=${limit}`;
+    if (pageType) {
+      url += `&pageType=${pageType}`;
+    }
+    const response = await fetch(url);
     return response.json();
   },
 
@@ -69,7 +73,7 @@ export const bannerService = {
 
   /**
    * 创建Banner
-   * @param data Banner数据，包括pageType用于区分首页/私人定制页面
+   * @param data Banner数据，包括pageType用于区分首页/私人定制/个人页面等
    */
   async create(data: {
     mainTitle: string;
@@ -79,7 +83,7 @@ export const bannerService = {
     isActive?: boolean;
     linkType?: string;
     linkValue?: string;
-    pageType?: 'home' | 'custom';
+    pageType?: 'home' | 'custom' | 'profile' | 'about';
   }): Promise<BannerResponse> {
     const response = await fetch(`${API_BASE_URL}/admin/banners`, {
       method: 'POST',
@@ -104,7 +108,7 @@ export const bannerService = {
       isActive?: boolean;
       linkType?: string;
       linkValue?: string | null;
-      pageType?: 'home' | 'custom';
+      pageType?: 'home' | 'custom' | 'profile' | 'about';
     },
   ): Promise<BannerResponse> {
     const response = await fetch(`${API_BASE_URL}/admin/banners/${id}`, {

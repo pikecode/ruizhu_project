@@ -12,7 +12,7 @@ export interface Banner {
   imageUrl?: string
   videoUrl?: string
   videoThumbnailUrl?: string
-  pageType: 'home' | 'custom'
+  pageType: 'home' | 'custom' | 'profile' | 'about'
   isActive: boolean
   sortOrder: number
   linkType: 'url' | 'none' | 'product' | 'category' | 'collection'
@@ -67,13 +67,18 @@ export const bannerService = {
   /**
    * 获取 banner 列表（分页）
    *
-   * API: GET /banners?page=1&limit=10&pageType=home
+   * API: GET /banners?page=1&limit=10&pageType=home|custom|profile|about
    */
-  getBanners: async (page: number = 1, limit: number = 10, pageType: 'home' | 'custom' = 'home') => {
+  getBanners: async (page: number = 1, limit: number = 10, pageType?: 'home' | 'custom' | 'profile' | 'about') => {
     try {
-      const response = await api.get<any>('/banners', {
-        params: { page, limit, pageType }
-      })
+      // 直接在 URL 中构造查询参数（小程序不支持 params 自动转换）
+      let url = `/banners?page=${page}&limit=${limit}`
+      if (pageType) {
+        url += `&pageType=${pageType}`
+      }
+
+      console.log('📡 [Banner] 请求 URL:', url)
+      const response = await api.get<any>(url)
       return response.data || { items: [], total: 0 }
     } catch (error) {
       console.error('Failed to fetch banners:', error)
