@@ -117,20 +117,68 @@
         </view>
 
         <view class="form-group">
-          <text class="label">选择颜色</text>
-          <picker
-            :range="selectedProduct.colors"
-            :value="consultForm.colorIndex"
-            @change="onColorChange"
-            range-key="name"
-          >
-            <view class="picker-wrapper">
-              <text class="picker-value">
-                {{ selectedProduct.colors[consultForm.colorIndex]?.name || '请选择颜色' }}
-              </text>
-              <text class="picker-arrow">›</text>
-            </view>
-          </picker>
+          <text class="label">颜色</text>
+          <input v-model="consultForm.color" type="text" placeholder="请输入颜色，如：红色、黑色等" />
+        </view>
+
+        <!-- 服装类产品表单 -->
+        <view v-if="selectedProduct.categoryId === 1" class="form-section">
+          <view class="section-title">服装尺码信息</view>
+          <view class="form-group">
+            <text class="label">身高 (cm) *</text>
+            <input v-model="consultForm.height" type="number" placeholder="请输入身高，如170" />
+          </view>
+          <view class="form-group">
+            <text class="label">体重 (kg) *</text>
+            <input v-model="consultForm.weight" type="number" placeholder="请输入体重，如65" />
+          </view>
+          <view class="form-group">
+            <text class="label">胸围 (cm)</text>
+            <input v-model="consultForm.chest" type="number" placeholder="请输入胸围" />
+          </view>
+          <view class="form-group">
+            <text class="label">腰围 (cm)</text>
+            <input v-model="consultForm.waist" type="number" placeholder="请输入腰围" />
+          </view>
+          <view class="form-group">
+            <text class="label">臀围 (cm)</text>
+            <input v-model="consultForm.hip" type="number" placeholder="请输入臀围" />
+          </view>
+        </view>
+
+        <!-- 鞋履类产品表单 -->
+        <view v-if="selectedProduct.categoryId === 3" class="form-section">
+          <view class="section-title">鞋码信息</view>
+          <view class="form-group">
+            <text class="label">鞋码 (欧码) *</text>
+            <input v-model="consultForm.shoeSize" type="text" placeholder="如：40, 41, 42等" />
+          </view>
+        </view>
+
+        <!-- 珠宝类产品表单 -->
+        <view v-if="selectedProduct.categoryId === 2" class="form-section">
+          <view class="section-title">珠宝定制信息</view>
+          <view class="form-group">
+            <text class="label">戒指码</text>
+            <input v-model="consultForm.ringSize" type="text" placeholder="如：13, 14, 15等" />
+          </view>
+          <view class="form-group">
+            <text class="label">珠宝尺寸 (mm)</text>
+            <input v-model="consultForm.jewelrySize" type="number" placeholder="请输入珠宝尺寸" />
+          </view>
+          <view class="form-group">
+            <text class="label">材质偏好</text>
+            <input v-model="consultForm.jewelryMaterial" type="text" placeholder="如：18K金、铂金、925银等" />
+          </view>
+        </view>
+
+        <!-- 香水类产品表单 -->
+        <view v-if="selectedProduct.categoryId === 4" class="form-section">
+          <view class="section-title">香水偏好</view>
+          <view class="form-group">
+            <text class="label">香调偏好</text>
+            <input v-model="consultForm.perfumePreference" type="text" placeholder="如：花香、果香、木质等" />
+          </view>
         </view>
 
         <view class="form-group">
@@ -138,9 +186,9 @@
           <textarea
             v-model="consultForm.remarks"
             placeholder="请输入您的定制需求或特殊要求"
-            maxlength="200"
+            maxlength="500"
           ></textarea>
-          <text class="char-count">{{ consultForm.remarks.length }}/200</text>
+          <text class="char-count">{{ consultForm.remarks.length }}/500</text>
         </view>
 
         <!-- 提交按钮 -->
@@ -163,6 +211,7 @@
 <script>
 import ConsultationNavbar from '@/components/ConsultationNavbar.vue'
 import { getProducts } from '@/services/products'
+import { submitConsultation } from '@/services/consultations'
 
 export default {
   components: {
@@ -185,7 +234,22 @@ export default {
         name: '',
         phone: '',
         email: '',
-        colorIndex: 0,
+        color: '',
+        // 服装相关
+        height: '',
+        weight: '',
+        chest: '',
+        waist: '',
+        hip: '',
+        // 鞋子相关
+        shoeSize: '',
+        // 珠宝相关
+        ringSize: '',
+        jewelrySize: '',
+        jewelryMaterial: '',
+        // 香水相关
+        perfumePreference: '',
+        // 通用
         remarks: ''
       },
 
@@ -332,7 +396,22 @@ export default {
         name: '',
         phone: '',
         email: '',
-        colorIndex: 0,
+        color: '',
+        // 服装相关
+        height: '',
+        weight: '',
+        chest: '',
+        waist: '',
+        hip: '',
+        // 鞋子相关
+        shoeSize: '',
+        // 珠宝相关
+        ringSize: '',
+        jewelrySize: '',
+        jewelryMaterial: '',
+        // 香水相关
+        perfumePreference: '',
+        // 通用
         remarks: ''
       }
     },
@@ -362,14 +441,9 @@ export default {
       }
     },
 
-    // 颜色变化
-    onColorChange(e) {
-      this.consultForm.colorIndex = e.detail.value
-    },
-
     // 提交咨询
-    submitConsultation() {
-      // 验证表单
+    async submitConsultation() {
+      // 验证基础字段
       if (!this.consultForm.name.trim()) {
         uni.showToast({
           title: '请输入姓名',
@@ -396,24 +470,115 @@ export default {
         return
       }
 
-      // 提交表单
-      uni.showToast({
-        title: '咨询已提交，我们会尽快联系您',
-        icon: 'success',
-        duration: 2000
-      })
-
-      // 清空表单
-      setTimeout(() => {
-        this.selectedProduct = null
-        this.consultForm = {
-          name: '',
-          phone: '',
-          email: '',
-          colorIndex: 0,
-          remarks: ''
+      // 根据产品类别验证特定字段
+      if (this.selectedProduct.categoryId === 1) {
+        // 服装类
+        if (!this.consultForm.height.trim()) {
+          uni.showToast({
+            title: '请输入身高',
+            icon: 'none'
+          })
+          return
         }
-      }, 1500)
+        if (!this.consultForm.weight.trim()) {
+          uni.showToast({
+            title: '请输入体重',
+            icon: 'none'
+          })
+          return
+        }
+      } else if (this.selectedProduct.categoryId === 3) {
+        // 鞋履类
+        if (!this.consultForm.shoeSize.trim()) {
+          uni.showToast({
+            title: '请输入鞋码',
+            icon: 'none'
+          })
+          return
+        }
+      }
+
+      // 构建提交数据
+      const submitData = {
+        productId: this.selectedProduct.id,
+        productName: this.selectedProduct.name,
+        categoryId: this.selectedProduct.categoryId,
+        categoryName: this.selectedCategoryName,
+        userName: this.consultForm.name.trim(),
+        userPhone: this.consultForm.phone.trim(),
+        userEmail: this.consultForm.email?.trim() || undefined,
+        color: this.consultForm.color?.trim() || undefined,
+        // 服装相关
+        height: this.consultForm.height?.trim() || undefined,
+        weight: this.consultForm.weight?.trim() || undefined,
+        chest: this.consultForm.chest?.trim() || undefined,
+        waist: this.consultForm.waist?.trim() || undefined,
+        hip: this.consultForm.hip?.trim() || undefined,
+        // 鞋履相关
+        shoeSize: this.consultForm.shoeSize?.trim() || undefined,
+        // 珠宝相关
+        ringSize: this.consultForm.ringSize?.trim() || undefined,
+        jewelrySize: this.consultForm.jewelrySize?.trim() || undefined,
+        jewelryMaterial: this.consultForm.jewelryMaterial?.trim() || undefined,
+        // 香水相关
+        perfumePreference: this.consultForm.perfumePreference?.trim() || undefined,
+        // 通用
+        remarks: this.consultForm.remarks?.trim() || undefined
+      }
+
+      try {
+        uni.showLoading({
+          title: '提交中...',
+          mask: true
+        })
+
+        console.log('[consultation] 提交咨询数据:', submitData)
+
+        // 调用提交咨询API
+        await submitConsultation(submitData)
+
+        uni.hideLoading()
+
+        uni.showToast({
+          title: '咨询已提交，我们会尽快联系您',
+          icon: 'success',
+          duration: 2000
+        })
+
+        // 清空表单
+        setTimeout(() => {
+          this.selectedProduct = null
+          this.consultForm = {
+            name: '',
+            phone: '',
+            email: '',
+            color: '',
+            // 服装相关
+            height: '',
+            weight: '',
+            chest: '',
+            waist: '',
+            hip: '',
+            // 鞋子相关
+            shoeSize: '',
+            // 珠宝相关
+            ringSize: '',
+            jewelrySize: '',
+            jewelryMaterial: '',
+            // 香水相关
+            perfumePreference: '',
+            // 通用
+            remarks: ''
+          }
+        }, 1500)
+      } catch (error) {
+        uni.hideLoading()
+        console.error('[consultation] 提交咨询失败:', error)
+        uni.showToast({
+          title: '提交失败，请重试',
+          icon: 'none'
+        })
+      }
     }
   }
 }
@@ -705,6 +870,30 @@ export default {
   .form-content {
     padding: 24rpx 40rpx 80rpx;
 
+    .form-section {
+      margin-bottom: 24rpx;
+      padding: 16rpx;
+      background: #f9f9f9;
+      border-radius: 8rpx;
+
+      .section-title {
+        font-size: 24rpx;
+        font-weight: 600;
+        color: #333333;
+        margin-bottom: 16rpx;
+        padding-bottom: 12rpx;
+        border-bottom: 2rpx solid #e0e0e0;
+      }
+
+      .form-group {
+        margin-bottom: 16rpx;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+    }
+
     .product-preview {
       text-align: center;
       margin-bottom: 32rpx;
@@ -769,26 +958,6 @@ export default {
         font-size: 20rpx;
         color: #999999;
         margin-top: 8rpx;
-      }
-
-      .picker-wrapper {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16rpx;
-        border: 1px solid #e0e0e0;
-        border-radius: 8rpx;
-        background: #ffffff;
-
-        .picker-value {
-          font-size: 26rpx;
-          color: #333333;
-        }
-
-        .picker-arrow {
-          font-size: 32rpx;
-          color: #999999;
-        }
       }
     }
 

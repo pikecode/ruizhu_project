@@ -14,6 +14,7 @@ const AboutBannersPage = lazy(() => import('@/pages/AboutBanners'))
 const FeaturedBannersPage = lazy(() => import('@/pages/FeaturedBanners'))
 const NewsPage = lazy(() => import('@/pages/News'))
 const OrdersPage = lazy(() => import('@/pages/Orders'))
+const ConsultationsPage = lazy(() => import('@/pages/Consultations'))
 const UsersPage = lazy(() => import('@/pages/Users'))
 const ConsumerUsersPage = lazy(() => import('@/pages/ConsumerUsers'))
 const NotFoundPage = lazy(() => import('@/pages/NotFound'))
@@ -68,6 +69,10 @@ export const routes = [
   {
     path: '/orders',
     element: withSuspense(OrdersPage),
+  },
+  {
+    path: '/consultations',
+    element: withSuspense(ConsultationsPage),
   },
   {
     path: '/users',

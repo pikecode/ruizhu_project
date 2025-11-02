@@ -37,6 +37,7 @@ import { WechatNotificationEntity } from '../modules/wechat/entities/wechat-noti
 import { UserAuthorization } from '../modules/authorizations/entities/user-authorization.entity';
 import { Membership } from '../modules/memberships/entities/membership.entity';
 import { Wishlist } from '../entities/wishlist.entity';
+import { Consultation } from '../entities/consultation.entity';
 
 /**
  * 获取 TypeORM 数据库配置
@@ -120,6 +121,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
       UserAuthorization,
       Membership,
       Wishlist,
+      Consultation,
     ],
 
     // 禁用自动同步，手动管理数据库迁移

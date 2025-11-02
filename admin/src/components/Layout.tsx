@@ -93,6 +93,11 @@ export default function Layout({ children }: LayoutProps) {
       onClick: () => handleNavigate('/orders'),
     },
     {
+      key: '/consultations',
+      label: '💬 产品咨询',
+      onClick: () => handleNavigate('/consultations'),
+    },
+    {
       key: '/users',
       label: '🔐 Admin用户',
       onClick: () => handleNavigate('/users'),

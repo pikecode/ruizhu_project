@@ -22,6 +22,7 @@ import { CheckoutModule } from './modules/checkout/checkout.module';
 import { AuthorizationsModule } from './modules/authorizations/authorizations.module';
 import { MembershipsModule } from './modules/memberships/memberships.module';
 import { WishlistsModule } from './modules/wishlists/wishlists.module';
+import { ConsultationsModule } from './modules/consultations/consultations.module';
 import { getDatabaseConfig } from './database/database.config';
 
 @Module({
@@ -55,6 +56,7 @@ import { getDatabaseConfig } from './database/database.config';
     AuthorizationsModule, // 个人信息授权模块
     MembershipsModule, // 会员信息管理模块
     WishlistsModule, // 心愿单（收藏）模块
+    ConsultationsModule, // 产品咨询模块
   ],
   controllers: [AppController],
   providers: [AppService],
