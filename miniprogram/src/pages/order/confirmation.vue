@@ -30,8 +30,8 @@
       </view>
     </view>
 
-    <!-- 收货地址 -->
-    <view class="section address-info-section">
+    <!-- 收货地址（非充值订单） -->
+    <view v-if="!order.isRecharge" class="section address-info-section">
       <text class="section-title">收货地址</text>
       <view class="address-info">
         <view class="address-header">
@@ -107,7 +107,8 @@ export default {
         discount: 0,
         total: 0,
         status: '待支付',
-        createdAt: ''
+        createdAt: '',
+        isRecharge: false
       }
     }
   },

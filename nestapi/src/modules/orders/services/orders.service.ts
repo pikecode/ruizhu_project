@@ -83,14 +83,16 @@ export class OrdersService {
       );
     }
 
-    // Validate address exists and belongs to user
-    await this.addressesService.getAddress(userId, createDto.addressId);
+    // Validate address exists and belongs to user (skip for recharge orders)
+    if (!createDto.isRecharge && createDto.addressId) {
+      await this.addressesService.getAddress(userId, createDto.addressId);
+    }
 
     // Create order
     const order = this.orderRepository.create({
       userId,
       orderNumber: this.generateOrderNumber(),
-      addressId: createDto.addressId,
+      ...(createDto.addressId && { addressId: createDto.addressId }),  // Optional for recharge orders
       items: createDto.items,
       totalAmount: createDto.totalAmount,  // Items total after VIP discount applied (in cents)
       shippingAmount: createDto.shippingAmount || 0,  // Shipping cost (in cents)

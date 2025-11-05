@@ -32,6 +32,7 @@ export interface Product {
   categoryId: number
   categoryName?: string
   productType?: 'standard' | 'custom' | 'vip_recharge' // 产品类型
+  discount?: number // VIP 折扣倍数（仅限充值产品）
   // Status fields
   isNew: boolean
   isSaleOn: boolean
@@ -94,6 +95,7 @@ export interface ProductListItem extends Omit<Product, 'images' | 'tags'> {
   salesCount: number
   averageRating: number
   reviewsCount: number
+  discount?: number // VIP 折扣倍数
 }
 
 export interface Category {

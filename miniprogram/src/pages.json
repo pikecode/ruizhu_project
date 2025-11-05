@@ -144,6 +144,18 @@
         "navigationBarTitleText": "资讯详情",
         "navigationStyle": "custom"
       }
+    },
+    {
+      "path": "pages/member-recharge/list",
+      "style": {
+        "navigationBarTitleText": "会员充值"
+      }
+    },
+    {
+      "path": "pages/member-recharge/checkout",
+      "style": {
+        "navigationBarTitleText": "确认充值"
+      }
     }
   ],
   "globalStyle": {

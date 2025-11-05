@@ -194,4 +194,23 @@ export class UsersService {
       loginCount: () => 'login_count + 1',
     });
   }
+
+  /**
+   * 更新用户VIP折扣
+   */
+  async updateDiscount(userId: number, discount: number): Promise<User> {
+    if (discount < 0.01 || discount > 1.0) {
+      throw new BadRequestException('折扣倍数必须在0.01和1.0之间');
+    }
+
+    await this.usersRepository.update(userId, {
+      discount,
+    });
+
+    const updatedUser = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!updatedUser) {
+      throw new NotFoundException('用户不存在');
+    }
+    return updatedUser;
+  }
 }

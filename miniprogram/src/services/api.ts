@@ -15,14 +15,14 @@
  */
 
 // 开发环境配置（本地 NestAPI 开发）
-const DEV_URL = 'http://localhost:8888/api'
+const DEV_URL = 'http://localhost:3000/api'
 
 // 生产环境配置（云服务器）
 const PROD_URL = 'https://yunjie.online/api'
 
 // 根据环境选择 API 地址
 // 修改这里来切换开发/生产环境
-const BASE_URL = PROD_URL  // 已切换到生产环境 (https://yunjie.online/api)
+const BASE_URL = DEV_URL  // 已切换到开发环境 (http://localhost:3000/api)
 
 interface RequestOptions {
   method?: string
@@ -67,13 +67,17 @@ export const request = async <T = any>(
           resolve(res.data as T)
         } else if (res.statusCode === 401) {
           // Token 过期，清除本地数据
+          console.error('❌ [API] 401 未授权 - Token 可能过期或无效')
+          console.error('❌ [API] 响应数据:', res.data)
           uni.removeStorageSync('accessToken')
           uni.removeStorageSync('refreshToken')
           uni.removeStorageSync('user')
           // 抛出错误，让调用方决定如何处理（显示授权弹窗或重定向）
           reject(new Error('登录过期，请重新登录'))
         } else {
-          reject(new Error(res.data?.message || '请求失败'))
+          console.error('❌ [API] 请求失败 - 状态码:', res.statusCode)
+          console.error('❌ [API] 响应数据:', res.data)
+          reject(new Error(res.data?.message || `请求失败(${res.statusCode})`))
         }
       },
       fail: (err: any) => {

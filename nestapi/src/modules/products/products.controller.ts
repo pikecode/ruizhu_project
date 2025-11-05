@@ -115,6 +115,28 @@ export class ProductsController {
   }
 
   /**
+   * 获取VIP充值产品列表
+   * GET /api/products/recharge
+   */
+  @Get('recharge')
+  async getRechargeProducts(
+    @Query('limit') limit?: string,
+  ): Promise<{
+    code: number;
+    message: string;
+    data: ProductListItemDto[];
+  }> {
+    const products = await this.productsService.getRechargeProducts(
+      limit ? parseInt(limit) : 50,
+    );
+    return {
+      code: 200,
+      message: '获取VIP充值产品成功',
+      data: products,
+    };
+  }
+
+  /**
    * 按分类获取商品
    * GET /api/v1/products/category/:categoryId
    */

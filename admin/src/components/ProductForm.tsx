@@ -313,6 +313,23 @@ export default function ProductForm({
                 />
               </Form.Item>
             </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                label="VIP 折扣倍数（仅限充值产品）"
+                name="discount"
+                style={{ marginBottom: '8px' }}
+                tooltip="如：0.8 = 8折，0.9 = 9折。只对产品类型为'VIP充值'的产品生效"
+              >
+                <InputNumber
+                  min={0.01}
+                  max={1}
+                  step={0.01}
+                  precision={2}
+                  placeholder="0.80"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
           </Row>
 
           <Form.Item label="产品描述" name="description" style={{ marginBottom: '8px' }}>

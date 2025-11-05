@@ -18,8 +18,9 @@ export class OrderItemDto {
 }
 
 export class CreateOrderDto {
+  @IsOptional()
   @IsInt()
-  addressId: number; // Delivery address ID
+  addressId?: number; // Delivery address ID (optional for recharge orders)
 
   @IsArray()
   @ValidateNested({ each: true })
@@ -46,4 +47,7 @@ export class CreateOrderDto {
 
   @IsOptional()
   remark?: string; // Order remark/notes
+
+  @IsOptional()
+  isRecharge?: boolean; // Whether this is a recharge order
 }

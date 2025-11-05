@@ -311,6 +311,22 @@ export default function ProductsPage() {
       },
     },
     {
+      title: 'VIP 折扣',
+      dataIndex: 'discount',
+      key: 'discount',
+      width: 100,
+      render: (discount: number | undefined, record: ProductListItem) => {
+        if (record.productType !== 'vip_recharge') {
+          return '-'
+        }
+        if (!discount) {
+          return '-'
+        }
+        const discountPercent = Math.round(discount * 10)
+        return <span style={{ color: '#1890ff', fontWeight: 500 }}>{discountPercent}折</span>
+      },
+    },
+    {
       title: '库存',
       dataIndex: 'stockQuantity',
       key: 'stockQuantity',

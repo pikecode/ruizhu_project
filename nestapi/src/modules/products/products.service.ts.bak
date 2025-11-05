@@ -335,7 +335,6 @@ export class ProductsService {
         sku: product.sku,
         categoryId: product.categoryId,
         productType: product.productType || 'standard', // 产品类型
-        discount: product.discount || 1.0, // VIP折扣倍数
         currentPrice: product.currentPrice || 0,
         originalPrice: product.originalPrice || 0,
         discountRate: product.discountRate || 100,
@@ -542,47 +541,6 @@ export class ProductsService {
   }
 
   /**
-   * 获取VIP充值产品
-   */
-  async getRechargeProducts(limit = 50): Promise<ProductListItemDto[]> {
-    const products = await this.productRepository
-      .createQueryBuilder('product')
-      .where('product.productType = :productType', { productType: 'vip_recharge' })
-      .orderBy('product.discount', 'ASC')
-      .addOrderBy('product.currentPrice', 'ASC')
-      .take(limit)
-      .getMany();
-
-    return products.map((product) => {
-      const stockStatus = this.convertFlagsToStockStatus(product.isOutOfStock, product.isSoldOut);
-      return {
-        id: product.id,
-        name: product.name,
-        subtitle: product.subtitle,
-        sku: product.sku,
-        categoryId: product.categoryId,
-        productType: product.productType || 'standard', // 产品类型
-        discount: product.discount || 1.0, // VIP折扣倍数
-        currentPrice: product.currentPrice || 0,
-        originalPrice: product.originalPrice || 0,
-        discountRate: product.discountRate || 100,
-        salesCount: product.salesCount || 0,
-        averageRating: product.averageRating || 0,
-        reviewsCount: product.reviewsCount || 0,
-        isNew: product.isNew,
-        isSaleOn: product.isSaleOn,
-        isOutOfStock: product.isOutOfStock,
-        isVipOnly: product.isVipOnly,
-        stockStatus,
-        stockQuantity: product.stockQuantity,
-        coverImageUrl: product.coverImageUrl,
-        coverImageId: product.coverImageId,
-        createdAt: product.createdAt,
-      };
-    });
-  }
-
-  /**
    * 搜索商品
    */
   async searchProducts(keyword: string, limit = 20): Promise<ProductListItemDto[]> {
@@ -606,7 +564,6 @@ export class ProductsService {
         sku: product.sku,
         categoryId: product.categoryId,
         productType: product.productType || 'standard', // 产品类型
-        discount: product.discount || 1.0, // VIP折扣倍数
         currentPrice: product.currentPrice || 0,
         originalPrice: product.originalPrice || 0,
         discountRate: product.discountRate || 100,

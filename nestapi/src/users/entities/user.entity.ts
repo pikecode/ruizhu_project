@@ -77,6 +77,10 @@ export class User {
   @OneToMany(() => LoginLog, loginLog => loginLog.user)
   loginLogs: LoginLog[];
 
+  // VIP discount multiplier (0.8 = 8折, 1.0 = no discount)
+  @Column({ type: 'decimal', precision: 3, scale: 2, default: 1.0 })
+  discount: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

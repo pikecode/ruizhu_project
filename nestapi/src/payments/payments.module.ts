@@ -6,11 +6,13 @@ import { PaymentsService } from './payments.service';
 import { WechatPayService } from './wechat-pay.service';
 import { Payment } from './entities/payment.entity';
 import { Order } from '../orders/entities/order.entity';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
     ConfigModule,
     TypeOrmModule.forFeature([Payment, Order]),
+    UsersModule,
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService, WechatPayService],

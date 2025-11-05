@@ -42,7 +42,8 @@
           <view
             v-for="(benefit, index) in memberBenefits"
             :key="benefit.id"
-            class="benefit-item"
+            class="benefit-item benefit-item-clickable"
+            @tap="onBenefitTap(benefit)"
           >
             <view class="benefit-media" :class="index === 0 ? 'icon' : ''">
               <image
@@ -494,6 +495,15 @@ export default {
       }
     },
 
+    onBenefitTap(benefit) {
+      // 点击礼遇项目 → 进入会员充值商品列表页面
+      uni.navigateTo({
+        url: '/pages/member-recharge/list',
+        fail: () => {
+          uni.showToast({ title: '页面开发中', icon: 'none' })
+        }
+      })
+    },
     onJoinNow() {
       // 跳转至入会资料完善页
       uni.navigateTo({
@@ -660,6 +670,16 @@ export default {
     align-items: center;
     text-align: center;
     padding: 8rpx 8rpx 0;
+  }
+
+  .benefit-item-clickable {
+    cursor: pointer;
+    opacity: 1;
+    transition: opacity 0.2s ease;
+
+    &:active {
+      opacity: 0.7;
+    }
   }
 
   .benefit-media {
