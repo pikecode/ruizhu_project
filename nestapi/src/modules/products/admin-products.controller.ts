@@ -15,11 +15,15 @@ import {
   CreateCompleteProductDto,
   QueryProductDto,
   UpdateProductDto,
+  AddProductImageDto,
+  UpdateProductImageDto,
+  UpdateProductImagesSortDto,
 } from './dto';
 import {
   ProductDetailResponseDto,
   ProductListResponseDto,
   ProductListItemDto,
+  ProductImageDto,
 } from './dto/product-response.dto';
 
 /**
@@ -147,5 +151,103 @@ export class AdminProductsController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<void> {
     await this.productsService.deleteProduct(id);
+  }
+
+  /**
+   * 添加商品图片
+   * POST /api/admin/products/:id/images
+   */
+  @Post(':id/images')
+  @HttpCode(201)
+  async addProductImage(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() addImageDto: AddProductImageDto,
+  ): Promise<{
+    code: number;
+    message: string;
+    data: ProductImageDto;
+  }> {
+    const image = await this.productsService.addProductImage(id, addImageDto);
+    return {
+      code: 201,
+      message: '图片添加成功',
+      data: image,
+    };
+  }
+
+  /**
+   * 获取商品的所有图片
+   * GET /api/admin/products/:id/images
+   */
+  @Get(':id/images')
+  async getProductImages(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{
+    code: number;
+    message: string;
+    data: ProductImageDto[];
+  }> {
+    const product = await this.productsService.getProductDetail(id);
+    return {
+      code: 200,
+      message: '获取图片列表成功',
+      data: product.images || [],
+    };
+  }
+
+  /**
+   * 更新商品图片
+   * PUT /api/admin/products/:id/images/:imageId
+   */
+  @Put(':id/images/:imageId')
+  async updateProductImage(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('imageId', ParseIntPipe) imageId: number,
+    @Body() updateImageDto: UpdateProductImageDto,
+  ): Promise<{
+    code: number;
+    message: string;
+    data: ProductImageDto;
+  }> {
+    const image = await this.productsService.updateProductImage(id, imageId, updateImageDto);
+    return {
+      code: 200,
+      message: '图片更新成功',
+      data: image,
+    };
+  }
+
+  /**
+   * 删除商品图片
+   * DELETE /api/admin/products/:id/images/:imageId
+   */
+  @Delete(':id/images/:imageId')
+  @HttpCode(204)
+  async deleteProductImage(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('imageId', ParseIntPipe) imageId: number,
+  ): Promise<void> {
+    await this.productsService.deleteProductImage(id, imageId);
+  }
+
+  /**
+   * 批量更新商品图片顺序
+   * PUT /api/admin/products/:id/images/sort
+   */
+  @Put(':id/images/sort')
+  async updateProductImagesSort(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateSortDto: UpdateProductImagesSortDto,
+  ): Promise<{
+    code: number;
+    message: string;
+    data: ProductImageDto[];
+  }> {
+    const images = await this.productsService.updateProductImagesSort(id, updateSortDto);
+    return {
+      code: 200,
+      message: '图片顺序更新成功',
+      data: images,
+    };
   }
 }

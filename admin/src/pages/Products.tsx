@@ -138,11 +138,45 @@ export default function ProductsPage() {
 
   const handleSubmitForm = async (data: any) => {
     try {
+      const { otherImages = [], ...productData } = data
+      let productId: number
+
       if (editingProduct) {
-        await productsService.updateProduct(editingProduct.id, data)
+        await productsService.updateProduct(editingProduct.id, productData)
+        productId = editingProduct.id
       } else {
-        await productsService.createProduct(data)
+        const newProduct = await productsService.createProduct(productData)
+        productId = newProduct.id
       }
+
+      // 处理其他图片（副图）
+      if (otherImages && otherImages.length > 0) {
+        // 如果是编辑，先删除旧的图片
+        if (editingProduct && editingProduct.images) {
+          for (const oldImage of editingProduct.images) {
+            try {
+              await productsService.deleteProductImage(productId, oldImage.id)
+            } catch (err) {
+              console.error('删除旧图片失败:', err)
+            }
+          }
+        }
+
+        // 添加新的图片
+        for (const img of otherImages) {
+          try {
+            await productsService.addProductImage(productId, {
+              imageUrl: img.imageUrl,
+              imageType: img.imageType || 'detail',
+              altText: img.altText || '',
+              sortOrder: img.sortOrder || 0,
+            })
+          } catch (err) {
+            console.error('添加图片失败:', err)
+          }
+        }
+      }
+
       await loadProducts()
     } catch (error: any) {
       throw new Error(error.message || '操作失败')

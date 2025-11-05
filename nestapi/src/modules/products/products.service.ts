@@ -4,17 +4,22 @@ import { Repository, Like, Between, MoreThanOrEqual, LessThanOrEqual } from 'typ
 import {
   Product,
   ProductTag,
+  ProductImage,
 } from '../../entities/product.entity';
 import { Category } from '../../entities/category.entity';
 import {
   CreateCompleteProductDto,
   QueryProductDto,
   UpdateProductDto,
+  AddProductImageDto,
+  UpdateProductImageDto,
+  UpdateProductImagesSortDto,
 } from './dto';
 import {
   ProductDetailResponseDto,
   ProductListItemDto,
   ProductListResponseDto,
+  ProductImageDto,
 } from './dto/product-response.dto';
 
 @Injectable()
@@ -26,6 +31,8 @@ export class ProductsService {
     private readonly tagRepository: Repository<ProductTag>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
+    @InjectRepository(ProductImage)
+    private readonly productImageRepository: Repository<ProductImage>,
   ) {}
 
   /**
@@ -125,7 +132,7 @@ export class ProductsService {
   }
 
   /**
-   * 获取商品详情
+   * 获取商品详情（包括图片信息）
    */
   async getProductDetail(productId: number): Promise<ProductDetailResponseDto> {
     const product = await this.productRepository.findOne({
@@ -137,6 +144,10 @@ export class ProductsService {
     }
 
     const tags = await this.tagRepository.find({ where: { productId } });
+    const images = await this.productImageRepository.find({
+      where: { productId },
+      order: { sortOrder: 'ASC' },
+    });
 
     const category = await this.categoryRepository.findOne({
       where: { id: product.categoryId },
@@ -170,6 +181,18 @@ export class ProductsService {
       shippingTemplateId: product.shippingTemplateId,
       freeShippingThreshold: product.freeShippingThreshold,
       coverImageUrl: product.coverImageUrl,
+      // 返回其他图片（副图）
+      images: images.map((img) => ({
+        id: img.id,
+        imageUrl: img.imageUrl,
+        imageType: img.imageType,
+        altText: img.altText,
+        sortOrder: img.sortOrder,
+        width: img.width,
+        height: img.height,
+        fileSize: img.fileSize,
+        createdAt: img.createdAt,
+      })),
       // 价格信息直接从 product 对象获取（提供默认值0避免返回undefined）
       price: {
         originalPrice: product.originalPrice ?? 0,
@@ -553,5 +576,156 @@ export class ProductsService {
         createdAt: product.createdAt,
       };
     });
+  }
+
+  /**
+   * 添加商品图片
+   */
+  async addProductImage(productId: number, addImageDto: AddProductImageDto): Promise<ProductImageDto> {
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new NotFoundException(`商品 ID ${productId} 不存在`);
+    }
+
+    // 获取最大的 sortOrder
+    const maxSortOrder = await this.productImageRepository
+      .createQueryBuilder('pi')
+      .select('MAX(pi.sortOrder)', 'max')
+      .where('pi.productId = :productId', { productId })
+      .getRawOne();
+
+    const nextSortOrder = (maxSortOrder?.max || -1) + 1;
+
+    const imageData: any = {
+      productId,
+      imageUrl: addImageDto.imageUrl,
+      imageType: addImageDto.imageType || 'detail',
+      altText: addImageDto.altText,
+      sortOrder: addImageDto.sortOrder ?? nextSortOrder,
+      width: addImageDto.width,
+      height: addImageDto.height,
+      fileSize: addImageDto.fileSize,
+    };
+
+    const image = this.productImageRepository.create(imageData);
+    const savedImage = (await this.productImageRepository.save(image)) as any;
+
+    return {
+      id: savedImage.id,
+      imageUrl: savedImage.imageUrl,
+      imageType: savedImage.imageType,
+      altText: savedImage.altText || undefined,
+      sortOrder: savedImage.sortOrder,
+      width: savedImage.width,
+      height: savedImage.height,
+      fileSize: savedImage.fileSize,
+      createdAt: savedImage.createdAt,
+    };
+  }
+
+  /**
+   * 删除商品图片
+   */
+  async deleteProductImage(productId: number, imageId: number): Promise<void> {
+    const image = await this.productImageRepository.findOne({
+      where: { id: imageId, productId },
+    });
+
+    if (!image) {
+      throw new NotFoundException(`图片 ID ${imageId} 不存在或不属于该商品`);
+    }
+
+    await this.productImageRepository.remove(image);
+  }
+
+  /**
+   * 更新商品图片
+   */
+  async updateProductImage(
+    productId: number,
+    imageId: number,
+    updateImageDto: UpdateProductImageDto,
+  ): Promise<ProductImageDto> {
+    const image = await this.productImageRepository.findOne({
+      where: { id: imageId, productId },
+    });
+
+    if (!image) {
+      throw new NotFoundException(`图片 ID ${imageId} 不存在或不属于该商品`);
+    }
+
+    // 更新允许的字段
+    if (updateImageDto.imageUrl !== undefined) image.imageUrl = updateImageDto.imageUrl;
+    if (updateImageDto.imageType !== undefined) image.imageType = updateImageDto.imageType;
+    if (updateImageDto.altText !== undefined) image.altText = updateImageDto.altText;
+    if (updateImageDto.sortOrder !== undefined) image.sortOrder = updateImageDto.sortOrder;
+    if (updateImageDto.width !== undefined) image.width = updateImageDto.width;
+    if (updateImageDto.height !== undefined) image.height = updateImageDto.height;
+    if (updateImageDto.fileSize !== undefined) image.fileSize = updateImageDto.fileSize;
+
+    const updatedImage = await this.productImageRepository.save(image);
+
+    return {
+      id: updatedImage.id,
+      imageUrl: updatedImage.imageUrl,
+      imageType: updatedImage.imageType,
+      altText: updatedImage.altText,
+      sortOrder: updatedImage.sortOrder,
+      width: updatedImage.width,
+      height: updatedImage.height,
+      fileSize: updatedImage.fileSize,
+      createdAt: updatedImage.createdAt,
+    };
+  }
+
+  /**
+   * 批量更新商品图片顺序
+   */
+  async updateProductImagesSort(
+    productId: number,
+    updateSortDto: UpdateProductImagesSortDto,
+  ): Promise<ProductImageDto[]> {
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new NotFoundException(`商品 ID ${productId} 不存在`);
+    }
+
+    // 批量更新每个图片的 sortOrder
+    for (const item of updateSortDto.images) {
+      const image = await this.productImageRepository.findOne({
+        where: { id: item.id, productId },
+      });
+
+      if (!image) {
+        throw new NotFoundException(`图片 ID ${item.id} 不存在或不属于该商品`);
+      }
+
+      image.sortOrder = item.sortOrder;
+      await this.productImageRepository.save(image);
+    }
+
+    // 返回更新后的图片列表
+    const images = await this.productImageRepository.find({
+      where: { productId },
+      order: { sortOrder: 'ASC' },
+    });
+
+    return images.map((img) => ({
+      id: img.id,
+      imageUrl: img.imageUrl,
+      imageType: img.imageType,
+      altText: img.altText,
+      sortOrder: img.sortOrder,
+      width: img.width,
+      height: img.height,
+      fileSize: img.fileSize,
+      createdAt: img.createdAt,
+    }));
   }
 }

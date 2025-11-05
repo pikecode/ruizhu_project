@@ -70,4 +70,29 @@ export const productsService = {
   getCategoryById: (id: number): Promise<Category> => {
     return api.get(`/categories/${id}`).then((res) => res.data.data)
   },
+
+  // Get product images
+  getProductImages: (id: number): Promise<any[]> => {
+    return api.get(`/admin/products/${id}/images`).then((res) => res.data.data)
+  },
+
+  // Add product image
+  addProductImage: (id: number, payload: any): Promise<any> => {
+    return api.post(`/admin/products/${id}/images`, payload).then((res) => res.data.data)
+  },
+
+  // Update product image
+  updateProductImage: (id: number, imageId: number, payload: any): Promise<any> => {
+    return api.put(`/admin/products/${id}/images/${imageId}`, payload).then((res) => res.data.data)
+  },
+
+  // Delete product image
+  deleteProductImage: (id: number, imageId: number): Promise<void> => {
+    return api.delete(`/admin/products/${id}/images/${imageId}`).then(() => undefined)
+  },
+
+  // Update product images sort
+  updateProductImagesSort: (id: number, payload: any): Promise<any[]> => {
+    return api.put(`/admin/products/${id}/images/sort`, payload).then((res) => res.data.data)
+  },
 }

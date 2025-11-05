@@ -1,8 +1,22 @@
-import { Form, Input, InputNumber, Select, Button, Modal, Spin, message, Divider, Row, Col, Radio, Checkbox } from 'antd'
+import {
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  Button,
+  Modal,
+  Spin,
+  message,
+  Divider,
+  Row,
+  Col,
+  Radio,
+  Checkbox,
+} from 'antd'
 import { useState, useEffect } from 'react'
 import { Product, Category } from '@/types'
-import MediaUploader from './MediaUploader'
-import { mediaService } from '@/services/media'
+import CoverImageManager from './CoverImageManager'
+import ProductImagesManager from './ProductImagesManager'
 
 interface ProductFormProps {
   visible: boolean
@@ -23,6 +37,7 @@ interface MediaFile {
   uploadProgress?: number
   altText?: string
   sortOrder?: number
+  isNew?: boolean
 }
 
 // 库存状态选项（单选）
@@ -56,7 +71,8 @@ export default function ProductForm({
 }: ProductFormProps) {
   const [form] = Form.useForm()
   const [submitting, setSubmitting] = useState(false)
-  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
+  const [coverImageUrl, setCoverImageUrl] = useState<string | undefined>()
+  const [detailImages, setDetailImages] = useState<MediaFile[]>([])
 
   useEffect(() => {
     if (visible && product) {
@@ -79,60 +95,55 @@ export default function ProductForm({
         subtitle: product.subtitle,
         description: product.description,
         categoryId: product.categoryId,
-        productType: (product as any).productType || 'standard', // 产品类型
+        productType: (product as any).productType || 'standard',
         stockStatus: stockStatus,
         productTags: tags,
         price: product.price?.currentPrice ? product.price.currentPrice / 100 : 0,
         stockQuantity: product.stockQuantity || 1,
       })
 
-      // 初始化媒体文件列表
-      // 优先使用 images 数组，如果没有则尝试使用 coverImageUrl
+      // 初始化封面图和详情图
+      // 设置 coverImageUrl
+      if (product.coverImageUrl) {
+        setCoverImageUrl(product.coverImageUrl)
+      } else {
+        setCoverImageUrl(undefined)
+      }
+
+      // 从 images 数组中提取详情图
+      const detailImagesList: MediaFile[] = []
       if (product.images && Array.isArray(product.images) && product.images.length > 0) {
-        const files: MediaFile[] = product.images.map((img: any) => ({
+        const imageFiles = product.images.map((img: any) => ({
           id: img.id,
           url: img.imageUrl,
-          type: img.imageType || 'image',
-          size: 0,
+          type: 'image' as const,
+          size: img.fileSize || 0,
           name: img.imageUrl.split('/').pop() || 'image',
           altText: img.altText,
           sortOrder: img.sortOrder,
+          isNew: false,
         }))
-        setMediaFiles(files)
-      } else if ((product as any).coverImageUrl) {
-        // 如果没有 images 数组但有 coverImageUrl，使用它
-        const coverUrl = (product as any).coverImageUrl as string
-        const files: MediaFile[] = [
-          {
-            url: coverUrl,
-            type: 'image',
-            size: 0,
-            name: coverUrl.split('/').pop() || 'image',
-            altText: '',
-            sortOrder: 0,
-          },
-        ]
-        setMediaFiles(files)
-      } else {
-        setMediaFiles([])
+        detailImagesList.push(...imageFiles)
       }
+      setDetailImages(detailImagesList)
     } else if (visible && !product) {
       form.resetFields()
-      setMediaFiles([])
+      setCoverImageUrl(undefined)
+      setDetailImages([])
       form.setFieldsValue({ stockQuantity: 1, stockStatus: 'normal', productTags: [], productType: defaultProductType })
     }
   }, [product, visible, form, defaultProductType])
-
-  // Wrapper function to upload media and return just the URL
-  const handleUploadToCloud = async (file: File): Promise<string> => {
-    const response = await mediaService.uploadMedia(file)
-    return response.url
-  }
 
   const handleSubmit = async (values: any) => {
     try {
       setSubmitting(true)
       const { price, stockStatus, productTags, ...otherValues } = values
+
+      // 验证封面图
+      if (!coverImageUrl) {
+        message.error('请上传产品封面')
+        return
+      }
 
       // 将 stockStatus 转换为 isOutOfStock 和 isSoldOut
       let isOutOfStock = false
@@ -161,15 +172,23 @@ export default function ProductForm({
           discountRate: 100,
           currency: 'CNY',
         },
-        // 当前阶段只支持单张图片维护，使用 coverImageUrl
-        // 如果有上传图片，使用第一张（mediaFiles maxCount=1）
-        ...(mediaFiles.length > 0 && { coverImageUrl: mediaFiles[0].url }),
+        // 设置封面图
+        coverImageUrl: coverImageUrl,
+        // 传递详情图片信息（供后续处理）
+        otherImages: detailImages.map((img, index) => ({
+          imageUrl: img.url,
+          imageType: 'detail',
+          altText: img.altText || '',
+          sortOrder: index,
+          id: img.id, // 如果是已存在的图片，保留 id
+        })),
       }
 
       await onSubmit(payload)
       message.success(product ? '产品更新成功' : '产品创建成功')
       form.resetFields()
-      setMediaFiles([])
+      setCoverImageUrl(undefined)
+      setDetailImages([])
       onClose()
     } catch (error: any) {
       message.error(error.message || '操作失败')
@@ -184,25 +203,37 @@ export default function ProductForm({
       open={visible}
       onCancel={onClose}
       footer={null}
-      width={800}
+      width={900}
       bodyStyle={{ padding: '16px' }}
     >
       <Spin spinning={loading || submitting}>
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-          style={{ marginBottom: 0 }}
-        >
-          {/* 产品配图 - 放在最上面 */}
+        <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ marginBottom: 0 }}>
+          {/* 产品配图 - 分离为封面图和详情图 */}
           <Divider style={{ marginBottom: '12px', marginTop: 0 }}>产品配图</Divider>
 
-          <MediaUploader
-            value={mediaFiles}
-            onChange={setMediaFiles}
-            maxCount={1}
-            onUploadToCloud={handleUploadToCloud}
-            compact={true}
+          {/* 产品封面管理 */}
+          <CoverImageManager
+            coverUrl={coverImageUrl}
+            onChange={setCoverImageUrl}
+            onDelete={() => setCoverImageUrl(undefined)}
+            loading={loading}
+          />
+
+          <Divider style={{ marginTop: '12px', marginBottom: '12px' }} />
+
+          {/* 产品详情图管理 */}
+          <ProductImagesManager
+            images={detailImages}
+            onAdd={(newImages) => {
+              setDetailImages([...detailImages, ...newImages])
+            }}
+            onDelete={(index) => {
+              setDetailImages(detailImages.filter((_, i) => i !== index))
+            }}
+            onSort={(sortedImages) => {
+              setDetailImages(sortedImages)
+            }}
+            loading={loading}
           />
 
           <Divider style={{ marginTop: '12px', marginBottom: '12px' }}>产品基本信息</Divider>
@@ -217,7 +248,8 @@ export default function ProductForm({
                 rules={[
                   { required: true, message: '请输入产品名称' },
                   { min: 1, max: 200, message: '产品名称应在 1-200 个字符之间' },
-                ]}>
+                ]}
+              >
                 <Input placeholder="例如：iPhone 15 Pro" />
               </Form.Item>
             </Col>
@@ -226,7 +258,8 @@ export default function ProductForm({
                 label="分类"
                 name="categoryId"
                 style={{ marginBottom: '8px' }}
-                rules={[{ required: true, message: '请选择一个分类' }]}>
+                rules={[{ required: true, message: '请选择一个分类' }]}
+              >
                 <Select placeholder="选择分类">
                   {categories.map((cat) => (
                     <Select.Option key={cat.id} value={cat.id}>
@@ -244,7 +277,8 @@ export default function ProductForm({
                 label="产品类型"
                 name="productType"
                 style={{ marginBottom: '8px' }}
-                rules={[{ required: true, message: '请选择产品类型' }]}>
+                rules={[{ required: true, message: '请选择产品类型' }]}
+              >
                 <Select placeholder="选择产品类型">
                   {productTypeOptions.map((opt) => (
                     <Select.Option key={opt.value} value={opt.value}>
@@ -255,10 +289,7 @@ export default function ProductForm({
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item
-                label="副标题"
-                name="subtitle"
-                style={{ marginBottom: '8px' }}>
+              <Form.Item label="副标题" name="subtitle" style={{ marginBottom: '8px' }}>
                 <Input placeholder="可选的副标题" />
               </Form.Item>
             </Col>
@@ -270,7 +301,8 @@ export default function ProductForm({
                 label="价格 (¥)"
                 name="price"
                 style={{ marginBottom: '8px' }}
-                rules={[{ required: true, message: '请输入价格' }]}>
+                rules={[{ required: true, message: '请输入价格' }]}
+              >
                 <InputNumber
                   min={0}
                   step={0.01}
@@ -282,10 +314,7 @@ export default function ProductForm({
             </Col>
           </Row>
 
-          <Form.Item
-            label="产品描述"
-            name="description"
-            style={{ marginBottom: '8px' }}>
+          <Form.Item label="产品描述" name="description" style={{ marginBottom: '8px' }}>
             <Input.TextArea rows={2} placeholder="产品描述" />
           </Form.Item>
 
@@ -295,7 +324,8 @@ export default function ProductForm({
             label="库存数量"
             name="stockQuantity"
             style={{ marginBottom: '8px' }}
-            rules={[{ required: true, message: '请输入库存数量' }]}>
+            rules={[{ required: true, message: '请输入库存数量' }]}
+          >
             <InputNumber
               min={0}
               placeholder="1"
@@ -309,16 +339,14 @@ export default function ProductForm({
             label="库存状态"
             name="stockStatus"
             style={{ marginBottom: '12px' }}
-            rules={[{ required: true, message: '请选择库存状态' }]}>
+            rules={[{ required: true, message: '请选择库存状态' }]}
+          >
             <Radio.Group options={stockStatusOptions} />
           </Form.Item>
 
           <Divider style={{ marginTop: '12px', marginBottom: '12px' }}>商品标签</Divider>
 
-          <Form.Item
-            label="商品标签"
-            name="productTags"
-            style={{ marginBottom: '8px' }}>
+          <Form.Item label="商品标签" name="productTags" style={{ marginBottom: '8px' }}>
             <Checkbox.Group options={productTagOptions} />
           </Form.Item>
 

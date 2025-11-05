@@ -1,4 +1,19 @@
 /**
+ * 商品图片响应 DTO
+ */
+export class ProductImageDto {
+  id: number;
+  imageUrl: string;
+  imageType: 'thumb' | 'cover' | 'list' | 'detail';
+  altText?: string;
+  sortOrder: number;
+  width?: number;
+  height?: number;
+  fileSize?: number;
+  createdAt: Date;
+}
+
+/**
  * 商品详情响应 DTO
  */
 export class ProductDetailResponseDto {
@@ -30,8 +45,11 @@ export class ProductDetailResponseDto {
   shippingTemplateId?: number;
   freeShippingThreshold?: number;
 
-  // 代表图片URL
+  // 封面图片（主图）
   coverImageUrl?: string | null;
+
+  // 其他图片（副图）
+  images?: ProductImageDto[];
 
   // 价格信息
   price?: {
@@ -118,8 +136,97 @@ export class ProductListResponseDto {
   pages: number;
 }
 
-import { IsOptional, IsString, IsNumber, IsBoolean, IsArray, ValidateNested, IsEnum, IsIn, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsBoolean, IsArray, ValidateNested, IsEnum, IsIn, Min, Max, IsInt } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+
+/**
+ * 添加商品图片 DTO
+ */
+export class AddProductImageDto {
+  @IsString()
+  imageUrl: string;
+
+  @IsOptional()
+  @IsIn(['thumb', 'cover', 'list', 'detail'])
+  imageType?: 'thumb' | 'cover' | 'list' | 'detail';
+
+  @IsOptional()
+  @IsString()
+  altText?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsInt()
+  width?: number;
+
+  @IsOptional()
+  @IsInt()
+  height?: number;
+
+  @IsOptional()
+  @IsInt()
+  fileSize?: number;
+}
+
+/**
+ * 更新商品图片 DTO
+ */
+export class UpdateProductImageDto {
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @IsOptional()
+  @IsIn(['thumb', 'cover', 'list', 'detail'])
+  imageType?: 'thumb' | 'cover' | 'list' | 'detail';
+
+  @IsOptional()
+  @IsString()
+  altText?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  sortOrder?: number;
+
+  @IsOptional()
+  @IsInt()
+  width?: number;
+
+  @IsOptional()
+  @IsInt()
+  height?: number;
+
+  @IsOptional()
+  @IsInt()
+  fileSize?: number;
+}
+
+/**
+ * 批量更新图片顺序 DTO
+ */
+export class UpdateProductImagesSortDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateImageSortItemDto)
+  images: UpdateImageSortItemDto[];
+}
+
+/**
+ * 单个图片排序项 DTO
+ */
+export class UpdateImageSortItemDto {
+  @IsInt()
+  id: number;
+
+  @IsInt()
+  @Min(0)
+  sortOrder: number;
+}
 
 /**
  * 更新商品价格 DTO

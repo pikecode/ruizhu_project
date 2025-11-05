@@ -63,6 +63,7 @@ export interface Product {
     conversionRate?: number
   }
   // Images
+  coverImageUrl?: string | null
   images?: Array<{
     id: number
     imageUrl: string
@@ -71,6 +72,7 @@ export interface Product {
     sortOrder: number
     width?: number
     height?: number
+    fileSize?: number
   }>
   // Tags
   tags?: Array<{
