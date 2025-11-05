@@ -3,7 +3,7 @@
     <view class="navbar-content">
       <!-- 左侧内容插槽 -->
       <slot name="left">
-        <text class="brand-logo">{{ title }}</text>
+        <image class="brand-logo" src="/static/images/logo.jpg" mode="aspectFit"></image>
       </slot>
 
       <!-- 中间内容插槽 -->
@@ -73,12 +73,9 @@ export default {
   }
 
   .brand-logo {
-    font-size: 48rpx;
-    font-weight: 700;
-    letter-spacing: 4rpx;
-    color: #000000;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    flex: 1;
+    height: 80rpx;
+    width: auto;
+    flex-shrink: 0;
   }
 }
 </style>
