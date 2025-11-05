@@ -98,6 +98,11 @@ export default function Layout({ children }: LayoutProps) {
       onClick: () => handleNavigate('/consultations'),
     },
     {
+      key: '/member-benefits',
+      label: '🎁 会员礼遇',
+      onClick: () => handleNavigate('/member-benefits'),
+    },
+    {
       key: '/users',
       label: '🔐 Admin用户',
       onClick: () => handleNavigate('/users'),

@@ -36,6 +36,7 @@ import { WechatPaymentEntity } from '../modules/wechat/entities/wechat-payment.e
 import { WechatNotificationEntity } from '../modules/wechat/entities/wechat-notification.entity';
 import { UserAuthorization } from '../modules/authorizations/entities/user-authorization.entity';
 import { Membership } from '../modules/memberships/entities/membership.entity';
+import { MemberBenefit } from '../entities/member-benefit.entity';
 import { Wishlist } from '../entities/wishlist.entity';
 import { Consultation } from '../entities/consultation.entity';
 
@@ -120,6 +121,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
       WechatNotificationEntity,
       UserAuthorization,
       Membership,
+      MemberBenefit,
       Wishlist,
       Consultation,
     ],

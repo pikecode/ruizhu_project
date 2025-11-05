@@ -27,6 +27,6 @@ import { AdminProductsController } from './admin-products.controller';
   ],
   controllers: [ProductsController, AdminProductsController],
   providers: [ProductsService],
-  exports: [ProductsService],
+  exports: [ProductsService, TypeOrmModule],
 })
 export class ProductsModule {}

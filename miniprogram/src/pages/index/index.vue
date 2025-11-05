@@ -38,25 +38,30 @@
       <text class="section-title">会员礼遇</text>
       <view class="benefits-card">
         <view class="benefit-items">
-          <!-- 左侧礼遇 -->
-          <view class="benefit-item">
+          <!-- 动态加载的礼遇项目 -->
+          <view
+            v-for="(benefit, index) in memberBenefits"
+            :key="benefit.id"
+            class="benefit-item"
+          >
+            <view class="benefit-media" :class="index === 0 ? 'icon' : ''">
+              <image
+                class="benefit-image"
+                :src="benefit.imageUrl || '/static/images/logo.jpg'"
+                mode="aspectFit"
+              ></image>
+            </view>
+            <text class="benefit-title">{{ benefit.title }}</text>
+            <text v-if="benefit.subtitle" class="benefit-desc">{{ benefit.subtitle }}</text>
+          </view>
+
+          <!-- 无数据时的占位符 -->
+          <view v-if="memberBenefits.length === 0" class="benefit-item">
             <view class="benefit-media icon">
               <image class="benefit-image" src="/static/images/logo.jpg" mode="aspectFit"></image>
             </view>
-            <text class="benefit-title">至高尊享12期免息</text>
-            <text class="benefit-desc">单笔订单金额≥15,000元可享</text>
-          </view>
-
-          <!-- 右侧礼遇 -->
-          <view class="benefit-item">
-            <view class="benefit-media">
-              <image class="benefit-image" src="/static/images/product/120251017184208.jpg" mode="aspectFit"></image>
-            </view>
-            <text class="benefit-title">品牌定制笔记本</text>
-            <view class="benefit-desc-wrap">
-              <text class="benefit-desc">会员单笔订单≥15,000元加赠</text>
-              <text class="benefit-desc muted">（送完为止）</text>
-            </view>
+            <text class="benefit-title">会员礼遇</text>
+            <text class="benefit-desc">敬请期待</text>
           </view>
         </view>
 
@@ -259,6 +264,7 @@ import CustomNavbar from '@/components/CustomNavbar.vue'
 import { bannerService } from '@/services/banner'
 import { collectionService } from '@/services/collection'
 import { newsService } from '@/services/news'
+import { memberBenefitsService } from '@/services/member-benefits'
 
 export default {
   components: {
@@ -290,7 +296,10 @@ export default {
       newsItems: [],
 
       // 推荐商品（从 API 动态加载）
-      recommendProducts: []
+      recommendProducts: [],
+
+      // 会员礼遇（从 API 动态加载）
+      memberBenefits: [],
     }
   },
   onLoad() {
@@ -305,6 +314,8 @@ export default {
     this.loadNews()
     // 加载推荐商品数据
     this.loadRecommendedProducts()
+    // 加载会员礼遇数据
+    this.loadMemberBenefits()
   },
   methods: {
     /**
@@ -459,6 +470,27 @@ export default {
         }
       } catch (error) {
         console.error('加载推荐商品失败:', error)
+      }
+    },
+
+    /**
+     * 加载会员礼遇数据
+     * 从 API 获取首页展示的会员礼遇列表（仅启用的）
+     */
+    async loadMemberBenefits() {
+      try {
+        const benefits = await memberBenefitsService.getActiveMemberBenefits()
+
+        if (benefits && benefits.length > 0) {
+          // 取前两个礼遇作为左右两个礼遇（如果有更多可以轮播）
+          this.memberBenefits = benefits.slice(0, 2)
+
+          console.log('会员礼遇加载成功:', this.memberBenefits)
+        } else {
+          console.warn('未获取到会员礼遇数据')
+        }
+      } catch (error) {
+        console.error('加载会员礼遇失败:', error)
       }
     },
 

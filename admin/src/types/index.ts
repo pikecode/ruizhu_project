@@ -195,6 +195,23 @@ export interface ApiResponse<T = any> {
   data?: T
 }
 
+// Member Benefits
+export interface MemberBenefit {
+  id: number
+  title: string
+  subtitle?: string | null
+  imageUrl?: string | null
+  imageKey?: string | null
+  isActive: boolean
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MemberBenefitListItem extends Omit<MemberBenefit, 'imageKey'> {
+  // 列表项特有字段
+}
+
 // Pagination
 export interface PaginationParams {
   page: number
