@@ -4,13 +4,20 @@ import Loading from '@/components/Loading'
 
 // Lazy load pages
 const LoginPage = lazy(() => import('@/pages/Login'))
-const DashboardPage = lazy(() => import('@/pages/Dashboard'))
 const ProductsPage = lazy(() => import('@/pages/Products'))
+const CollectionsPage = lazy(() => import('@/pages/Collections'))
+const ArrayCollectionsPage = lazy(() => import('@/pages/ArrayCollections'))
+const BannersPage = lazy(() => import('@/pages/Banners'))
+const CustomBannersPage = lazy(() => import('@/pages/CustomBanners'))
+const ProfileBannersPage = lazy(() => import('@/pages/ProfileBanners'))
+const AboutBannersPage = lazy(() => import('@/pages/AboutBanners'))
+const FeaturedBannersPage = lazy(() => import('@/pages/FeaturedBanners'))
+const NewsPage = lazy(() => import('@/pages/News'))
 const OrdersPage = lazy(() => import('@/pages/Orders'))
-const CouponsPage = lazy(() => import('@/pages/Coupons'))
+const ConsultationsPage = lazy(() => import('@/pages/Consultations'))
+const MemberBenefitsPage = lazy(() => import('@/pages/MemberBenefits'))
 const UsersPage = lazy(() => import('@/pages/Users'))
-const SettingsPage = lazy(() => import('@/pages/Settings'))
-const FileManagerPage = lazy(() => import('@/pages/FileManager'))
+const ConsumerUsersPage = lazy(() => import('@/pages/ConsumerUsers'))
 const NotFoundPage = lazy(() => import('@/pages/NotFound'))
 
 const withSuspense = (Component: React.LazyExoticComponent<() => JSX.Element>) => (
@@ -25,36 +32,64 @@ export const routes = [
     element: withSuspense(LoginPage),
   },
   {
-    path: '/dashboard',
-    element: withSuspense(DashboardPage),
-  },
-  {
     path: '/products',
     element: withSuspense(ProductsPage),
+  },
+  {
+    path: '/collections',
+    element: withSuspense(CollectionsPage),
+  },
+  {
+    path: '/array-collections',
+    element: withSuspense(ArrayCollectionsPage),
+  },
+  {
+    path: '/banners',
+    element: withSuspense(BannersPage),
+  },
+  {
+    path: '/custom-banners',
+    element: withSuspense(CustomBannersPage),
+  },
+  {
+    path: '/profile-banners',
+    element: withSuspense(ProfileBannersPage),
+  },
+  {
+    path: '/about-banners',
+    element: withSuspense(AboutBannersPage),
+  },
+  {
+    path: '/featured-banners',
+    element: withSuspense(FeaturedBannersPage),
+  },
+  {
+    path: '/news',
+    element: withSuspense(NewsPage),
   },
   {
     path: '/orders',
     element: withSuspense(OrdersPage),
   },
   {
-    path: '/coupons',
-    element: withSuspense(CouponsPage),
+    path: '/consultations',
+    element: withSuspense(ConsultationsPage),
+  },
+  {
+    path: '/member-benefits',
+    element: withSuspense(MemberBenefitsPage),
   },
   {
     path: '/users',
     element: withSuspense(UsersPage),
   },
   {
-    path: '/files',
-    element: withSuspense(FileManagerPage),
-  },
-  {
-    path: '/settings',
-    element: withSuspense(SettingsPage),
+    path: '/consumer-users',
+    element: withSuspense(ConsumerUsersPage),
   },
   {
     path: '/',
-    element: <Navigate to="/dashboard" replace />,
+    element: <Navigate to="/products" replace />,
   },
   {
     path: '*',

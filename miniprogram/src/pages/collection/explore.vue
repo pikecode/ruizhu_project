@@ -14,61 +14,88 @@
       >
         <swiper-item v-for="(s, i) in heroSlides" :key="i">
           <view class="product-image-container">
-            <image class="product-img" :src="s.image" mode="aspectFill"></image>
-            <view class="product-info-overlay">
-              <text class="product-info-name">{{ s.title }}</text>
-              <text class="product-info-price">¥ {{ s.price }}</text>
-              <view class="product-info-action" @tap="onExploreNow">
-                <text>即刻探索</text>
-              </view>
-            </view>
+            <!-- 视频展示 -->
+            <video
+              v-if="s.type === 'video' && s.videoUrl"
+              class="banner-video"
+              :src="s.videoUrl"
+              autoplay
+              muted
+              loop
+            ></video>
+            <!-- 图片展示 -->
+            <image
+              v-else
+              class="product-img"
+              :src="s.image"
+              mode="aspectFill"
+            ></image>
+             
           </view>
         </swiper-item>
       </swiper>
 
       <!-- 描述部分 -->
-      <view class="product-desc-section">
-        <text class="product-desc-title">{{ currentSlideData.descTitle }}</text>
+      <view class="product-desc-section" v-if="currentSlideData && currentSlideData.mainTitle">
+        <text class="product-desc-title">{{ currentSlideData.mainTitle }}</text>
         <view class="product-desc-divider"></view>
-        <text class="product-desc-text">{{ currentSlideData.desc }}</text>
+        <text class="product-desc-text">{{ currentSlideData.description || '品质卓越的精选商品' }}</text>
       </view>
     </view>
 
     <!-- 风格灵感模块 -->
     <view class="style-section">
-      <text class="style-title">风格灵感</text>
+      <text class="style-title">{{ styleCollectionTitle }}</text>
 
-      <!-- 选项卡切换 -->
-      <view class="style-tabs">
-        <view
-          class="style-tab"
-          :class="{ active: styleGender === 'female' }"
-          @tap="changeGender('female')"
-        >
-          <text>女士</text>
-        </view>
-        <view
-          class="style-tab"
-          :class="{ active: styleGender === 'male' }"
-          @tap="changeGender('male')"
-        >
-          <text>男士</text>
-        </view>
-      </view>
-
-      <!-- 产品轮播 -->
+      <!-- 风格卡片轮播 -->
       <swiper
+        v-if="styleCards.length > 0"
         class="style-swiper"
         :indicator-dots="true"
-        :indicator-active-color="'#ffffff'"
-        :indicator-color="'rgba(255,255,255,0.4)'"
+        :indicator-active-color="'#000000'"
+        :indicator-color="'rgba(0,0,0,0.3)'"
         :autoplay="false"
-        :circular="true"
-        @change="onStyleSwiperChange"
+        :circular="styleCards.length > 1"
+        @change="onStyleCardChange"
       >
-        <swiper-item v-for="(product, idx) in currentStyleProducts" :key="idx">
-          <view class="style-product" @tap="addToCart(product)">
-            <image class="style-product-image" :src="product.image" mode="aspectFill"></image>
+        <swiper-item v-for="card in styleCards" :key="card.id" class="style-swiper-item">
+          <view class="style-container">
+            <!-- 左侧：风格卡片大图 -->
+            <view class="style-left">
+              <image
+                v-if="card.coverImageUrl"
+                class="style-card-image"
+                :src="card.coverImageUrl"
+                mode="aspectFill"
+              ></image>
+              <view v-else class="style-card-placeholder">
+                <text>图片加载中...</text>
+              </view>
+            </view>
+
+            <!-- 右侧：产品列表 -->
+            <scroll-view class="style-right" scroll-y>
+              <view v-if="card.products && card.products.length > 0" class="style-products-list">
+                <view v-for="product in card.products" :key="product.id" class="product-item" @tap="goToProductDetail(product.id)">
+                  <view class="product-item-image">
+                    <image
+                      v-if="product.image"
+                      class="product-item-img"
+                      :src="product.image"
+                      mode="aspectFill"
+                    ></image>
+                    <view v-else class="product-item-placeholder">无图</view>
+                  </view>
+                  <view class="product-item-info">
+                    <text class="product-item-name">{{ product.name }}</text>
+                    <text class="product-item-price">¥{{ product.price }}</text>
+                  </view>
+                </view>
+              </view>
+              <view v-else class="empty-products">
+                <text>暂无产品</text>
+              </view>
+            </scroll-view>
           </view>
         </swiper-item>
       </swiper>
@@ -87,146 +114,196 @@
   </template>
 
 <script>
+import { bannerService } from '../../services/banner'
+import { arrayCollectionService } from '../../services/arrayCollection'
+
 export default {
   data() {
     return {
       currentSlide: 0,
-      currentStyleSlide: 0,
       styleGender: 'female',
-      heroSlides: [
-        {
-          image: '/static/images/product/120251017222238.jpg',
-          title: 'Re-Nylon双肩背包',
-          price: '21,800',
-          descTitle: 'Prada双肩包',
-          desc: '四十多年来的经典风格象征以其作为灵感，重新设计出引人注目的新款式，采用新材料和色彩搭配。'
-        },
-        {
-          image: '/static/images/product/120251017222229.jpg',
-          title: 'Re-Nylon双肩背包',
-          price: '21,800',
-          descTitle: '都市出行之选',
-          desc: '轻量材质与容量平衡，满足日常通勤与短途出行需求，延续品牌经典语汇。'
-        },
-        {
-          image: '/static/images/product/120251017222242.jpg',
-          title: 'Re-Nylon与牛皮革拼接',
-          price: '28,700',
-          descTitle: '高级拼接系列',
-          desc: '精选皮革拼接 Re‑Nylon，强化层次与触感，兼顾耐用与质感。'
-        }
-      ],
-      seriesCards: [
-        {
-          image: '/static/images/product/120251017184201.jpg',
-          title: '城市系列',
-          sub: '轻盈耐磨 · 通勤之选',
-          slideIndex: 0
-        },
-        {
-          image: '/static/images/product/120251017184212.jpg',
-          title: '旅行系列',
-          sub: '大容量 · 多口袋设计',
-          slideIndex: 1
-        },
-        {
-          image: '/static/images/product/120251017184205.jpg',
-          title: '经典系列',
-          sub: '标志元素 · 百搭配色',
-          slideIndex: 2
-        },
-        {
-          image: '/static/images/product/120251017184219.jpg',
-          title: '限定系列',
-          sub: '限量配色 · 特别徽标',
-          slideIndex: 2
-        }
-      ],
-      femaleProducts: [
-        {
-          id: 'female-1',
-          name: 'Re-Nylon风雨羽绒夹克',
-          category: '夹克',
-          price: '25,400',
-          image: 'https://images.unsplash.com/photo-1551028719-00167b16ebc5?w=500&q=80'
-        },
-        {
-          id: 'female-2',
-          name: '徽标饰流苏边巾',
-          category: '配件',
-          price: '5,550',
-          image: 'https://images.unsplash.com/photo-1520903074185-8ebb4ee87b84?w=500&q=80'
-        },
-        {
-          id: 'female-3',
-          name: '牛皮革靴',
-          category: '靴类',
-          price: '15,700',
-          image: 'https://images.unsplash.com/photo-1548062407-f961713e6786?w=500&q=80'
-        },
-        {
-          id: 'female-4',
-          name: '编织手提包',
-          category: '手袋',
-          price: '18,900',
-          image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&q=80'
-        },
-        {
-          id: 'female-5',
-          name: '皮质腰带',
-          category: '配件',
-          price: '8,800',
-          image: 'https://images.unsplash.com/photo-1624526267942-ab67cb38a25f?w=500&q=80'
-        }
-      ],
-      maleProducts: [
-        {
-          id: 'male-1',
-          name: 'Re-Nylon羽绒夹克',
-          category: '夹克',
-          price: '27,500',
-          image: 'https://images.unsplash.com/photo-1576995853952-c10e174b88b0?w=500&q=80'
-        },
-        {
-          id: 'male-2',
-          name: '皮质公文包',
-          category: '包',
-          price: '32,800',
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&q=80'
-        },
-        {
-          id: 'male-3',
-          name: '牛皮革商务靴',
-          category: '靴类',
-          price: '19,200',
-          image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=500&q=80'
-        },
-        {
-          id: 'male-4',
-          name: '编织围巾',
-          category: '配件',
-          price: '6,800',
-          image: 'https://images.unsplash.com/photo-1520903074185-8ebb4ee87b84?w=500&q=80'
-        },
-        {
-          id: 'male-5',
-          name: '皮质腕表带',
-          category: '配件',
-          price: '4,200',
-          image: 'https://images.unsplash.com/photo-1579377947182-88a160446b74?w=500&q=80'
-        }
-      ]
+      heroSlides: [],
+      isLoadingBanners: true,
+      styleCards: [],
+      currentStyleCardIndex: 0,
+      styleCollectionTitle: '风格灵感'
     }
+  },
+  onLoad() {
+    this.loadFeaturedBanners()
+    this.loadStyleInspiration()
   },
   computed: {
     currentSlideData() {
-      return this.heroSlides[this.currentSlide] || this.heroSlides[0]
+      // 默认对象
+      const defaultData = {
+        id: 'default',
+        type: 'image',
+        image: '',
+        videoUrl: '',
+        title: '精选系列',
+        mainTitle: '精选系列',
+        price: '',
+        description: '加载中...'
+      }
+
+      // 防守：确保 heroSlides 不为空
+      if (!this.heroSlides || this.heroSlides.length === 0) {
+        return defaultData
+      }
+
+      const data = this.heroSlides[this.currentSlide] || this.heroSlides[0]
+
+      // 确保返回的对象有所有需要的字段
+      if (!data) {
+        return defaultData
+      }
+
+      return {
+        ...defaultData,
+        ...data
+      }
+    },
+    currentStyleCard() {
+      if (this.styleCards.length === 0) return null
+      return this.styleCards[this.currentStyleCardIndex] || this.styleCards[0]
     },
     currentStyleProducts() {
-      return this.styleGender === 'female' ? this.femaleProducts : this.maleProducts
+      const card = this.currentStyleCard
+      if (!card || !card.products) return []
+      return card.products
     }
   },
   methods: {
+    /**
+     * 加载风格灵感数据集合
+     */
+    async loadStyleInspiration() {
+      try {
+        console.log('📡 [Explore] 正在加载风格灵感数据...')
+
+        const collection = await arrayCollectionService.getArrayCollectionBySlug('style-inspiration')
+        console.log('📡 [Explore] 获取到数据集合:', collection)
+
+        if (collection && collection.items && collection.items.length > 0) {
+          // 获取集合的标题
+          this.styleCollectionTitle = collection.title || '风格灵感'
+
+          // 直接使用 items 作为风格卡片，并映射每个卡片内的产品
+          this.styleCards = collection.items.map(item => ({
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            coverImageUrl: item.coverImageUrl,
+            sortOrder: item.sortOrder,
+            products: (item.products || []).map(product => ({
+              id: product.id,
+              name: product.name,
+              category: product.category || '商品',
+              // currentPrice 是以分为单位的整数，需要转换为元
+              price: product.currentPrice ? `${(product.currentPrice / 100).toFixed(2)}` : '0',
+              image: product.coverImageUrl || ''
+            }))
+          }))
+
+          console.log('✅ [Explore] 成功加载风格灵感数据', {
+            title: this.styleCollectionTitle,
+            cardCount: this.styleCards.length,
+            totalProducts: this.styleCards.reduce((sum, card) => sum + (card.products?.length || 0), 0)
+          })
+        } else {
+          console.warn('⚠️ [Explore] 没有获取到风格灵感数据')
+        }
+      } catch (error) {
+        console.error('❌ [Explore] 加载风格灵感数据失败:', error)
+      }
+    },
+
+    /**
+     * 加载 featured banner 数据
+     */
+    async loadFeaturedBanners() {
+      try {
+        this.isLoadingBanners = true
+        console.log('📡 [Explore] 正在加载 featured banner 数据...')
+
+        const response = await bannerService.getBanners(1, 100, 'featured')
+        console.log('📡 [Explore] 获取到 banner 数据:', response)
+
+        if (response && response.items && response.items.length > 0) {
+          // 过滤启用的 banner 并转换数据结构
+          this.heroSlides = response.items
+            .filter(banner => banner.isActive === true)
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map(banner => ({
+              id: banner.id,
+              type: banner.type, // 'image' 或 'video'
+              image: banner.imageUrl || '',
+              videoUrl: banner.videoUrl || '',
+              title: banner.mainTitle,
+              mainTitle: banner.mainTitle,
+              price: banner.subtitle || '',
+              description: banner.description || '精选系列商品，品质卓越'
+            }))
+
+          console.log('✅ [Explore] 成功加载', this.heroSlides.length, '个 featured banner')
+        } else {
+          console.warn('⚠️ [Explore] 没有获取到 featured banner 数据，使用默认数据')
+          // 保持默认数据
+          this.heroSlides = [
+            {
+              id: 'default-1',
+              type: 'image',
+              image: '/static/images/product/120251017222238.jpg',
+              videoUrl: '',
+              title: 'Re-Nylon双肩背包',
+              mainTitle: 'Re-Nylon双肩背包',
+              price: '21,800',
+              description: '四十多年来的经典风格象征以其作为灵感，重新设计出引人注目的新款式，采用新材料和色彩搭配。'
+            },
+            {
+              id: 'default-2',
+              type: 'image',
+              image: '/static/images/product/120251017222229.jpg',
+              videoUrl: '',
+              title: 'Re-Nylon双肩背包',
+              mainTitle: 'Re-Nylon双肩背包',
+              price: '21,800',
+              description: '轻量材质与容量平衡，满足日常通勤与短途出行需求，延续品牌经典语汇。'
+            },
+            {
+              id: 'default-3',
+              type: 'image',
+              image: '/static/images/product/120251017222242.jpg',
+              videoUrl: '',
+              title: 'Re-Nylon与牛皮革拼接',
+              mainTitle: 'Re-Nylon与牛皮革拼接',
+              price: '28,700',
+              description: '精选皮革拼接 Re‑Nylon，强化层次与触感，兼顾耐用与质感。'
+            }
+          ]
+        }
+      } catch (error) {
+        console.error('❌ [Explore] 加载 featured banner 失败:', error)
+        // 加载失败时使用默认数据
+        if (this.heroSlides.length === 0) {
+          this.heroSlides = [
+            {
+              id: 'default-1',
+              type: 'image',
+              image: '/static/images/product/120251017222238.jpg',
+              videoUrl: '',
+              title: 'Re-Nylon双肩背包',
+              mainTitle: 'Re-Nylon双肩背包',
+              price: '21,800',
+              description: '四十多年来的经典风格象征以其作为灵感，重新设计出引人注目的新款式，采用新材料和色彩搭配。'
+            }
+          ]
+        }
+      } finally {
+        this.isLoadingBanners = false
+      }
+    },
     onSwiperChange(e) {
       this.currentSlide = e.detail.current || 0
     },
@@ -257,13 +334,6 @@ export default {
         uni.setStorageSync('pendingCartItems', pending)
       } catch (e) {}
       uni.switchTab({ url: '/pages/cart/cart' })
-    },
-    changeGender(gender) {
-      this.styleGender = gender
-      this.currentStyleSlide = 0
-    },
-    onStyleSwiperChange(e) {
-      this.currentStyleSlide = e.detail.current || 0
     },
     addToCart(product) {
       const toPlain = (val) => String(val).replace(/,/g, '')
@@ -296,6 +366,17 @@ export default {
     },
     backToHome() {
       uni.switchTab({ url: '/pages/index/index' })
+    },
+    onImageLoadError(e) {
+      console.warn('⚠️ [Explore] 图片加载失败:', e)
+    },
+    onStyleCardChange(e) {
+      this.currentStyleCardIndex = e.detail.current || 0
+    },
+    goToProductDetail(productId) {
+      uni.navigateTo({
+        url: `/pages/detail/detail?id=${productId}`
+      })
     }
   }
 }
@@ -397,48 +478,13 @@ export default {
   object-fit: contain;
 }
 
-.product-info-overlay {
-  position: absolute;
-  left: 40rpx;
-  top: 40rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-  max-width: 300rpx;
+.banner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #ffd54d;
 }
-
-.product-info-name {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #000;
-  line-height: 1.3;
-}
-
-.product-info-price {
-  display: block;
-  font-size: 28rpx;
-  color: #000;
-  margin-top: 8rpx;
-}
-
-.product-info-action {
-  display: inline-block;
-  margin-top: 16rpx;
-  padding: 12rpx 24rpx;
-  background: transparent;
-  color: #000;
-  border: 2rpx solid #000;
-  border-radius: 4rpx;
-  font-size: 24rpx;
-  font-weight: 500;
-  text-decoration: underline;
-  text-decoration-thickness: 1rpx;
-
-  &:active {
-    opacity: 0.7;
-  }
-}
+ 
 
 .product-desc-section {
   position: absolute;
@@ -541,26 +587,139 @@ export default {
   }
 }
 
+/* 风格灵感轮播 */
 .style-swiper {
-  height: 800rpx;
+  height: 730rpx;
   margin-bottom: 40rpx;
-  border-radius: 0;
+  background: #fff;
+  border-radius: 8rpx;
   overflow: hidden;
 }
 
-.style-product {
-  height: 800rpx;
+.style-swiper-item {
   width: 100%;
+  height: 100%;
+}
+
+/* 风格灵感布局 */
+.style-container {
+  display: flex;
+  gap: 16rpx;
+  height: 100%;
+  width: 100%;
+  background: #fff;
+}
+
+.style-left {
+  width: 45%;
+  height: 100%;
+  background: #f5f5f5;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
 }
 
-.style-product-image {
+.style-card-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.style-card-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: #f0f0f0;
+  color: #999;
+  font-size: 24rpx;
+}
+
+.style-right {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+.style-products-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding: 16rpx;
+}
+
+.product-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 12rpx;
+  background: #f9f9f9;
+  border-radius: 6rpx;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.product-item:active {
+  background: #f0f0f0;
+}
+
+.product-item-image {
+  width: 100%;
+  height: 160rpx;
+  background: #f0f0f0;
+  border-radius: 4rpx;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-item-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-item-placeholder {
+  font-size: 20rpx;
+  color: #999;
+}
+
+.product-item-info {
+  display: flex;
+  flex-direction: row;
+  gap: 8rpx;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.product-item-name {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #000;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.product-item-price {
+  font-size: 22rpx;
+  color: #ff6b35;
+  font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.empty-products {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200rpx;
+  color: #999;
+  font-size: 24rpx;
 }
 
 .style-action {

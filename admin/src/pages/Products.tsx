@@ -1,157 +1,347 @@
-import { Table, Button, Space, Card, Tag, Input, Row, Col, message, Popconfirm, Modal } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
+import { Table, Button, Space, Card, Input, Select, Popconfirm, message, Row, Col, Image, Modal, Tabs } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, PictureOutlined, VideoCameraOutlined } from '@ant-design/icons'
 import { useState, useEffect } from 'react'
 import Layout from '@/components/Layout'
-import { TABLE_COLUMNS, PRODUCT_STATUS_MAP, COMMON_ACTIONS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '@/constants/i18n'
-import api from '@/services/api'
-
-interface Product {
-  id: number
-  name: string
-  category: string
-  price: number
-  stock: number
-  status: string
-  createdAt: string
-}
+import ProductForm from '@/components/ProductForm'
+import { Product, Category, ProductListItem } from '@/types'
+import { productsService } from '@/services/products'
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<ProductListItem[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
-  const [searchText, setSearchText] = useState('')
+  const [formVisible, setFormVisible] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | undefined>()
+  const [selectedCategory, setSelectedCategory] = useState<number | undefined>()
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [productType, setProductType] = useState<'standard' | 'custom' | 'vip_recharge'>('standard')
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
-  // 获取产品列表
-  const fetchProducts = async (page = 1, limit = 10) => {
-    setLoading(true)
+  // Load categories on mount
+  useEffect(() => {
+    loadCategories()
+  }, [])
+
+  // Load products when filters change
+  useEffect(() => {
+    loadProducts()
+  }, [selectedCategory, pagination.current, pagination.pageSize, productType])
+
+  const loadCategories = async () => {
     try {
-      const params: any = {
-        page,
-        limit,
-      }
-      if (searchText) {
-        params.search = searchText
-      }
-
-      const response = await api.get('/products', { params })
-      const data = response.data
-      setProducts(data.data || [])
-      setPagination({ ...pagination, total: data.total || 0, current: page })
+      const data = await productsService.getCategories()
+      setCategories(data)
     } catch (error) {
-      console.error('获取产品列表失败:', error)
-      message.error(ERROR_MESSAGES.loadFailed)
+      console.error('加载分类失败:', error)
+    }
+  }
+
+  const loadProducts = async () => {
+    try {
+      setLoading(true)
+      const data = await productsService.getProducts({
+        page: pagination.current,
+        limit: pagination.pageSize,
+        keyword: searchKeyword || undefined,
+        categoryId: selectedCategory,
+        productType: productType,
+      })
+      setProducts(data.items)
+      setPagination({ ...pagination, total: data.total })
+    } catch (error) {
+      message.error('加载产品失败')
+      console.error(error)
     } finally {
       setLoading(false)
     }
   }
 
-  // 删除产品
-  const handleDelete = async (productId: number) => {
+  const handleSearch = async (value: string) => {
+    setSearchKeyword(value)
+    setPagination({ ...pagination, current: 1 })
+    // 立即重新加载产品
     try {
-      await api.delete(`/products/${productId}`)
-      message.success(SUCCESS_MESSAGES.deleteSuccess)
-      fetchProducts(pagination.current, pagination.pageSize)
+      setLoading(true)
+      const data = await productsService.getProducts({
+        page: 1,
+        limit: pagination.pageSize,
+        keyword: value || undefined,
+        categoryId: selectedCategory,
+        productType: productType,
+      })
+      setProducts(data.items)
+      setPagination({ ...pagination, current: 1, total: data.total })
     } catch (error) {
-      console.error('删除产品失败:', error)
-      message.error(ERROR_MESSAGES.deleteFailed)
+      message.error('搜索失败')
+    } finally {
+      setLoading(false)
     }
   }
 
-  // 刷新列表
-  const handleRefresh = () => {
-    fetchProducts(1, pagination.pageSize)
+  const handleCategoryChange = async (categoryId: number | undefined) => {
+    setSelectedCategory(categoryId)
+    setPagination({ ...pagination, current: 1 })
+    // 立即重新加载产品
+    try {
+      setLoading(true)
+      const data = await productsService.getProducts({
+        page: 1,
+        limit: pagination.pageSize,
+        keyword: searchKeyword || undefined,
+        categoryId: categoryId,
+        productType: productType,
+      })
+      setProducts(data.items)
+      setPagination({ ...pagination, current: 1, total: data.total })
+    } catch (error) {
+      message.error('筛选失败')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // 搜索
-  const handleSearch = () => {
-    fetchProducts(1, pagination.pageSize)
+  const handleReset = async () => {
+    setSearchKeyword('')
+    setSelectedCategory(undefined)
+    setPagination({ ...pagination, current: 1 })
+    try {
+      setLoading(true)
+      const data = await productsService.getProducts({
+        page: 1,
+        limit: pagination.pageSize,
+        productType: productType,
+      })
+      setProducts(data.items)
+      setPagination({ ...pagination, current: 1, total: data.total })
+    } catch (error) {
+      message.error('重置失败')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // 重置搜索
-  const handleReset = () => {
-    setSearchText('')
-    fetchProducts(1, pagination.pageSize)
+  const handleOpenForm = (product?: Product) => {
+    if (product) {
+      setEditingProduct(product)
+    } else {
+      setEditingProduct(undefined)
+    }
+    setFormVisible(true)
   }
 
-  useEffect(() => {
-    fetchProducts()
-  }, [])
+  const handleCloseForm = () => {
+    setFormVisible(false)
+    setEditingProduct(undefined)
+  }
+
+  const handleSubmitForm = async (data: any) => {
+    try {
+      const { otherImages = [], ...productData } = data
+      let productId: number
+
+      if (editingProduct) {
+        await productsService.updateProduct(editingProduct.id, productData)
+        productId = editingProduct.id
+      } else {
+        const newProduct = await productsService.createProduct(productData)
+        productId = newProduct.id
+      }
+
+      // 处理其他图片（副图）
+      if (otherImages && otherImages.length > 0) {
+        // 如果是编辑，先删除旧的图片
+        if (editingProduct && editingProduct.images) {
+          for (const oldImage of editingProduct.images) {
+            try {
+              await productsService.deleteProductImage(productId, oldImage.id)
+            } catch (err) {
+              console.error('删除旧图片失败:', err)
+            }
+          }
+        }
+
+        // 添加新的图片
+        for (const img of otherImages) {
+          try {
+            await productsService.addProductImage(productId, {
+              imageUrl: img.imageUrl,
+              imageType: img.imageType || 'detail',
+              altText: img.altText || '',
+              sortOrder: img.sortOrder || 0,
+            })
+          } catch (err) {
+            console.error('添加图片失败:', err)
+          }
+        }
+      }
+
+      await loadProducts()
+    } catch (error: any) {
+      throw new Error(error.message || '操作失败')
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    try {
+      await productsService.deleteProduct(id)
+      message.success('产品删除成功')
+      await loadProducts()
+    } catch (error) {
+      message.error('删除产品失败')
+    }
+  }
+
+  const handleBatchDelete = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请选择要删除的产品')
+      return
+    }
+
+    Modal.confirm({
+      title: '批量删除产品',
+      content: `确定要删除选中的 ${selectedRowKeys.length} 个产品吗？此操作无法撤销。`,
+      okText: '确定',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          setDeleteLoading(true)
+          const ids = selectedRowKeys as number[]
+
+          // Delete products in parallel
+          await Promise.all(
+            ids.map((id) => productsService.deleteProduct(id))
+          )
+
+          message.success(`成功删除 ${selectedRowKeys.length} 个产品`)
+          setSelectedRowKeys([])
+          await loadProducts()
+        } catch (error) {
+          message.error('删除部分产品失败')
+        } finally {
+          setDeleteLoading(false)
+        }
+      },
+    })
+  }
+
+  const handleEditProduct = async (id: number) => {
+    try {
+      setLoading(true)
+      const product = await productsService.getProductById(id)
+      handleOpenForm(product)
+    } catch (error) {
+      message.error('加载产品详情失败')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const columns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 80,
-    },
-    {
-      title: TABLE_COLUMNS.name,
-      dataIndex: 'name',
-      key: 'name',
-      ellipsis: true,
-    },
-    {
-      title: TABLE_COLUMNS.category,
-      dataIndex: 'category',
-      key: 'category',
-      width: 120,
-    },
-    {
-      title: TABLE_COLUMNS.price,
-      dataIndex: 'price',
-      key: 'price',
+      title: '图片',
+      dataIndex: 'coverImageUrl',
+      key: 'media',
       width: 100,
-      render: (price: number) => `¥${price.toFixed(2)}`,
-    },
-    {
-      title: TABLE_COLUMNS.stock,
-      dataIndex: 'stock',
-      key: 'stock',
-      width: 80,
-    },
-    {
-      title: TABLE_COLUMNS.status,
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (status: string) => {
-        const statusInfo = PRODUCT_STATUS_MAP[status as keyof typeof PRODUCT_STATUS_MAP]
-        return statusInfo ? (
-          <Tag color={statusInfo.color}>{statusInfo.label}</Tag>
-        ) : (
-          <Tag>{status}</Tag>
+      render: (coverImageUrl: string | undefined, record: ProductListItem) => {
+        if (!coverImageUrl) {
+          return (
+            <div style={{ color: '#999', fontSize: '12px', textAlign: 'center', padding: '8px' }}>
+              <PictureOutlined style={{ fontSize: '16px' }} />
+              <div>未添加</div>
+            </div>
+          )
+        }
+        const isVideo = coverImageUrl.toLowerCase().endsWith('.mp4') ||
+                       coverImageUrl.toLowerCase().endsWith('.webm') ||
+                       coverImageUrl.toLowerCase().endsWith('.mov')
+        return (
+          <div style={{ textAlign: 'center', position: 'relative' }}>
+            {isVideo ? (
+              <div style={{ fontSize: '20px' }}>
+                <VideoCameraOutlined />
+              </div>
+            ) : (
+              <Image
+                src={coverImageUrl}
+                alt={record.name}
+                width={60}
+                height={60}
+                style={{ objectFit: 'cover', borderRadius: '4px' }}
+                preview={{
+                  mask: '查看',
+                }}
+              />
+            )}
+          </div>
         )
       },
     },
     {
-      title: TABLE_COLUMNS.actions,
+      title: '产品名称',
+      dataIndex: 'name',
+      key: 'name',
+      width: 200,
+      render: (text: string, record: ProductListItem) => (
+        <div>
+          <div style={{ fontWeight: 500 }}>{text}</div>
+          {record.subtitle && <div style={{ fontSize: '12px', color: '#999' }}>{record.subtitle}</div>}
+        </div>
+      ),
+    },
+    {
+      title: '分类',
+      dataIndex: 'categoryId',
+      key: 'categoryId',
+      width: 120,
+      render: (categoryId: number) => {
+        const cat = categories.find((c) => c.id === categoryId)
+        return cat?.name || '-'
+      },
+    },
+    {
+      title: '价格',
+      key: 'price',
+      width: 80,
+      render: (_: any, record: ProductListItem) => {
+        const price = (record.currentPrice / 100).toFixed(2)
+        return <div style={{ color: '#f5222d', fontWeight: 500 }}>¥{price}</div>
+      },
+    },
+    {
+      title: '库存',
+      dataIndex: 'stockQuantity',
+      key: 'stockQuantity',
+      width: 80,
+      sorter: (a: ProductListItem, b: ProductListItem) => a.stockQuantity - b.stockQuantity,
+    },
+    {
+      title: '操作',
       key: 'actions',
       width: 150,
-      render: (_: any, record: Product) => (
-        <Space>
+      fixed: 'right' as const,
+      render: (_: any, record: ProductListItem) => (
+        <Space size="small">
           <Button
             type="primary"
             size="small"
             icon={<EditOutlined />}
-            onClick={() => {
-              Modal.info({
-                title: '编辑产品',
-                content: `编辑功能开发中... (ID: ${record.id})`,
-              })
-            }}
+            onClick={() => handleEditProduct(record.id)}
+            loading={loading}
           >
-            {COMMON_ACTIONS.edit}
+            编辑
           </Button>
           <Popconfirm
             title="删除产品"
-            description="确定要删除这个产品吗？"
+            description="确定要删除此产品吗？"
             onConfirm={() => handleDelete(record.id)}
-            okText="确定"
-            cancelText="取消"
-            okButtonProps={{ danger: true }}
+            okText="是"
+            cancelText="否"
           >
             <Button danger size="small" icon={<DeleteOutlined />}>
-              {COMMON_ACTIONS.delete}
+              删除
             </Button>
           </Popconfirm>
         </Space>
@@ -161,72 +351,143 @@ export default function ProductsPage() {
 
   return (
     <Layout>
-      <div className="p-3">
-        {/* 页面标题和操作按钮 */}
-        <div className="flex-between mb-4">
-          <h1>产品列表</h1>
-          <Space>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                Modal.info({
-                  title: '新增产品',
-                  content: '新增产品功能开发中...',
-                })
-              }}
-            >
-              {COMMON_ACTIONS.add}产品
-            </Button>
-            <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading}>
-              {COMMON_ACTIONS.refresh}
-            </Button>
-          </Space>
-        </div>
+      <div style={{ padding: '24px' }}>
+        {/* Header - 仅显示标题 */}
+        <h1 style={{ margin: '0 0 24px 0' }}>产品管理</h1>
 
-        {/* 搜索栏 */}
-        <Card style={{ marginBottom: 16 }}>
+        {/* Product Type Tabs */}
+        <Card style={{ marginBottom: '16px' }}>
+          <Tabs
+            activeKey={productType}
+            onChange={(key) => {
+              setProductType(key as 'standard' | 'custom' | 'vip_recharge')
+              setSelectedRowKeys([])
+              setPagination({ ...pagination, current: 1 })
+            }}
+            items={[
+              {
+                key: 'standard',
+                label: '标准产品',
+              },
+              {
+                key: 'custom',
+                label: '私人定制专属',
+              },
+              {
+                key: 'vip_recharge',
+                label: '会员充值产品',
+              },
+            ]}
+          />
+        </Card>
+
+        {/* Filters Card - 整合搜索、筛选、添加产品 */}
+        <Card style={{ marginBottom: '16px' }}>
           <Row gutter={16}>
-            <Col span={12}>
+            <Col xs={24} sm={12} md={6}>
               <Input.Search
-                placeholder="搜索产品名称..."
-                icon={<SearchOutlined />}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="按产品名称搜索"
                 onSearch={handleSearch}
                 allowClear
               />
             </Col>
-            <Col span={12}>
-              <Space>
-                <Button type="primary" onClick={handleSearch}>
-                  {COMMON_ACTIONS.search}
-                </Button>
-                <Button onClick={handleReset}>
-                  {COMMON_ACTIONS.reset}
-                </Button>
-              </Space>
+            <Col xs={24} sm={12} md={6}>
+              <Select
+                placeholder="按分类筛选"
+                allowClear
+                value={selectedCategory}
+                onChange={handleCategoryChange}
+                style={{ width: '100%' }}
+              >
+                {categories.map((cat) => (
+                  <Select.Option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Col>
+            <Col xs={24} sm={12} md={4}>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={handleReset}
+                block
+              >
+                重置
+              </Button>
+            </Col>
+            <Col xs={24} sm={12} md={8} style={{ textAlign: 'right' }}>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => handleOpenForm()}
+                block
+              >
+                添加产品
+              </Button>
             </Col>
           </Row>
         </Card>
 
-        {/* 表格 */}
-        <Card>
+        {/* Table */}
+        <Card loading={loading}>
+          {/* Table Header - 已选择数量和批量删除 */}
+          {selectedRowKeys.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '16px',
+                padding: '12px',
+                backgroundColor: '#f5f7fa',
+                borderRadius: '4px',
+              }}
+            >
+              <span style={{ fontSize: '14px', color: '#666' }}>
+                已选择 <strong style={{ color: '#1890ff' }}>{selectedRowKeys.length}</strong> 个产品
+              </span>
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={handleBatchDelete}
+                loading={deleteLoading}
+              >
+                批量删除
+              </Button>
+            </div>
+          )}
+
           <Table
             columns={columns}
-            dataSource={products.map((item) => ({ ...item, key: item.id }))}
-            loading={loading}
+            dataSource={products.map((p) => ({ ...p, key: p.id }))}
+            rowSelection={{
+              selectedRowKeys,
+              onChange: (newSelectedRowKeys: React.Key[]) => setSelectedRowKeys(newSelectedRowKeys),
+            }}
             pagination={{
               current: pagination.current,
               pageSize: pagination.pageSize,
               total: pagination.total,
               showSizeChanger: true,
-              showTotal: (total) => `共 ${total} 条记录`,
-              onChange: (page, pageSize) => fetchProducts(page, pageSize),
+              showTotal: (total) => `共 ${total} 个产品`,
+              onChange: (page, pageSize) => {
+                setPagination({ ...pagination, current: page, pageSize })
+              },
             }}
             scroll={{ x: 1200 }}
           />
         </Card>
+
+        {/* Form Modal */}
+        <ProductForm
+          visible={formVisible}
+          loading={loading}
+          product={editingProduct}
+          onClose={handleCloseForm}
+          onSubmit={handleSubmitForm}
+          categories={categories}
+          defaultProductType={productType}
+        />
       </div>
     </Layout>
   )

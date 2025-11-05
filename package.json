@@ -6,6 +6,8 @@
   "scripts": {
     "start": "npm run start:all",
     "start:all": "node scripts/start-all.js",
+    "start:admin-api": "bash ./start-admin-api.sh",
+    "start:dev": "bash ./start-admin-api.sh",
     "setup:database": "node scripts/setup-database.js",
     "dev:backend": "cd nestapi && npm run start:dev",
     "dev:miniprogram": "cd miniprogram && npm run dev:h5",

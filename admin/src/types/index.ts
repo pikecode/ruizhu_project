@@ -24,13 +24,125 @@ export interface Permission {
 
 // Product
 export interface Product {
-  id: string
+  id: number
   name: string
-  description: string
-  price: number
-  stock: number
-  category: string
-  images: string[]
+  subtitle?: string
+  sku: string
+  description?: string
+  categoryId: number
+  categoryName?: string
+  productType?: 'standard' | 'custom' | 'vip_recharge' // 产品类型
+  // Status fields
+  isNew: boolean
+  isSaleOn: boolean
+  isOutOfStock: boolean
+  isSoldOut: boolean
+  isVipOnly: boolean
+  // Stock
+  stockQuantity: number
+  lowStockThreshold: number
+  // Shipping
+  weight?: number
+  shippingTemplateId?: number
+  freeShippingThreshold?: number
+  // Price
+  price?: {
+    id: number
+    originalPrice: number
+    currentPrice: number
+    discountRate: number
+    currency: string
+    vipDiscountRate?: number
+  }
+  // Stats
+  stats?: {
+    salesCount: number
+    viewsCount: number
+    averageRating: number
+    reviewsCount: number
+    favoritesCount: number
+    conversionRate?: number
+  }
+  // Images
+  coverImageUrl?: string | null
+  images?: Array<{
+    id: number
+    imageUrl: string
+    imageType: string
+    altText?: string
+    sortOrder: number
+    width?: number
+    height?: number
+    fileSize?: number
+  }>
+  // Tags
+  tags?: Array<{
+    id: number
+    tagName: string
+  }>
+  // Timestamps
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ProductListItem extends Omit<Product, 'images' | 'tags'> {
+  coverImageUrl?: string | null
+  tags?: string[]
+  currentPrice: number
+  originalPrice: number
+  discountRate: number
+  salesCount: number
+  averageRating: number
+  reviewsCount: number
+}
+
+export interface Category {
+  id: number
+  name: string
+  slug?: string
+  icon?: string
+  description?: string
+  sortOrder?: number
+  isActive?: boolean
+  parentId?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+// Collection
+export interface Collection {
+  id: number
+  name: string
+  slug: string
+  description?: string
+  coverImageUrl?: string | null
+  iconUrl?: string | null
+  sortOrder: number
+  isActive: boolean
+  isFeatured: boolean
+  remark?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CollectionListItem extends Collection {
+  productCount: number
+}
+
+export interface CollectionDetail extends Collection {
+  products?: ProductListItem[]
+  productCount: number
+}
+
+// Array Collection
+export interface ArrayCollection {
+  id: number
+  title: string
+  slug?: string | null
+  description?: string
+  sortOrder: number
+  isActive: boolean
+  remark?: string
   createdAt: string
   updatedAt: string
 }
@@ -81,6 +193,23 @@ export interface ApiResponse<T = any> {
   code: number
   message: string
   data?: T
+}
+
+// Member Benefits
+export interface MemberBenefit {
+  id: number
+  title: string
+  subtitle?: string | null
+  imageUrl?: string | null
+  imageKey?: string | null
+  isActive: boolean
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MemberBenefitListItem extends Omit<MemberBenefit, 'imageKey'> {
+  // 列表项特有字段
 }
 
 // Pagination

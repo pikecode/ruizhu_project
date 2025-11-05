@@ -99,6 +99,8 @@
 </template>
 
 <script>
+import { api } from '../../services/api'
+
 export default {
   data() {
     return {
@@ -107,13 +109,59 @@ export default {
         analysis: true,
         marketing: true,
         transfer: true
-      }
+      },
+      isLoading: false,
+      isSaving: false
     }
   },
   onLoad() {
-    console.log('个人信息授权页面加载完成')
+    this.loadAuthorizations()
+  },
+  onShow() {
+    // Reload on page display to ensure latest data
+    this.loadAuthorizations()
   },
   methods: {
+    /**
+     * Load user's authorization settings from server
+     */
+    async loadAuthorizations() {
+      this.isLoading = true
+      try {
+        const token = uni.getStorageSync('accessToken')
+        if (!token) {
+          uni.showToast({
+            title: '请先登录',
+            icon: 'none'
+          })
+          return
+        }
+
+        const response = await api.get('/user/authorizations')
+
+        console.log('授权设置响应:', response)
+
+        if (response) {
+          // Convert API response (0/1) to boolean for UI
+          this.authorizations = {
+            registration: response.registration === 1,
+            analysis: response.analysis === 1,
+            marketing: response.marketing === 1,
+            transfer: response.transfer === 1
+          }
+        } else {
+          console.warn('获取授权设置失败')
+        }
+      } catch (error) {
+        console.error('加载授权设置出错:', error)
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    /**
+     * Toggle checkbox for authorization
+     */
     toggleCheckbox(key, value = null) {
       if (value !== null) {
         this.authorizations[key] = value
@@ -121,38 +169,111 @@ export default {
         this.authorizations[key] = !this.authorizations[key]
       }
     },
+
+    /**
+     * Navigate to privacy policy page
+     */
     goToPrivacy() {
       uni.navigateTo({
         url: '/pages/legal/legal'
       })
     },
+
+    /**
+     * Deactivate user account (delete)
+     */
     onDeactivateAccount() {
       uni.showModal({
         title: '停用账户',
         content: '您确定要永久删除您的账户吗？此操作无法撤销。',
-        success: (res) => {
+        success: async (res) => {
           if (res.confirm) {
-            uni.showToast({
-              title: '账户已删除',
-              icon: 'success',
-              duration: 1500
-            })
-            setTimeout(() => {
-              uni.navigateBack()
-            }, 1500)
+            try {
+              const token = uni.getStorageSync('accessToken')
+              if (!token) {
+                uni.showToast({
+                  title: '请先登录',
+                  icon: 'none'
+                })
+                return
+              }
+
+              await api.delete('/users/deactivate')
+
+              uni.showToast({
+                title: '账户已删除',
+                icon: 'success',
+                duration: 1500
+              })
+
+              // Clear local storage and navigate back after delay
+              setTimeout(() => {
+                uni.removeStorageSync('accessToken')
+                uni.removeStorageSync('userInfo')
+                uni.reLaunch({
+                  url: '/pages/auth/login'
+                })
+              }, 1500)
+            } catch (error) {
+              console.error('删除账户出错:', error)
+              uni.showToast({
+                title: '删除账户出错',
+                icon: 'none'
+              })
+            }
           }
         }
       })
     },
-    onSaveAuthorization() {
-      uni.showToast({
-        title: '授权设置已保存',
-        icon: 'success',
-        duration: 1500
-      })
-      setTimeout(() => {
-        uni.navigateBack()
-      }, 1500)
+
+    /**
+     * Save authorization settings to server
+     */
+    async onSaveAuthorization() {
+      if (this.isSaving) return
+
+      this.isSaving = true
+      try {
+        const token = uni.getStorageSync('accessToken')
+        if (!token) {
+          uni.showToast({
+            title: '请先登录',
+            icon: 'none'
+          })
+          this.isSaving = false
+          return
+        }
+
+        // Convert boolean to 0/1 for API
+        const payload = {
+          registration: this.authorizations.registration ? 1 : 0,
+          analysis: this.authorizations.analysis ? 1 : 0,
+          marketing: this.authorizations.marketing ? 1 : 0,
+          transfer: this.authorizations.transfer ? 1 : 0
+        }
+
+        await api.put('/user/authorizations', payload)
+
+        console.log('保存授权设置成功')
+
+        uni.showToast({
+          title: '授权设置已保存',
+          icon: 'success',
+          duration: 1500
+        })
+
+        setTimeout(() => {
+          uni.navigateBack()
+        }, 1500)
+      } catch (error) {
+        console.error('保存授权设置出错:', error)
+        uni.showToast({
+          title: '保存出错',
+          icon: 'none'
+        })
+      } finally {
+        this.isSaving = false
+      }
     }
   }
 }

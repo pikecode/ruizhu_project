@@ -6,13 +6,13 @@ export default function DashboardPage() {
   return (
     <Layout>
       <div className="p-3">
-        <h1>Dashboard</h1>
+        <h1>仪表板</h1>
 
         <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
           <Col xs={24} sm={12} lg={6}>
             <Card>
               <Statistic
-                title="Total Users"
+                title="用户总数"
                 value={1234}
                 prefix={<UserOutlined />}
                 valueStyle={{ color: '#1890ff' }}
@@ -22,7 +22,7 @@ export default function DashboardPage() {
           <Col xs={24} sm={12} lg={6}>
             <Card>
               <Statistic
-                title="Total Products"
+                title="产品总数"
                 value={567}
                 prefix={<ShoppingCartOutlined />}
                 valueStyle={{ color: '#52c41a' }}
@@ -32,7 +32,7 @@ export default function DashboardPage() {
           <Col xs={24} sm={12} lg={6}>
             <Card>
               <Statistic
-                title="Total Orders"
+                title="订单总数"
                 value={890}
                 prefix={<FileTextOutlined />}
                 valueStyle={{ color: '#faad14' }}
@@ -42,11 +42,11 @@ export default function DashboardPage() {
           <Col xs={24} sm={12} lg={6}>
             <Card>
               <Statistic
-                title="Total Revenue"
+                title="总收入"
                 value={123456}
                 prefix={<DollarOutlined />}
                 precision={2}
-                suffix="CNY"
+                suffix="元"
                 valueStyle={{ color: '#f5222d' }}
               />
             </Card>
@@ -55,13 +55,13 @@ export default function DashboardPage() {
 
         <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
           <Col xs={24} lg={12}>
-            <Card title="Recent Orders">
-              <p>Recent orders list will be displayed here</p>
+            <Card title="最近订单">
+              <p>最近的订单列表将显示在此处</p>
             </Card>
           </Col>
           <Col xs={24} lg={12}>
-            <Card title="User Statistics">
-              <p>User statistics chart will be displayed here</p>
+            <Card title="用户统计">
+              <p>用户统计图表将显示在此处</p>
             </Card>
           </Col>
         </Row>

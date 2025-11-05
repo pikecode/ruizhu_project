@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Form, Input, Button, Card, message } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
@@ -20,13 +19,13 @@ export default function LoginPage() {
   const onFinish = async (values: LoginFormValues) => {
     try {
       setIsLoading(true)
-      const response = await authService.login(values)
+      const response = await authService.adminLogin(values)
 
       setToken(response.accessToken)
       setUser(response.user)
 
-      message.success('Login successful')
-      navigate('/dashboard')
+      message.success('登录成功')
+      navigate('/products')
     } catch (error) {
       message.error(getErrorMessage(error))
     } finally {
@@ -38,18 +37,18 @@ export default function LoginPage() {
     <div className={styles.container}>
       <Card className={styles.card}>
         <div className={styles.header}>
-          <h1>Ruizhu Admin</h1>
-          <p>E-Commerce Management Platform</p>
+          <h1>睿珠管理系统</h1>
+          <p>电商管理平台</p>
         </div>
 
         <Form form={form} onFinish={onFinish} layout="vertical">
           <Form.Item
             name="username"
-            rules={[{ required: true, message: 'Please input your username!' }]}
+            rules={[{ required: true, message: '请输入用户名!' }]}
           >
             <Input
               prefix={<UserOutlined />}
-              placeholder="Username"
+              placeholder="用户名"
               size="large"
               autoComplete="username"
             />
@@ -57,11 +56,11 @@ export default function LoginPage() {
 
           <Form.Item
             name="password"
-            rules={[{ required: true, message: 'Please input your password!' }]}
+            rules={[{ required: true, message: '请输入密码!' }]}
           >
             <Input.Password
               prefix={<LockOutlined />}
-              placeholder="Password"
+              placeholder="密码"
               size="large"
               autoComplete="current-password"
             />
@@ -69,13 +68,18 @@ export default function LoginPage() {
 
           <Form.Item>
             <Button type="primary" htmlType="submit" block size="large">
-              Sign In
+              登录
             </Button>
           </Form.Item>
         </Form>
 
         <div className={styles.footer}>
-          <p>Demo: Use any username/password to test</p>
+          <p>💡 默认测试账户：</p>
+          <p style={{ fontSize: '12px', color: '#666' }}>
+            超级管理员 admin / admin123456<br/>
+            经理 manager / manager123456<br/>
+            操作员 operator / operator123456
+          </p>
         </div>
       </Card>
     </div>

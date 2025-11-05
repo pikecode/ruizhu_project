@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { Layout as AntLayout, Menu, Button, Dropdown, Space, Drawer } from 'antd'
+import { useState, useCallback, useMemo } from 'react'
+import { Layout as AntLayout, Menu, Button, Dropdown, Space, Spin } from 'antd'
 import { MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store'
 import styles from './Layout.module.scss'
 
@@ -13,51 +13,106 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [collapsed, setCollapsed] = useState(false)
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
   const { logout, user } = useAuthStore()
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logout()
     navigate('/login')
-  }
+  }, [logout, navigate])
 
-  const menuItems = [
-    {
-      key: '/dashboard',
-      label: '仪表板',
-      onClick: () => navigate('/dashboard'),
-    },
+  // 使用useCallback缓存导航函数，避免Menu不必要的重新渲染
+  const handleNavigate = useCallback((path: string) => {
+    // 如果已经在该路径，不要导航
+    if (location.pathname === path) return
+
+    // 添加加载状态
+    setLoading(true)
+    // 使用setTimeout来触发路由导航，让加载状态能够显示
+    const timer = setTimeout(() => {
+      navigate(path)
+      // 导航完成后关闭加载状态
+      setTimeout(() => setLoading(false), 100)
+    }, 50)
+
+    return () => clearTimeout(timer)
+  }, [location.pathname, navigate])
+
+  // 使用useMemo来缓存menuItems，避免每次都重新创建
+  const menuItems = useMemo(() => [
     {
       key: '/products',
-      label: '产品管理',
-      onClick: () => navigate('/products'),
+      label: '产品',
+      onClick: () => handleNavigate('/products'),
+    },
+    {
+      key: '/collections',
+      label: '集合',
+      onClick: () => handleNavigate('/collections'),
+    },
+    {
+      key: '/array-collections',
+      label: '数组集合',
+      onClick: () => handleNavigate('/array-collections'),
+    },
+    {
+      key: '/banners',
+      label: '首页Banner',
+      onClick: () => handleNavigate('/banners'),
+    },
+    {
+      key: '/custom-banners',
+      label: '私人定制Banner',
+      onClick: () => handleNavigate('/custom-banners'),
+    },
+    {
+      key: '/profile-banners',
+      label: '我的页面Banner',
+      onClick: () => handleNavigate('/profile-banners'),
+    },
+    {
+      key: '/about-banners',
+      label: '关于页面Banner',
+      onClick: () => handleNavigate('/about-banners'),
+    },
+    {
+      key: '/featured-banners',
+      label: '精选系列Banner',
+      onClick: () => handleNavigate('/featured-banners'),
+    },
+    {
+      key: '/news',
+      label: '资讯',
+      onClick: () => handleNavigate('/news'),
     },
     {
       key: '/orders',
-      label: '订单管理',
-      onClick: () => navigate('/orders'),
+      label: '订单',
+      onClick: () => handleNavigate('/orders'),
     },
     {
-      key: '/coupons',
-      label: '优惠券管理',
-      onClick: () => navigate('/coupons'),
+      key: '/consultations',
+      label: '💬 产品咨询',
+      onClick: () => handleNavigate('/consultations'),
+    },
+    {
+      key: '/member-benefits',
+      label: '🎁 会员礼遇',
+      onClick: () => handleNavigate('/member-benefits'),
     },
     {
       key: '/users',
-      label: '用户管理',
-      onClick: () => navigate('/users'),
+      label: '🔐 Admin用户',
+      onClick: () => handleNavigate('/users'),
     },
     {
-      key: '/files',
-      label: '文件管理',
-      onClick: () => navigate('/files'),
+      key: '/consumer-users',
+      label: '👥 消费者用户',
+      onClick: () => handleNavigate('/consumer-users'),
     },
-    {
-      key: '/settings',
-      label: '系统设置',
-      onClick: () => navigate('/settings'),
-    },
-  ]
+  ], [handleNavigate])
 
   const userMenu = [
     {
@@ -77,12 +132,12 @@ export default function Layout({ children }: LayoutProps) {
     <AntLayout className={styles.layout}>
       <Sider trigger={null} collapsible collapsed={collapsed} className={styles.sider}>
         <div className={styles.logo}>
-          {collapsed ? 'RA' : 'Ruizhu Admin'}
+          {collapsed ? 'RZ' : '睿珠管理系统'}
         </div>
         <Menu
           theme="dark"
           mode="inline"
-          defaultSelectedKeys={['/dashboard']}
+          selectedKeys={[location.pathname]}
           items={menuItems}
         />
       </Sider>
@@ -101,7 +156,7 @@ export default function Layout({ children }: LayoutProps) {
               <Button type="text">
                 <Space>
                   <UserOutlined />
-                  {user?.username || 'User'}
+                  {user?.username || '用户'}
                 </Space>
               </Button>
             </Dropdown>
@@ -109,7 +164,11 @@ export default function Layout({ children }: LayoutProps) {
         </Header>
 
         <Content className={styles.content}>
-          {children}
+          <Spin spinning={loading} delay={50}>
+            <div className={loading ? styles.contentFading : ''}>
+              {children}
+            </div>
+          </Spin>
         </Content>
       </AntLayout>
     </AntLayout>

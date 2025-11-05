@@ -1,0 +1,90 @@
+# Compiled output & Dependencies (root level)
+dist/
+dist-ssr/
+build/
+out/
+node_modules/
+unpackage/
+*.local
+
+# Admin subdirectory
+admin/node_modules/
+admin/dist/
+admin/dist-ssr/
+admin/build/
+
+# NestAPI subdirectory
+nestapi/node_modules/
+nestapi/dist/
+nestapi/build/
+nestapi/coverage/
+nestapi/.nyc_output/
+
+# MiniProgram subdirectory
+miniprogram/node_modules/
+miniprogram/dist/
+miniprogram/unpackage/
+miniprogram/.hbuilderx/
+miniprogram/src/manifest.json.bak
+miniprogram/src/pages.json.bak
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Tests
+coverage/
+.nyc_output/
+
+# IDEs and editors
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Visual Studio
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# Package managers
+package-lock.json
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

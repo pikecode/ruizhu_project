@@ -14,21 +14,17 @@
         :circular="false"
         @change="onBannerChange"
       >
-        <!-- 第一个轮播项：WebP 动画 -->
-        <swiper-item>
-          <view class="banner-item video-item">
-            <image class="banner-image" src="https://ompeak.com/banner-animation.webp" mode="aspectFill"></image>
-          </view>
-        </swiper-item>
-
-        <!-- 其他轮播项 -->
-        <swiper-item v-for="(item, index) in bannerList" :key="index">
-          <view class="banner-item">
-            <image class="banner-image" :src="item.image" mode="aspectFill"></image>
+        <!-- 所有轮播项：统一结构 -->
+        <swiper-item v-for="(item, index) in allBanners" :key="index">
+          <view class="banner-item" @tap="onBannerTap(item)">
+            <!-- 视频类型：显示视频，使用封面图作为 poster -->
+            <video v-if="item.type === 'video'" class="banner-video" :src="item.image" :poster="item.videoThumbnail" controls="false" autoplay muted loop></video>
+            <!-- 图片类型：显示图片 -->
+            <image v-else class="banner-image" :src="item.image" mode="aspectFill"></image>
             <view class="banner-overlay">
-              <text class="banner-title">{{ item.title }}</text>
+              <text class="banner-title" @tap.stop="onBannerTap(item)">{{ item.title }}</text>
               <view class="banner-subtitle">
-                <text class="subtitle-text">{{ item.subtitle }}</text>
+                <text class="subtitle-text" @tap.stop="onBannerTap(item)">{{ item.subtitle }}</text>
                 <view class="subtitle-line"></view>
               </view>
             </view>
@@ -39,28 +35,8 @@
 
     <!-- 页面标题 -->
     <view class="page-header">
-      <text class="main-title">VIP私人定制</text>
-      <text class="sub-title">专属尊贵体验</text>
-    </view>
-
-    <!-- 分类标签 -->
-    <view class="category-tabs">
-      <view
-        class="tab-item"
-        :class="{ active: activeTab === 'women' }"
-        @tap="switchTab('women')"
-      >
-        <text class="tab-text">女士甄选</text>
-        <view v-if="activeTab === 'women'" class="tab-line"></view>
-      </view>
-      <view
-        class="tab-item"
-        :class="{ active: activeTab === 'men' }"
-        @tap="switchTab('men')"
-      >
-        <text class="tab-text">男士甄选</text>
-        <view v-if="activeTab === 'men'" class="tab-line"></view>
-      </view>
+      <text class="main-title">{{ collectionName }}</text>
+      <text class="sub-title">{{ collectionDescription }}</text>
     </view>
 
     <!-- 产品展示 Swiper 区域 -->
@@ -128,6 +104,8 @@
 
 <script>
 import CustomNavbar from '@/components/CustomNavbar.vue'
+import { bannerService } from '@/services/banner'
+import { collectionService } from '@/services/collection'
 
 export default {
   components: {
@@ -139,105 +117,205 @@ export default {
       indicatorColor: 'rgba(255, 255, 255, 0.5)',
       indicatorActiveColor: '#ffffff',
       currentBannerIndex: 0,
-      bannerList: [
-        {
-          title: 'VIP定制系列',
-          subtitle: '尊贵定制',
-          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80'
-        },
-        {
-          title: '私人定制',
-          subtitle: '专属服务',
-          image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=800&q=80'
-        },
-        {
-          title: '尊享礼遇',
-          subtitle: '至尊体验',
-          image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80'
-        }
-      ],
+      // 从 API 加载的轮播数据
+      allBanners: [],
+      // Banner 加载状态
+      bannerLoading: false,
 
-      // 产品相关
-      activeTab: 'women',
+      // 产品相关（从 API 加载）
       currentSlide: 0,
-      productSlides: [
-        {
-          featured: {
-            name: '定制时尚鞋',
-            price: '1999',
-            image: '/static/images/product/120251017222234.jpg'
-          },
-          products: [
-            {
-              name: '高级配饰',
-              price: '12,500',
-              image: '/static/images/product/120251017184152.jpg'
-            },
-            {
-              name: '高级配饰',
-              price: '5,800',
-              image: '/static/images/product/120251017184157.jpg'
-            }
-          ]
-        },
-        {
-          featured: {
-            name: '奢华商务包',
-            price: '35,600',
-            image: '/static/images/product/120251017222229.jpg'
-          },
-          products: [
-            {
-              name: '高级配饰',
-              price: '8,900',
-              image: '/static/images/product/120251017184201.jpg'
-            },
-            {
-              name: '高级配饰',
-              price: '15,800',
-              image: '/static/images/product/120251017184205.jpg'
-            }
-          ]
-        },
-        {
-          featured: {
-            name: '时尚背包系列',
-            price: '22,500',
-            image: '/static/images/product/120251017222238.jpg'
-          },
-          products: [
-            {
-              name: '高级配饰',
-              price: '18,900',
-              image: '/static/images/product/120251017184212.jpg'
-            },
-            {
-              name: '高级配饰',
-              price: '9,200',
-              image: '/static/images/product/120251017184216.jpg'
-            }
-          ]
-        }
-      ]
+      productSlides: [],
+      collectionName: '',
+      collectionDescription: ''
     }
   },
+  onLoad() {
+    console.log('VIP定制页面加载完成')
+    // 加载轮播图数据
+    this.loadBanners()
+    // 加载产品数据
+    this.loadProducts()
+  },
   methods: {
+    /**
+     * 加载轮播图数据
+     * 从 API 获取 custom banner 数据
+     */
+    async loadBanners() {
+      try {
+        this.bannerLoading = true
+        const result = await bannerService.getBanners(1, 100, 'custom')
+
+        if (result && result.items && result.items.length > 0) {
+          // 转换 API 返回的数据格式为前端需要的格式
+          this.allBanners = result.items.map(banner => ({
+            id: banner.id,
+            type: banner.type, // 'image' 或 'video'
+            title: banner.mainTitle,
+            subtitle: banner.subtitle,
+            // 如果是视频，显示视频 URL；如果是图片，显示图片 URL
+            image: bannerService.getDisplayUrl(banner),
+            // 视频封面图（用于 video 的 poster 属性）
+            videoThumbnail: banner.videoThumbnailUrl || '',
+            // 保存完整的 banner 数据用于点击处理
+            linkType: banner.linkType,
+            linkValue: banner.linkValue,
+            videoUrl: bannerService.getVideoUrl(banner)
+          }))
+
+          console.log('轮播图加载成功:', this.allBanners)
+        } else {
+          console.warn('未获取到轮播图数据')
+        }
+      } catch (error) {
+        console.error('加载轮播图失败:', error)
+        uni.showToast({ title: '轮播图加载失败', icon: 'none' })
+      } finally {
+        this.bannerLoading = false
+      }
+    },
+
+    /**
+     * 加载产品数据
+     * 从 API 获取 private-customization 集合数据
+     */
+    async loadProducts() {
+      try {
+        const collection = await collectionService.getCollectionBySlug('private-customization')
+
+        if (collection) {
+          // 保存集合的名称和描述
+          this.collectionName = collection.name || ''
+          this.collectionDescription = collection.description || ''
+
+          if (collection.products && collection.products.length > 0) {
+            // 将产品转换为 productSlides 格式
+            // 每个 slide 包含一个 featured 和 2 个 products
+            const products = collection.products
+            const slides = []
+
+            for (let i = 0; i < products.length; i += 3) {
+              const featured = products[i]
+              const slide = {
+                featured: {
+                  name: featured.name,
+                  price: (featured.currentPrice / 100).toFixed(2),
+                  image: featured.coverImageUrl || '',
+                  id: featured.id
+                },
+                products: []
+              }
+
+              // 添加相邻的两个产品到 slide 的 products 中
+              for (let j = i + 1; j < i + 3 && j < products.length; j++) {
+                const product = products[j]
+                slide.products.push({
+                  name: product.name,
+                  price: (product.currentPrice / 100).toFixed(2),
+                  image: product.coverImageUrl || '',
+                  id: product.id
+                })
+              }
+
+              slides.push(slide)
+            }
+
+            this.productSlides = slides
+            console.log('产品数据加载成功:', this.productSlides)
+          } else {
+            console.warn('集合中没有产品数据')
+          }
+        } else {
+          console.warn('未获取到集合数据')
+        }
+      } catch (error) {
+        console.error('加载产品数据失败:', error)
+        uni.showToast({ title: '产品加载失败', icon: 'none' })
+      }
+    },
+
     onBannerChange(e) {
       this.currentBannerIndex = e.detail.current
     },
-    switchTab(tab) {
-      this.activeTab = tab
-      // 这里可以加载不同的产品数据
-      console.log('切换到:', tab === 'women' ? '女士' : '男士')
+
+    /**
+     * 处理 banner 点击事件
+     * 根据 linkType 处理跳转逻辑
+     */
+    onBannerTap(banner) {
+      const { linkType, linkValue, title } = banner
+
+      switch (linkType) {
+        case 'product':
+          // 跳转到商品详情
+          if (linkValue) {
+            uni.navigateTo({
+              url: `/pages/product/detail?id=${linkValue}`,
+              fail: () => {
+                uni.showToast({ title: '页面开发中', icon: 'none' })
+              }
+            })
+          }
+          break
+
+        case 'category':
+          // 跳转到分类页面
+          if (linkValue) {
+            uni.navigateTo({
+              url: `/pages/category/list?categoryId=${linkValue}`,
+              fail: () => {
+                uni.showToast({ title: '页面开发中', icon: 'none' })
+              }
+            })
+          }
+          break
+
+        case 'collection':
+          // 跳转到集合/专题详情
+          if (linkValue) {
+            uni.navigateTo({
+              url: `/pages/collection/detail?id=${linkValue}`,
+              fail: () => {
+                uni.showToast({ title: '页面开发中', icon: 'none' })
+              }
+            })
+          }
+          break
+
+        case 'url':
+          // 跳转到外部链接
+          if (linkValue) {
+            uni.navigateTo({
+              url: `/pages/webview/index?url=${encodeURIComponent(linkValue)}`,
+              fail: () => {
+                uni.showToast({ title: '页面开发中', icon: 'none' })
+              }
+            })
+          }
+          break
+
+        case 'none':
+        default:
+          // 无链接
+          console.log('Banner 无关联链接:', title)
+          break
+      }
     },
+
     onSwiperChange(e) {
       this.currentSlide = e.detail.current
     },
+
     onProductTap(product) {
-      uni.navigateTo({
-        url: '/pages/product/detail'
-      })
+      if (product && product.id) {
+        uni.navigateTo({
+          url: `/pages/product/detail?id=${product.id}`
+        })
+      } else {
+        uni.showToast({ title: '产品信息不完整', icon: 'none' })
+      }
     },
+
     onExploreMore() {
       uni.navigateTo({
         url: '/pages/consultation/consultation'
@@ -273,6 +351,12 @@ export default {
   .banner-image {
     width: 100%;
     height: 100%;
+  }
+
+  .banner-video {
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
   }
 
   .banner-overlay {
@@ -339,39 +423,6 @@ export default {
     font-size: 28rpx;
     color: #666666;
     letter-spacing: 1rpx;
-  }
-}
-
-/* 分类标签 */
-.category-tabs {
-  display: flex;
-  justify-content: center;
-  gap: 80rpx;
-  padding: 0 40rpx 60rpx;
-
-  .tab-item {
-    position: relative;
-    padding-bottom: 20rpx;
-    cursor: pointer;
-
-    .tab-text {
-      font-size: 32rpx;
-      color: #999999;
-    }
-
-    &.active .tab-text {
-      color: #000000;
-      font-weight: 500;
-    }
-
-    .tab-line {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 4rpx;
-      background: #000000;
-    }
   }
 }
 

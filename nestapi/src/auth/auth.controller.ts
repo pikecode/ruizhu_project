@@ -1,129 +1,123 @@
-import {
-  Controller,
-  Post,
-  Body,
-  HttpCode,
-  HttpStatus,
-  Get,
-  Put,
-  UseGuards,
-  Req,
-  Ip,
-} from '@nestjs/common';
-import type { Request } from 'express';
+import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { JwtGuard } from './jwt.guard';
-import { CurrentUser } from './current-user.decorator';
-import { AuthRegisterDto } from './dto/auth-register.dto';
-import { AuthLoginDto } from './dto/auth-login.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { UpdateProfileDto } from './dto/update-profile.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { AdminAuthService } from '../modules/auth/admin-auth.service';
+import { WechatPhoneLoginDto } from '../users/dto/wechat-phone-login.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private adminAuthService: AdminAuthService,
+  ) {}
 
   /**
-   * Register a new user
-   * POST /auth/register
+   * Admin 后台系统登录
+   * 用于 Admin 管理系统的身份验证
    */
-  @Post('register')
-  @HttpCode(HttpStatus.CREATED)
-  async register(
-    @Body() registerDto: AuthRegisterDto,
-    @Ip() ipAddress: string,
-    @Req() request: Request,
-  ) {
-    const userAgent = request.headers['user-agent'];
-    return this.authService.register(registerDto, ipAddress, userAgent);
+  @Post('admin/login')
+  @HttpCode(HttpStatus.OK)
+  async adminLogin(@Body() loginDto: { username: string; password: string }) {
+    return this.adminAuthService.adminLogin(loginDto);
   }
 
   /**
-   * Login user
-   * POST /auth/login
+   * 用户名密码登录（小程序用户）
    */
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(
-    @Body() loginDto: AuthLoginDto,
-    @Ip() ipAddress: string,
-    @Req() request: Request,
+  async login(@Body() loginDto: { username: string; password: string }) {
+    return this.authService.login(loginDto.username, loginDto.password);
+  }
+
+  /**
+   * 用户注册
+   */
+  @Post('register')
+  async register(@Body() registerDto: { username: string; password: string; email: string }) {
+    return this.authService.register(registerDto);
+  }
+
+  /**
+   * 微信手机号授权登录
+   * 小程序用户通过手机号授权进行登录或注册
+   *
+   * 请求体:
+   * {
+   *   "openId": "用户的微信openId",
+   *   "encryptedPhone": "加密的手机号数据 (base64)",
+   *   "iv": "初始化向量 (base64)",
+   *   "sessionKey": "微信会话密钥 (base64)"
+   * }
+   *
+   * 响应:
+   * {
+   *   "access_token": "JWT token",
+   *   "user": { 用户信息 }
+   * }
+   */
+  @Post('wechat/phone-login')
+  @HttpCode(HttpStatus.OK)
+  async wechatPhoneLogin(@Body() dto: WechatPhoneLoginDto) {
+    return this.authService.wechatPhoneLogin(dto.openId, dto.encryptedPhone, dto.iv, dto.sessionKey);
+  }
+
+  /**
+   * 微信openId登录
+   * 用户第一次使用微信小程序登录（没有授权手机号）
+   *
+   * 请求体:
+   * {
+   *   "openId": "用户的微信openId",
+   *   "nickName": "昵称 (可选)",
+   *   "avatarUrl": "头像URL (可选)",
+   *   "gender": "性别 1=男 2=女 (可选)",
+   *   "province": "省份 (可选)",
+   *   "city": "城市 (可选)",
+   *   "country": "国家 (可选)"
+   * }
+   */
+  @Post('wechat/open-id-login')
+  @HttpCode(HttpStatus.OK)
+  async wechatOpenIdLogin(
+    @Body()
+    dto: {
+      openId: string;
+      nickName?: string;
+      avatarUrl?: string;
+      gender?: number;
+      province?: string;
+      city?: string;
+      country?: string;
+    },
   ) {
-    const userAgent = request.headers['user-agent'];
-    return this.authService.login(loginDto, ipAddress, userAgent);
+    return this.authService.wechatOpenIdLogin(dto.openId, {
+      nickName: dto.nickName,
+      avatarUrl: dto.avatarUrl,
+      gender: dto.gender,
+      province: dto.province,
+      city: dto.city,
+      country: dto.country,
+    });
   }
 
   /**
-   * Get current user info
-   * GET /auth/me
-   * Protected route - requires JWT token
+   * 微信登录 - 使用授权码获取 openId 和 sessionKey
+   * 小程序调用 uni.login() 后，通过此接口获取 openId 和 sessionKey
+   *
+   * 请求体:
+   * {
+   *   "code": "微信授权码 (来自 uni.login())"
+   * }
+   *
+   * 响应:
+   * {
+   *   "openId": "微信openId",
+   *   "sessionKey": "微信会话密钥"
+   * }
    */
-  @Get('me')
-  @UseGuards(JwtGuard)
+  @Post('wechat/login-code')
   @HttpCode(HttpStatus.OK)
-  async getMe(@CurrentUser() user: any) {
-    return this.authService.getMe(user.userId);
-  }
-
-  /**
-   * Update user profile
-   * PUT /auth/profile
-   * Protected route - requires JWT token
-   */
-  @Put('profile')
-  @UseGuards(JwtGuard)
-  @HttpCode(HttpStatus.OK)
-  async updateProfile(
-    @CurrentUser() user: any,
-    @Body() updateProfileDto: UpdateProfileDto,
-  ) {
-    return this.authService.updateProfile(user.userId, updateProfileDto);
-  }
-
-  /**
-   * Change password
-   * POST /auth/change-password
-   * Protected route - requires JWT token
-   */
-  @Post('change-password')
-  @UseGuards(JwtGuard)
-  @HttpCode(HttpStatus.OK)
-  async changePassword(
-    @CurrentUser() user: any,
-    @Body() changePasswordDto: ChangePasswordDto,
-  ) {
-    return this.authService.changePassword(user.userId, changePasswordDto);
-  }
-
-  /**
-   * Refresh access token
-   * POST /auth/refresh-token
-   */
-  @Post('refresh-token')
-  @HttpCode(HttpStatus.OK)
-  async refreshToken(
-    @Body() refreshTokenDto: RefreshTokenDto,
-    @Ip() ipAddress: string,
-    @Req() request: Request,
-  ) {
-    const userAgent = request.headers['user-agent'];
-    return this.authService.refreshToken(
-      refreshTokenDto.refreshToken,
-      ipAddress,
-      userAgent,
-    );
-  }
-
-  /**
-   * Logout user
-   * POST /auth/logout
-   * Protected route - requires JWT token
-   */
-  @Post('logout')
-  @UseGuards(JwtGuard)
-  @HttpCode(HttpStatus.OK)
-  async logout(@Body() body: { refreshToken: string }) {
-    return this.authService.logout(body.refreshToken);
+  async wechatLoginWithCode(@Body() dto: { code: string }) {
+    return this.authService.wechatLoginWithCode(dto.code);
   }
 }

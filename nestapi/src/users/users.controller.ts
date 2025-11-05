@@ -5,7 +5,8 @@ import {
   Body,
   Param,
   Delete,
-  UseGuards
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { UsersService } from './users.service';
@@ -16,25 +17,36 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  create(@Body() createUserDto: CreateUserDto) {
+  async create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
 
   @Get()
   @UseGuards(AuthGuard('jwt'))
-  findAll() {
+  async findAll() {
     return this.usersService.findAll();
   }
 
   @Get(':id')
   @UseGuards(AuthGuard('jwt'))
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string) {
     return this.usersService.findOne(+id);
+  }
+
+  /**
+   * Deactivate current user account
+   * DELETE /api/users/deactivate
+   */
+  @Delete('deactivate')
+  @UseGuards(AuthGuard('jwt'))
+  async deactivateAccount(@Request() req) {
+    await this.usersService.remove(req.user.id);
+    return { message: 'Account deactivated successfully' };
   }
 
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'))
-  remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string) {
     return this.usersService.remove(+id);
   }
 }

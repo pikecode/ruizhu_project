@@ -65,10 +65,29 @@
   transition: margin-left $transition-base;
   min-height: calc(100vh - 64px);
   overflow-y: auto;
+  // 确保内容加载平滑
+  position: relative;
 
   :global {
     .ant-layout-sider-collapsed ~ .ant-layout & {
       margin-left: 80px;
     }
+
+    // Ant Design Spin组件的优化
+    .ant-spin-nested-loading {
+      position: relative;
+      height: 100%;
+    }
+
+    .ant-spin-container {
+      width: 100%;
+      height: 100%;
+    }
   }
+}
+
+// 内容淡入淡出效果
+.contentFading {
+  opacity: 0.7;
+  transition: opacity 0.2s ease-in-out;
 }

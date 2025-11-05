@@ -6,12 +6,23 @@
 /**
  * API 基础 URL 配置
  * 根据环境切换不同的后端地址
- * 修改这里来切换开发/生产环境
+ *
+ * 开发流程：
+ * 1. 开发阶段：使用本地 NestAPI (http://localhost:8888/api)
+ * 2. 测试完成：切换到生产环境 (https://yunjie.online/api)
+ *
+ * 注意：小程序的 request 请求会自动使用当前配置，无需重新编译
  */
-const BASE_URL = 'http://localhost:8888/api/v1'
 
-// 生产环境配置（需要时取消注释）
-// const BASE_URL = 'http://api.ruizhu.com/api/v1'
+// 开发环境配置（本地 NestAPI 开发）
+const DEV_URL = 'http://localhost:8888/api'
+
+// 生产环境配置（云服务器）
+const PROD_URL = 'https://yunjie.online/api'
+
+// 根据环境选择 API 地址
+// 修改这里来切换开发/生产环境
+const BASE_URL = PROD_URL  // 已切换到生产环境 (https://yunjie.online/api)
 
 interface RequestOptions {
   method?: string
@@ -55,11 +66,11 @@ export const request = async <T = any>(
         if (res.statusCode === 200 || res.statusCode === 201) {
           resolve(res.data as T)
         } else if (res.statusCode === 401) {
-          // Token 过期，需要刷新
+          // Token 过期，清除本地数据
           uni.removeStorageSync('accessToken')
           uni.removeStorageSync('refreshToken')
           uni.removeStorageSync('user')
-          uni.redirectTo({ url: '/pages/auth/login' })
+          // 抛出错误，让调用方决定如何处理（显示授权弹窗或重定向）
           reject(new Error('登录过期，请重新登录'))
         } else {
           reject(new Error(res.data?.message || '请求失败'))

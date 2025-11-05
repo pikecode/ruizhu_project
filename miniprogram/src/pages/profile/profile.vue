@@ -14,7 +14,23 @@
         <!-- 轮播项 -->
         <swiper-item v-for="(banner, index) in banners" :key="index">
           <view class="banner-item">
-            <image :src="banner.image" class="banner-image" mode="aspectFill"></image>
+            <!-- 视频类型的 banner -->
+            <video
+              v-if="banner.type === 'video' && banner.videoUrl"
+              :src="banner.videoUrl"
+              class="banner-video"
+              controls="false"
+              autoplay
+              muted
+              loop
+            ></video>
+            <!-- 图片类型的 banner （默认） -->
+            <image
+              v-else
+              :src="banner.image"
+              class="banner-image"
+              mode="aspectFill"
+            ></image>
             <view class="banner-text-overlay">
               <text class="banner-brand">RUIZHU</text>
               <view class="banner-welcome">
@@ -78,6 +94,14 @@
       </view>
     </view>
 
+    <!-- 账户操作 -->
+    <view class="account-actions-section">
+      <button class="logout-button" @tap="handleLogout">
+        <text class="logout-icon">🚪</text>
+        <text class="logout-text">退出登录</text>
+      </button>
+    </view>
+
     <!-- 猜你喜欢推荐 -->
     <RecommendSection
       :items="recommendProducts"
@@ -90,6 +114,10 @@
 
 <script>
 import RecommendSection from '../../components/RecommendSection.vue'
+import { authService } from '../../services/auth'
+import { collectionService } from '../../services/collection'
+import wishlistService from '../../services/wishlist'
+import { bannerService } from '../../services/banner'
 
 export default {
   components: {
@@ -119,46 +147,124 @@ export default {
         { id: 'shipped', label: '已发货', icon: '/static/icons/order-shipped.svg' },
         { id: 'aftersales', label: '售后', icon: '/static/icons/order-aftersales.svg' }
       ],
-      recommendProducts: [
-        {
-          id: 1,
-          name: '【粉星同款】Prada Explore 中号Re-Nylon单肩包',
-          price: '17,900',
-          image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300&q=80',
-          imageCount: 2,
-          isFavorite: false
-        },
-        {
-          id: 2,
-          name: '【特售】Prada Explore中号Nappa牛皮革单肩包',
-          price: '26,400',
-          image: 'https://images.unsplash.com/photo-1596736342875-ff5348bf9908?w=300&q=80',
-          imageCount: 2,
-          isFavorite: false
-        },
-        {
-          id: 3,
-          name: 'Re-Nylon双肩背包',
-          price: '19,500',
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=300&q=80',
-          imageCount: 2,
-          isFavorite: false
-        },
-        {
-          id: 4,
-          name: '【特售】皮靴中筒靴',
-          price: '8,900',
-          image: 'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=300&q=80',
-          imageCount: 2,
-          isFavorite: false
-        }
-      ]
+      recommendProducts: []
     }
   },
   onLoad() {
-    console.log('我的页面加载完成')
+    this.loadProfileBanners()
+    this.loadRecommendedProducts()
+  },
+  onShow() {
+    // 每次显示页面时重新加载推荐商品和轮播图
+    this.loadProfileBanners()
+    this.loadRecommendedProducts()
   },
   methods: {
+    /**
+     * 加载个人页面的轮播图数据（从admin维护的profile-banners）
+     */
+    async loadProfileBanners() {
+      try {
+        console.log('📊 [Profile] 开始加载 profile banners...')
+        console.log('📊 [Profile] 当前默认 banners 数量:', this.banners.length)
+
+        const response = await bannerService.getBanners(1, 100, 'profile')
+        console.log('📊 [Profile] API 返回响应:', response)
+
+        if (response && response.items && Array.isArray(response.items) && response.items.length > 0) {
+          console.log('📊 [Profile] API 返回了', response.items.length, '条 banner 数据')
+
+          // 筛选启用的 banner，并按 sortOrder 排序
+          const activeBanners = response.items
+            .filter(banner => banner.isActive === true)
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+
+          console.log('📊 [Profile] 筛选后的活跃 banner 数量:', activeBanners.length)
+
+          // 将 banner 数据映射到 swiper 格式 - 完全替换原有数据
+          const newBanners = activeBanners.map(banner => ({
+            id: banner.id,
+            image: bannerService.getDisplayUrl(banner),
+            title: banner.mainTitle,
+            subtitle: banner.subtitle,
+            type: banner.type,
+            videoUrl: banner.videoUrl,
+            linkType: banner.linkType,
+            linkValue: banner.linkValue
+          }))
+
+          // 使用 this.$set 确保数据完全替换
+          this.$set(this, 'banners', newBanners)
+
+          console.log('✅ [Profile] 已加载 profile banners:', this.banners.length, '条')
+          console.log('✅ [Profile] 最终 banners 数据:', this.banners)
+        } else {
+          console.warn('⚠️ [Profile] API 返回数据不可用，保留默认数据')
+          console.log('📊 [Profile] response:', response)
+          console.log('📊 [Profile] response.items:', response?.items)
+          console.log('📊 [Profile] response.items length:', response?.items?.length)
+        }
+      } catch (error) {
+        console.error('❌ [Profile] 加载 profile banners 失败:', error)
+        console.error('❌ [Profile] 错误堆栈:', error.stack)
+        // 加载失败时保持原有的默认数据
+      }
+    },
+
+    /**
+     * 加载推荐商品（与购物车页面相同）
+     */
+    async loadRecommendedProducts() {
+      try {
+        const collectionData = await collectionService.getCollectionBySlug('guess-you-like')
+
+        if (collectionData && collectionData.products) {
+          this.recommendProducts = collectionData.products.map(product => ({
+            id: product.id,
+            name: product.name,
+            image: product.coverImageUrl,
+            price: product.currentPrice, // API返回的价格以分为单位
+            originalPrice: product.originalPrice,
+            discountRate: product.discountRate,
+            isNew: product.isNew,
+            isSaleOn: product.isSaleOn,
+            imageCount: 1, // RecommendSection组件需要此字段
+            isFavorite: false // 初始化收藏状态
+          }))
+
+          // 加载推荐商品的收藏状态
+          await this.loadRecommendedProductsFavoriteStatus()
+        }
+      } catch (error) {
+        console.error('Failed to load recommended products:', error)
+      }
+    },
+
+    /**
+     * 加载推荐商品的收藏状态
+     */
+    async loadRecommendedProductsFavoriteStatus() {
+      try {
+        const productIds = this.recommendProducts.map(p => p.id)
+        console.log('🔍 [Profile] 检查收藏状态 - 产品IDs:', productIds)
+        if (productIds.length === 0) return
+
+        const favoriteStatus = await wishlistService.checkMultipleWishlists(productIds)
+        console.log('📡 [Profile] API返回的收藏状态:', favoriteStatus)
+
+        // 更新推荐商品的收藏状态
+        this.recommendProducts.forEach((product, index) => {
+          const isFavorite = favoriteStatus[product.id] || false
+          console.log(`💖 [Profile] 产品 ${product.id} (${product.name}) 收藏状态: ${isFavorite}`)
+          this.$set(this.recommendProducts[index], 'isFavorite', isFavorite)
+        })
+
+        console.log('✅ [Profile] 最终推荐商品数据:', this.recommendProducts.map(p => ({ id: p.id, name: p.name, isFavorite: p.isFavorite })))
+      } catch (error) {
+        console.error('❌ [Profile] 加载收藏状态失败:', error)
+        // 加载失败，保持初始值（全部未收藏）
+      }
+    },
     onSwiperChange(e) {
       this.currentBannerIndex = e.detail.current
     },
@@ -218,6 +324,42 @@ export default {
       uni.navigateTo({
         url: '/pages/profile/edit'
       })
+    },
+    async handleLogout() {
+      // Show confirmation dialog
+      uni.showModal({
+        title: '退出登录',
+        content: '确定要退出登录吗？退出后需要重新授权',
+        confirmText: '确定',
+        cancelText: '取消',
+        success: async (res) => {
+          if (res.confirm) {
+            // Perform logout
+            try {
+              await authService.logout()
+              uni.showToast({
+                title: '已退出登录',
+                icon: 'success',
+                duration: 1000
+              })
+
+              // Redirect to login page after logout
+              setTimeout(() => {
+                uni.redirectTo({
+                  url: '/pages/auth/login'
+                })
+              }, 1000)
+            } catch (error) {
+              console.error('Logout failed:', error)
+              uni.showToast({
+                title: '退出登录失败',
+                icon: 'none',
+                duration: 1000
+              })
+            }
+          }
+        }
+      })
     }
   }
 }
@@ -249,6 +391,12 @@ export default {
   .banner-image {
     width: 100%;
     height: 100%;
+  }
+
+  .banner-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .banner-text-overlay {
@@ -476,6 +624,47 @@ export default {
       color: #333333;
       font-weight: 400;
       text-align: center;
+    }
+  }
+}
+
+/* 账户操作区域 */
+.account-actions-section {
+  padding: 0 40rpx;
+  margin-top: 60rpx;
+  margin-bottom: 40rpx;
+
+  .logout-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12rpx;
+    width: 100%;
+    padding: 28rpx 24rpx;
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
+    border: none;
+    border-radius: 8rpx;
+    cursor: pointer;
+    box-shadow: 0 4rpx 12rpx rgba(255, 107, 107, 0.2);
+    transition: all 0.3s ease;
+
+    &:active {
+      transform: scale(0.98);
+      box-shadow: 0 2rpx 6rpx rgba(255, 107, 107, 0.15);
+    }
+
+    .logout-icon {
+      display: block;
+      font-size: 32rpx;
+      line-height: 1;
+    }
+
+    .logout-text {
+      display: block;
+      font-size: 28rpx;
+      color: #ffffff;
+      font-weight: 500;
+      letter-spacing: 1rpx;
     }
   }
 }
