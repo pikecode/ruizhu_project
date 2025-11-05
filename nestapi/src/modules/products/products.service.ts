@@ -122,6 +122,8 @@ export class ProductsService {
       discountRate: createDto.price.discountRate || 100,
       currency: createDto.price.currency || 'CNY',
       vipDiscountRate: createDto.price.vipDiscountRate ?? null,
+      // VIP折扣倍数（仅针对vip_recharge产品）
+      discount: createDto.discount || 1.0,
       // 封面图片URL
       coverImageUrl: createDto.url || createDto.coverImageUrl || null,
     });
@@ -180,6 +182,7 @@ export class ProductsService {
       weight: product.weight,
       shippingTemplateId: product.shippingTemplateId,
       freeShippingThreshold: product.freeShippingThreshold,
+      discount: product.discount || 1.0, // VIP折扣倍数
       coverImageUrl: product.coverImageUrl,
       // 返回其他图片（副图）
       images: images.map((img) => ({
@@ -400,7 +403,7 @@ export class ProductsService {
       'name', 'subtitle', 'sku', 'description', 'categoryId',
       'isNew', 'isSaleOn', 'isOutOfStock', 'isSoldOut', 'isVipOnly',
       'stockQuantity', 'lowStockThreshold', 'weight', 'shippingTemplateId',
-      'freeShippingThreshold'
+      'freeShippingThreshold', 'discount'
     ];
 
     const filteredUpdateData: any = {};

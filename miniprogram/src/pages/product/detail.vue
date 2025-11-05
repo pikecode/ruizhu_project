@@ -121,7 +121,8 @@ export default {
           id: productDetail.id,
           name: productDetail.name,
           price: productDetail.price,
-          description: productDetail.description
+          description: productDetail.description,
+          productType: productDetail.productType  // 需要传递productType以便支付时检测VIP产品
         }
 
         console.log('绑定到页面的productData:', this.productData)
@@ -301,7 +302,8 @@ export default {
               price: Math.round(parseFloat(this.productData.price) * 100),  // 从productData获取元，转换为分（乘以100后四舍五入）
               quantity: this.quantity,
               image: this.productImages[0] || '',
-              color: '默认'
+              color: '默认',
+              productType: this.productData.productType  // 添加productType以便支付时检测VIP产品
             }
           ],
           source: 'buyNow'  // 标记为立即购买来源

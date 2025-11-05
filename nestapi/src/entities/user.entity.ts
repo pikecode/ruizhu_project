@@ -155,6 +155,14 @@ export class User {
   loginCount: number;
 
   /**
+   * 用户折扣倍数 - 从购买的VIP产品获取
+   * 默认1.00（无折扣），范围0.01-1.00
+   * 购买新的VIP产品时覆盖此值
+   */
+  @Column({ type: 'decimal', precision: 5, scale: 2, default: 1.00 })
+  discount: number;
+
+  /**
    * 创建时间
    */
   @CreateDateColumn({ name: 'created_at' })

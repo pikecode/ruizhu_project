@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Order } from '../../../entities/product.entity';
+import { Order } from '../entities/order.entity';
 import { CreateOrderDto, UpdateOrderDto } from '../dto';
 import { AddressesService } from '../../addresses/services/addresses.service';
 
@@ -89,14 +89,15 @@ export class OrdersService {
     // Create order
     const order = this.orderRepository.create({
       userId,
-      orderNo: this.generateOrderNumber(),
-      subtotal: createDto.totalAmount,
-      shippingCost: createDto.shippingAmount || 0,
-      discountAmount: createDto.discountAmount || 0,
-      totalAmount: createDto.finalAmount,
-      paymentStatus: 'unpaid',
-      notes: createDto.remark,
-      status: 'pending',
+      orderNumber: this.generateOrderNumber(),
+      addressId: createDto.addressId,
+      items: createDto.items,
+      totalAmount: createDto.totalAmount,  // Items total after VIP discount applied (in cents)
+      shippingAmount: createDto.shippingAmount || 0,  // Shipping cost (in cents)
+      discountAmount: createDto.discountAmount || 0,  // Additional discounts (in cents)
+      finalAmount: createDto.finalAmount,  // Final amount to pay = totalAmount + shipping - discount (in cents)
+      remark: createDto.remark,
+      status: 'pending',  // Order awaiting payment
     });
 
     return await this.orderRepository.save(order);
@@ -237,7 +238,7 @@ export class OrdersService {
     }
 
     if (updateDto.remark !== undefined) {
-      order.notes = updateDto.remark;
+      order.remark = updateDto.remark;
     }
 
     return await this.orderRepository.save(order);
@@ -317,11 +318,8 @@ export class OrdersService {
       throw new BadRequestException('Only pending orders can be marked as paid');
     }
 
-    order.status = 'paid';
-    order.paymentStatus = 'paid';
-    if (paymentId) {
-      order.paidAt = new Date();
-    }
+    order.status = 'paid';  // Status field tracks the full lifecycle: pending → paid → shipped → delivered
+    order.paidAt = new Date();  // Record exact time of payment confirmation
 
     return await this.orderRepository.save(order);
   }
@@ -331,7 +329,7 @@ export class OrdersService {
    */
   async getOrderByNumber(orderNumber: string): Promise<Order> {
     const order = await this.orderRepository.findOne({
-      where: { orderNo: orderNumber },
+      where: { orderNumber: orderNumber },
     });
 
     if (!order) {
@@ -539,7 +537,7 @@ export class OrdersService {
     }
 
     if (updateDto.remark !== undefined) {
-      order.notes = updateDto.remark;
+      order.remark = updateDto.remark;
     }
 
     return await this.orderRepository.save(order);

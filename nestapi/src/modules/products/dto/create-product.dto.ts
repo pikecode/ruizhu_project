@@ -90,6 +90,12 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0)
   freeShippingThreshold?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0.01)
+  @Max(1.0)
+  discount?: number = 1.0; // VIP折扣倍数（仅针对vip_recharge产品），0.01-1.00，默认1.00（无折扣）
 }
 
 /**

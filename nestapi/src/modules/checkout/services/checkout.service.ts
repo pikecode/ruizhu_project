@@ -12,7 +12,7 @@ import { CartService } from '../../cart/services/cart.service';
 import { AddressesService } from '../../addresses/services/addresses.service';
 import { WechatPaymentService } from '../../wechat/services/wechat-payment.service';
 import { UsersService } from '../../../users/users.service';
-import { Order } from '../../../entities/product.entity';
+import { Order } from '../../orders/entities/order.entity';
 import { CreateUnifiedOrderDto, CreatePaymentResponseDto, OrderStatusResponseDto, QueryOrderStatusDto } from '../../wechat/dto/wechat-payment.dto';
 
 /**
@@ -69,12 +69,22 @@ export class CheckoutService {
       );
     }
 
+    // Get user info for discount and openId
+    const user = await this.usersService.findOne(userId);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
     // Calculate total amount from items
-    let totalAmount = 0;
+    let subtotal = 0;
     for (const item of checkoutDto.items) {
       const itemTotal = item.price * item.quantity;
-      totalAmount += itemTotal;
+      subtotal += itemTotal;
     }
+
+    // Apply user's VIP discount to subtotal (0.01-1.00, default 1.00 = no discount)
+    const userDiscount = user.discount || 1.0;
+    let totalAmount = Math.round(subtotal * userDiscount);
 
     // Create order with the validated data
     const finalAmount = Math.max(0, totalAmount + (checkoutDto.shippingAmount || 0) - (checkoutDto.discountAmount || 0));
@@ -88,9 +98,8 @@ export class CheckoutService {
       remark: checkoutDto.remark,
     });
 
-    // Get user's openId for WeChat payment initialization
-    const user = await this.usersService.findOne(userId);
-    if (!user || !user.openId) {
+    // Verify user has WeChat openId for payment
+    if (!user.openId) {
       throw new BadRequestException(
         'User WeChat openId not found. Please authorize with WeChat first.',
       );
@@ -106,8 +115,8 @@ export class CheckoutService {
 
     const paymentInfo = await this.wechatPaymentService.createUnifiedOrder({
       openid: user.openId,
-      outTradeNo: order.orderNo,
-      totalFee: order.totalAmount * 100, // 转换为分（元 -> 分）
+      outTradeNo: order.orderNumber,  // Use orderNumber instead of orderNo
+      totalFee: order.finalAmount,  // finalAmount is already in cents, no need to multiply by 100
       body: '购物订单',
       detail: checkoutDto.items
         .map((item) => `商品ID:${item.productId} 数量:${item.quantity}`)
@@ -145,7 +154,9 @@ export class CheckoutService {
     checkoutDto: CheckoutDto,
   ): Promise<{
     itemCount: number;
-    subtotal: number; // Items total
+    subtotal: number; // Items total before discount
+    discount: number; // User's VIP discount rate (0.01-1.00)
+    discountedSubtotal: number; // Subtotal after VIP discount applied
     shippingAmount: number;
     discountAmount: number;
     totalAmount: number; // Final amount to pay
@@ -160,6 +171,8 @@ export class CheckoutService {
       return {
         itemCount: checkoutDto.items.length,
         subtotal: 0,
+        discount: 1.0,
+        discountedSubtotal: 0,
         shippingAmount: 0,
         discountAmount: 0,
         totalAmount: 0,
@@ -168,6 +181,10 @@ export class CheckoutService {
         validationError: `Address ${checkoutDto.addressId} not found for user`,
       };
     }
+
+    // Get user's discount
+    const user = await this.usersService.findOne(userId);
+    const userDiscount = user?.discount || 1.0;
 
     // Calculate totals
     let subtotal = 0;
@@ -180,13 +197,17 @@ export class CheckoutService {
       }
     }
 
+    // Apply user's VIP discount to subtotal
+    const discountedSubtotal = Math.round(subtotal * userDiscount);
     const shippingAmount = checkoutDto.shippingAmount || 0;
     const discountAmount = checkoutDto.discountAmount || 0;
-    const totalAmount = Math.max(0, subtotal + shippingAmount - discountAmount);
+    const totalAmount = Math.max(0, discountedSubtotal + shippingAmount - discountAmount);
 
     return {
       itemCount,
       subtotal,
+      discount: userDiscount,
+      discountedSubtotal,
       shippingAmount,
       discountAmount,
       totalAmount,

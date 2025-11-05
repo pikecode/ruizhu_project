@@ -17,6 +17,8 @@ import {
   RefundResponseDto,
 } from '../dto/wechat-payment.dto';
 import { OrdersService } from '../../orders/services/orders.service';
+import { User } from '../../../entities/user.entity';
+import { Order, Product } from '../../../entities/product.entity';
 
 /**
  * 微信支付服务
@@ -41,6 +43,12 @@ export class WechatPaymentService {
   constructor(
     @InjectRepository(WechatPaymentEntity)
     private readonly paymentRepository: Repository<WechatPaymentEntity>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Order)
+    private readonly orderRepository: Repository<Order>,
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
     private configService: ConfigService,
     private ordersService: OrdersService,
   ) {
@@ -206,6 +214,16 @@ export class WechatPaymentService {
             this.logger.log(
               `订单状态已更新为已支付: orderId=${orderId}, userId=${userId}, paymentId=${payment.id}`,
             );
+
+            // 检查订单中是否有vip_recharge产品，如果有则更新用户discount
+            try {
+              await this.applyVipDiscountIfApplicable(orderId, userId);
+            } catch (discountError) {
+              // 记录错误但不中断整个流程
+              this.logger.error(
+                `应用VIP折扣失败: orderId=${orderId}, userId=${userId}, error=${discountError.message}`,
+              );
+            }
           } catch (orderError) {
             // 记录订单更新错误但不中断支付记录的保存
             this.logger.error(
@@ -561,5 +579,80 @@ export class WechatPaymentService {
 
     const result = await parser.parseStringPromise(xmlStr);
     return result.xml;
+  }
+
+  /**
+   * 检查订单中是否有vip_recharge产品，如果有则更新用户discount
+   * 当用户购买VIP充值产品时，使用产品中的discount值覆盖用户的discount字段
+   * @param orderId - 订单ID
+   * @param userId - 用户ID
+   */
+  private async applyVipDiscountIfApplicable(
+    orderId: string,
+    userId: string,
+  ): Promise<void> {
+    try {
+      // 查询订单，获取所有订单项
+      const order = await this.orderRepository.findOne({
+        where: { id: parseInt(orderId, 10) },
+        relations: ['items'],
+      });
+
+      if (!order || !order.items || order.items.length === 0) {
+        this.logger.debug(
+          `订单未找到或无订单项: orderId=${orderId}, userId=${userId}`,
+        );
+        return;
+      }
+
+      // 检查订单中是否有vip_recharge产品
+      let vipProductDiscount: number | null = null;
+
+      for (const item of order.items) {
+        // 查询产品信息
+        const product = await this.productRepository.findOne({
+          where: { id: item.productId },
+        });
+
+        if (
+          product &&
+          product.productType === 'vip_recharge' &&
+          product.discount
+        ) {
+          vipProductDiscount = product.discount;
+          this.logger.log(
+            `找到VIP充值产品: productId=${item.productId}, discount=${vipProductDiscount}`,
+          );
+          break; // 只需要找到一个VIP产品，因为一个订单中可能有多个VIP产品但我们只取第一个
+        }
+      }
+
+      // 如果找到VIP产品，更新用户的discount字段
+      if (vipProductDiscount !== null) {
+        const user = await this.userRepository.findOne({
+          where: { id: parseInt(userId, 10) },
+        });
+
+        if (!user) {
+          this.logger.warn(`用户未找到: userId=${userId}`);
+          return;
+        }
+
+        const oldDiscount = user.discount;
+        user.discount = vipProductDiscount;
+        await this.userRepository.save(user);
+
+        this.logger.log(
+          `用户VIP折扣已更新: userId=${userId}, orderId=${orderId}, oldDiscount=${oldDiscount}, newDiscount=${vipProductDiscount}`,
+        );
+      }
+    } catch (error) {
+      // 捕获异常但不中断支付流程
+      this.logger.error(
+        `应用VIP折扣时出错: orderId=${orderId}, userId=${userId}, error=${error.message}`,
+        error.stack,
+      );
+      throw error; // 向上抛出异常由调用者处理
+    }
   }
 }

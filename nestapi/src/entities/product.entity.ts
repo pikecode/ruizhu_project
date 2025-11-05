@@ -113,6 +113,9 @@ export class Product {
   @Column({ type: 'tinyint', nullable: true, name: 'vip_discount_rate' })
   vipDiscountRate: number | null; // VIP折扣率
 
+  @Column({ type: 'decimal', precision: 5, scale: 2, default: 1.00, name: 'discount' })
+  discount: number; // 折扣倍数（仅针对vip_recharge产品），0.01-1.00，默认1.00（无折扣）
+
   // 统计信息（合并到 products 表，简化架构）
   @Column({ type: 'int', default: 0, name: 'sales_count' })
   salesCount: number; // 销售数

@@ -12,6 +12,7 @@ export interface CartItem {
   quantity: number                     // 数量
   color?: string                       // 选择的颜色
   size?: string                        // 选择的尺码
+  productType?: string                 // 商品类型（用于检测VIP产品）
   selected?: boolean                   // 选中状态（前端使用）
   selectedAttributes?: Record<string, any>
   createdAt?: string

@@ -45,6 +45,9 @@ export class ProductDetailResponseDto {
   shippingTemplateId?: number;
   freeShippingThreshold?: number;
 
+  // VIP折扣信息（仅针对vip_recharge产品）
+  discount?: number; // 0.01-1.00，1.00表示无折扣
+
   // 封面图片（主图）
   coverImageUrl?: string | null;
 
@@ -114,6 +117,9 @@ export class ProductListItemDto {
 
   // 库存
   stockQuantity: number;
+
+  // VIP折扣信息（仅针对vip_recharge产品）
+  discount?: number; // 0.01-1.00，1.00表示无折扣
 
   // 代表图片URL
   coverImageUrl?: string | null;
@@ -401,4 +407,11 @@ export class UpdateProductDto {
   @IsOptional()
   @IsString()
   coverImageUrl?: string;
+
+  // VIP折扣倍数（仅针对vip_recharge产品）
+  @IsOptional()
+  @IsNumber()
+  @Min(0.01)
+  @Max(1.0)
+  discount?: number; // 0.01-1.00，1.00表示无折扣
 }

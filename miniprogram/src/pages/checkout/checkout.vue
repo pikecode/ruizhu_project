@@ -38,6 +38,14 @@
 
     <!-- 费用明细 -->
     <view class="section fee-summary-section">
+      <view class="fee-row">
+        <text class="fee-label">商品小计</text>
+        <text class="fee-value">¥{{ subtotal }}</text>
+      </view>
+      <view v-if="userDiscount < 1.0" class="fee-row discount">
+        <text class="fee-label">VIP折扣 ({{ (userDiscount * 100).toFixed(0) }}%)</text>
+        <text class="fee-value">-¥{{ discountAmount }}</text>
+      </view>
       <view class="fee-row total">
         <text class="fee-label">应付金额</text>
         <text class="fee-value">¥{{ totalAmount }}</text>
@@ -64,20 +72,42 @@ export default {
   data() {
     return {
       cartItems: [],
-      selectedAddress: null
+      selectedAddress: null,
+      userDiscount: 1.0 // 用户VIP折扣倍数，默认1.0（无折扣）
     }
   },
   computed: {
-    totalAmount() {
-      // 价格单位为分，需要转换为元
+    subtotal() {
+      // 商品小计（分转元）
       const totalInFen = this.cartItems.reduce((sum, item) => {
         return sum + (item.price * item.quantity)
       }, 0)
       return (totalInFen / 100).toFixed(2)
+    },
+    discountAmount() {
+      // 折扣金额（分转元）
+      if (this.userDiscount >= 1.0) {
+        return '0.00'
+      }
+      const subtotalInFen = this.cartItems.reduce((sum, item) => {
+        return sum + (item.price * item.quantity)
+      }, 0)
+      const discountedInFen = Math.round(subtotalInFen * this.userDiscount)
+      const saved = subtotalInFen - discountedInFen
+      return (saved / 100).toFixed(2)
+    },
+    totalAmount() {
+      // 应付金额（已应用VIP折扣）
+      const subtotalInFen = this.cartItems.reduce((sum, item) => {
+        return sum + (item.price * item.quantity)
+      }, 0)
+      const discountedInFen = Math.round(subtotalInFen * this.userDiscount)
+      return (discountedInFen / 100).toFixed(2)
     }
   },
   onLoad() {
     this.loadCartItems()
+    this.loadUserDiscount()
   },
   methods: {
     loadCartItems() {
@@ -104,6 +134,26 @@ export default {
       } catch (e) {
         console.error('Failed to load cart items:', e)
         this.cartItems = []
+      }
+    },
+    loadUserDiscount() {
+      try {
+        // 从本地存储获取用户信息中的折扣
+        const userInfo = uni.getStorageSync('userInfo')
+        if (userInfo && userInfo.discount) {
+          const discount = parseFloat(userInfo.discount)
+          if (discount > 0 && discount <= 1.0) {
+            this.userDiscount = discount
+            console.log('💳 [Checkout] 用户VIP折扣已加载:', this.userDiscount)
+            return
+          }
+        }
+        // 没有找到或无效，使用默认值
+        this.userDiscount = 1.0
+        console.log('💳 [Checkout] 使用默认折扣倍数: 1.0（无折扣）')
+      } catch (e) {
+        console.warn('Failed to load user discount:', e)
+        this.userDiscount = 1.0
       }
     },
     navigateToAddresses() {
@@ -228,8 +278,7 @@ export default {
           items: this.cartItems,
           address: this.selectedAddress,
           total: parseFloat(this.totalAmount),
-          status: createdOrder.status || '待支付',
-          paymentStatus: createdOrder.paymentStatus || 'pending',
+          status: createdOrder.status || 'pending',  // Status can be: pending, paid, shipped, delivered
           createdAt: createdOrder.createdAt || new Date().toISOString()
         }
 

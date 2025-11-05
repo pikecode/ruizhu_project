@@ -237,6 +237,24 @@ export default {
             console.warn('⚠️ [Payment] 刷新订单信息失败:', error)
           }
 
+          // 如果订单包含vip_recharge产品，需要刷新用户信息以获取最新的discount
+          try {
+            if (this.order && this.order.items && this.order.items.length > 0) {
+              const hasVipProduct = this.order.items.some(item => item.productType === 'vip_recharge' || item.type === 'vip_recharge')
+              if (hasVipProduct) {
+                console.log('📡 [Payment] 订单包含VIP产品，刷新用户信息...')
+                const usersService = require('../../services/users').default
+                const freshUserInfo = await usersService.getUserInfo()
+                if (freshUserInfo) {
+                  uni.setStorageSync('userInfo', freshUserInfo)
+                  console.log('✅ [Payment] 用户信息已刷新，discount:', freshUserInfo.discount)
+                }
+              }
+            }
+          } catch (error) {
+            console.warn('⚠️ [Payment] 刷新用户信息失败:', error)
+          }
+
           // 清除所有临时缓存（流程完成，不再需要本地缓存）
           try {
             uni.removeStorageSync('currentOrder')

@@ -102,6 +102,13 @@ export class Order {
   cancelledAt: Date;
 
   /**
+   * Payment timestamp (when payment was confirmed)
+   * Used to record exact time of payment completion
+   */
+  @Column('timestamp', { nullable: true })
+  paidAt: Date;
+
+  /**
    * Refunded amount in cents
    */
   @Column('int', { default: 0 })
