@@ -3,7 +3,7 @@
     <view class="navbar-content">
       <!-- 左侧内容插槽 -->
       <slot name="left">
-        <image class="brand-logo" src="/static/images/logo.jpg" mode="widthFix"></image>
+        <image class="brand-logo" src="/static/images/logo.jpg" mode="aspectFit" style="width: 206rpx; height: 80rpx;"></image>
       </slot>
 
       <!-- 中间内容插槽 -->
