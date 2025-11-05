@@ -25,7 +25,7 @@ interface ProductFormProps {
   onClose: () => void
   onSubmit: (data: any) => Promise<void>
   categories: Category[]
-  defaultProductType?: 'standard' | 'custom'
+  defaultProductType?: 'standard' | 'custom' | 'vip_recharge'
 }
 
 interface MediaFile {
@@ -58,6 +58,7 @@ const productTagOptions = [
 const productTypeOptions = [
   { label: '标准产品', value: 'standard' },
   { label: '私人定制专属', value: 'custom' },
+  { label: '会员充值产品', value: 'vip_recharge' },
 ]
 
 export default function ProductForm({

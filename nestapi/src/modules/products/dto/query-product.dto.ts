@@ -59,6 +59,6 @@ export class QueryProductDto {
 
   @IsOptional()
   @IsString()
-  @IsEnum(['standard', 'custom'])
-  productType?: string; // 产品类型筛选: standard(标准产品) custom(私人定制专属)
+  @IsEnum(['standard', 'custom', 'vip_recharge'])
+  productType?: string; // 产品类型筛选: standard(标准产品) custom(私人定制专属) vip_recharge(会员充值产品)
 }

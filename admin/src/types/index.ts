@@ -31,6 +31,7 @@ export interface Product {
   description?: string
   categoryId: number
   categoryName?: string
+  productType?: 'standard' | 'custom' | 'vip_recharge' // 产品类型
   // Status fields
   isNew: boolean
   isSaleOn: boolean

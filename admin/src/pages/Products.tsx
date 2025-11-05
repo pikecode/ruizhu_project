@@ -14,7 +14,7 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | undefined>()
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>()
   const [searchKeyword, setSearchKeyword] = useState('')
-  const [productType, setProductType] = useState<'standard' | 'custom'>('standard')
+  const [productType, setProductType] = useState<'standard' | 'custom' | 'vip_recharge'>('standard')
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -360,7 +360,7 @@ export default function ProductsPage() {
           <Tabs
             activeKey={productType}
             onChange={(key) => {
-              setProductType(key as 'standard' | 'custom')
+              setProductType(key as 'standard' | 'custom' | 'vip_recharge')
               setSelectedRowKeys([])
               setPagination({ ...pagination, current: 1 })
             }}
@@ -372,6 +372,10 @@ export default function ProductsPage() {
               {
                 key: 'custom',
                 label: '私人定制专属',
+              },
+              {
+                key: 'vip_recharge',
+                label: '会员充值产品',
               },
             ]}
           />

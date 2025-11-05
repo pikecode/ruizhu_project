@@ -39,8 +39,8 @@ export class CreateProductDto {
   categoryId: number;
 
   @IsOptional()
-  @IsIn(['standard', 'custom'], { message: '产品类型必须是 standard 或 custom 之一' })
-  productType?: 'standard' | 'custom'; // 产品类型: standard(标准产品) custom(私人定制专属)
+  @IsIn(['standard', 'custom', 'vip_recharge'], { message: '产品类型必须是 standard、custom 或 vip_recharge 之一' })
+  productType?: 'standard' | 'custom' | 'vip_recharge'; // 产品类型: standard(标准产品) custom(私人定制专属) vip_recharge(会员充值产品)
 
   // 新的库存状态字段（单选）- 优先使用这个字段
   @IsOptional()

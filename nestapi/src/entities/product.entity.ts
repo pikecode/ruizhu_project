@@ -45,7 +45,7 @@ export class Product {
     default: 'standard',
     name: 'product_type',
   })
-  productType: 'standard' | 'custom' = 'standard'; // 产品类型: standard(标准产品) custom(私人定制专属)
+  productType: 'standard' | 'custom' | 'vip_recharge' = 'standard'; // 产品类型: standard(标准产品) custom(私人定制专属) vip_recharge(会员充值产品)
 
   @Column({ type: 'text', nullable: true })
   description: string;
