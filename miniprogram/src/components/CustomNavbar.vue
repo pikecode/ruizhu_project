@@ -74,7 +74,7 @@ export default {
 
   .brand-logo {
     height: 80rpx;
-    width: auto;
+    width: 80rpx;
     flex-shrink: 0;
   }
 }
