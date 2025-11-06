@@ -50,6 +50,7 @@
 
 <script>
 import wechatPaymentService from '../../services/wechatPayment'
+import ordersService from '../../services/orders'
 
 export default {
   data() {
@@ -216,38 +217,38 @@ export default {
             if (this.order && this.order.id) {
               console.log('📡 [Payment] 开始调用 markOrderAsPaid 接口...')
               console.log('📡 [Payment] 订单ID:', this.order.id)
-              console.log('📡 [Payment] 订单对象:', this.order)
+              console.log('📡 [Payment] 订单对象:', JSON.stringify(this.order))
 
-              const ordersService = require('../../services/orders').default
-              console.log('📡 [Payment] 已加载 ordersService，即将调用 markOrderAsPaid')
+              console.log('📡 [Payment] ordersService 已加载，即将调用 markOrderAsPaid')
+              console.log('📡 [Payment] 调用参数: orderId=' + this.order.id)
 
               const response = await ordersService.markOrderAsPaid(this.order.id)
 
-              console.log('✅ [Payment] markOrderAsPaid 接口调用成功')
-              console.log('✅ [Payment] 响应数据:', response)
+              console.log('✅ [Payment] markOrderAsPaid 接口调用成功!')
+              console.log('✅ [Payment] 响应数据:', JSON.stringify(response))
               console.log('✅ [Payment] 订单状态:', response?.status || '未知')
 
               if (response && response.id) {
-                console.log('✅ [Payment] 订单数据确认: id=' + response.id + ', status=' + response.status)
+                console.log('✅ [Payment] 订单数据已更新: id=' + response.id + ', status=' + response.status + ', paidAt=' + response.paidAt)
               }
             } else {
-              console.warn('⚠️ [Payment] 订单信息缺失，无法标记为已支付')
+              console.warn('⚠️ [Payment] 订单信息缺失: order=' + JSON.stringify(this.order))
             }
           } catch (error) {
-            console.error('❌ [Payment] 调用 markOrderAsPaid 接口失败!')
+            console.error('❌ [Payment] 调用 markOrderAsPaid 接口异常!')
             console.error('❌ [Payment] 错误类型:', typeof error)
-            console.error('❌ [Payment] 错误消息:', error?.message)
-            console.error('❌ [Payment] 错误代码:', error?.code)
-            console.error('❌ [Payment] 完整错误对象:', error)
+            console.error('❌ [Payment] 错误消息:', error?.message || '(无消息)')
+            console.error('❌ [Payment] 错误代码:', error?.code || '(无代码)')
+            console.error('❌ [Payment] 完整错误:', JSON.stringify(error))
             if (error?.response) {
               console.error('❌ [Payment] HTTP 响应状态:', error.response.status)
-              console.error('❌ [Payment] HTTP 响应数据:', error.response.data)
+              console.error('❌ [Payment] HTTP 响应体:', JSON.stringify(error.response.data))
             }
             // 不阻止支付流程，继续进行
           }
 
           // 支付成功后查询订单状态确认
-          console.log('📡 [Payment] 开始确认支付状态...')
+          console.log('📡 [Payment] 微信回调处理完成，开始确认支付状态...')
           await this.confirmPaymentSuccess(paymentData.outTradeNo)
         },
         fail: (err) => {
