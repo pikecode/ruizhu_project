@@ -214,23 +214,40 @@ export default {
           // 立即标记订单为已支付（在显示成功提示时同步更新）
           try {
             if (this.order && this.order.id) {
-              console.log('📡 [Payment] 立即标记订单为已支付...')
+              console.log('📡 [Payment] 开始调用 markOrderAsPaid 接口...')
               console.log('📡 [Payment] 订单ID:', this.order.id)
+              console.log('📡 [Payment] 订单对象:', this.order)
+
               const ordersService = require('../../services/orders').default
+              console.log('📡 [Payment] 已加载 ordersService，即将调用 markOrderAsPaid')
+
               const response = await ordersService.markOrderAsPaid(this.order.id)
-              console.log('✅ [Payment] 订单已标记为已支付，响应:', response)
-              console.log('✅ [Payment] 订单状态已更新为:', response?.status || '未知')
+
+              console.log('✅ [Payment] markOrderAsPaid 接口调用成功')
+              console.log('✅ [Payment] 响应数据:', response)
+              console.log('✅ [Payment] 订单状态:', response?.status || '未知')
+
+              if (response && response.id) {
+                console.log('✅ [Payment] 订单数据确认: id=' + response.id + ', status=' + response.status)
+              }
+            } else {
+              console.warn('⚠️ [Payment] 订单信息缺失，无法标记为已支付')
             }
           } catch (error) {
-            console.error('❌ [Payment] 标记订单失败，详细错误:', {
-              errorMessage: error?.message,
-              errorCode: error?.code,
-              fullError: error
-            })
+            console.error('❌ [Payment] 调用 markOrderAsPaid 接口失败!')
+            console.error('❌ [Payment] 错误类型:', typeof error)
+            console.error('❌ [Payment] 错误消息:', error?.message)
+            console.error('❌ [Payment] 错误代码:', error?.code)
+            console.error('❌ [Payment] 完整错误对象:', error)
+            if (error?.response) {
+              console.error('❌ [Payment] HTTP 响应状态:', error.response.status)
+              console.error('❌ [Payment] HTTP 响应数据:', error.response.data)
+            }
             // 不阻止支付流程，继续进行
           }
 
           // 支付成功后查询订单状态确认
+          console.log('📡 [Payment] 开始确认支付状态...')
           await this.confirmPaymentSuccess(paymentData.outTradeNo)
         },
         fail: (err) => {

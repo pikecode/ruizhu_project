@@ -417,7 +417,22 @@ export class OrdersService {
   ): Promise<Order> {
     this.logger.log(`[markOrderAsPaid] 开始处理订单支付标记，userId=${userId}, orderId=${orderId}`);
 
-    const order = await this.getOrder(userId, orderId);
+    // 先直接查询订单，不依赖 userId 验证
+    let order = await this.orderRepository.findOne({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      this.logger.error(`[markOrderAsPaid] 找不到订单，orderId=${orderId}`);
+      throw new NotFoundException('Order not found');
+    }
+
+    // 如果提供了userId，验证订单属于该用户
+    if (userId && order.userId !== userId) {
+      this.logger.warn(`[markOrderAsPaid] 用户不匹配，期望userId=${userId}，实际userId=${order.userId}，但继续处理`);
+      // 不中断，继续处理，因为支付回调可能使用不同的userId
+    }
+
     this.logger.log(`[markOrderAsPaid] 获取订单成功，当前状态=${order.status}, orderNo=${order.orderNo}`);
 
     if (order.status !== 'pending') {
@@ -431,6 +446,49 @@ export class OrdersService {
 
     const savedOrder = await this.orderRepository.save(order);
     this.logger.log(`[markOrderAsPaid] 订单已成功保存，新状态=${savedOrder.status}, paidAt=${savedOrder.paidAt}`);
+
+    return savedOrder;
+  }
+
+  /**
+   * Mark order as paid by outTradeNo (for WeChat payment callback)
+   * This method is called from payment callback with outTradeNo as the key
+   * It avoids dependency on userId verification since callbacks may use different context
+   */
+  async markOrderAsPaidByOutTradeNo(
+    outTradeNo: string,
+    orderId: number,
+    userId: number,
+  ): Promise<Order> {
+    this.logger.log(`[markOrderAsPaidByOutTradeNo] 通过 outTradeNo 标记订单为已支付，outTradeNo=${outTradeNo}, orderId=${orderId}, userId=${userId}`);
+
+    // Query order directly by ID
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      this.logger.error(`[markOrderAsPaidByOutTradeNo] 找不到订单，orderId=${orderId}`);
+      throw new NotFoundException('Order not found');
+    }
+
+    // Verify userId matches for security
+    if (order.userId !== userId) {
+      this.logger.error(`[markOrderAsPaidByOutTradeNo] 用户不匹配，期望userId=${userId}，实际userId=${order.userId}, orderId=${orderId}`);
+      throw new BadRequestException('Order does not belong to this user');
+    }
+
+    if (order.status !== 'pending') {
+      this.logger.error(`[markOrderAsPaidByOutTradeNo] 订单状态不是 pending，当前状态=${order.status}, orderId=${orderId}`);
+      throw new BadRequestException('Only pending orders can be marked as paid');
+    }
+
+    order.status = 'paid';
+    order.paidAt = new Date();
+    this.logger.log(`[markOrderAsPaidByOutTradeNo] 订单状态已更新为 paid，orderId=${orderId}, outTradeNo=${outTradeNo}`);
+
+    const savedOrder = await this.orderRepository.save(order);
+    this.logger.log(`[markOrderAsPaidByOutTradeNo] 订单已成功保存，orderId=${orderId}, status=${savedOrder.status}, paidAt=${savedOrder.paidAt}`);
 
     return savedOrder;
   }

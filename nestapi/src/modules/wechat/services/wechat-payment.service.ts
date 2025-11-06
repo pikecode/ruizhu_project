@@ -214,22 +214,36 @@ export class WechatPaymentService {
           const orderId = metadata.orderId;
           const userId = metadata.userId;
 
+          this.logger.log(
+            `[事务内] 通过 outTradeNo 开始更新订单: outTradeNo=${callbackData.out_trade_no}, orderId=${orderId}, userId=${userId}`,
+          );
+
           // 在同一事务内更新订单状态
           const order = await queryRunner.manager.findOne(Order, {
-            where: { id: orderId, userId },
+            where: { id: orderId },
           });
 
           if (order) {
+            // 验证订单属于该用户
+            if (order.userId !== userId) {
+              throw new Error(
+                `订单不属于该用户: outTradeNo=${callbackData.out_trade_no}, expectedUserId=${userId}, actualUserId=${order.userId}`,
+              );
+            }
+
             if (order.status !== 'pending') {
-              throw new Error(`订单状态不是pending，无法标记为已支付: status=${order.status}`);
+              throw new Error(
+                `订单状态不是pending，无法标记为已支付: outTradeNo=${callbackData.out_trade_no}, status=${order.status}`,
+              );
             }
 
             // 🔴 关键: 验证支付金额与订单金额是否一致
             if (payment.totalFee !== order.totalAmount) {
               // 金额不匹配时记录警告但继续更新订单（防止因金额偏差导致订单无法标记为已支付）
               this.logger.warn(
-                `[警告] 支付金额不匹配: 支付金额=${payment.totalFee}分, 订单金额=${order.totalAmount}分。` +
-                `orderId=${orderId}, userId=${userId}。将继续标记订单为已支付。`,
+                `[警告] 支付金额不匹配: outTradeNo=${callbackData.out_trade_no}, ` +
+                  `支付金额=${payment.totalFee}分, 订单金额=${order.totalAmount}分, ` +
+                  `orderId=${orderId}, userId=${userId}。将继续标记订单为已支付。`,
               );
             }
 
@@ -238,7 +252,8 @@ export class WechatPaymentService {
             await queryRunner.manager.save(Order, order);
 
             this.logger.log(
-              `[事务内] 订单状态已更新为已支付: orderId=${orderId}, userId=${userId}`,
+              `[事务内] 订单状态已通过 outTradeNo 更新为已支付: ` +
+                `outTradeNo=${callbackData.out_trade_no}, orderId=${orderId}, userId=${userId}`,
             );
 
             // 检查订单中是否有vip_recharge产品，在同一事务内更新用户discount
@@ -251,12 +266,15 @@ export class WechatPaymentService {
             } catch (discountError) {
               // VIP折扣失败不应该回滚整个事务
               this.logger.error(
-                `应用VIP折扣失败: orderId=${orderId}, userId=${userId}, error=${discountError.message}`,
+                `应用VIP折扣失败: outTradeNo=${callbackData.out_trade_no}, orderId=${orderId}, userId=${userId}, error=${discountError.message}`,
               );
             }
           } else {
-            this.logger.warn(
-              `找不到订单: orderId=${orderId}, userId=${userId}`,
+            this.logger.error(
+              `找不到订单: outTradeNo=${callbackData.out_trade_no}, orderId=${orderId}, userId=${userId}`,
+            );
+            throw new Error(
+              `找不到订单: outTradeNo=${callbackData.out_trade_no}, orderId=${orderId}`,
             );
           }
         } else {
