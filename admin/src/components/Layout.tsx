@@ -111,7 +111,8 @@ export default function Layout({ children }: LayoutProps) {
     ]
 
     // 只有admin角色才能看到Admin用户菜单
-    if (user?.role?.name === 'admin') {
+    const userRole = typeof user?.role === 'string' ? user?.role : user?.role?.name
+    if (userRole === 'admin') {
       baseItems.push({
         key: '/users',
         label: '🔐 Admin用户',
@@ -120,7 +121,7 @@ export default function Layout({ children }: LayoutProps) {
     }
 
     return baseItems
-  }, [handleNavigate, user?.role?.name])
+  }, [handleNavigate, user?.role])
 
   const userMenu = [
     {
