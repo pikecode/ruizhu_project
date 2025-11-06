@@ -441,8 +441,9 @@ export class OrdersService {
     }
 
     order.status = 'paid';  // Status field tracks the full lifecycle: pending → paid → shipped → delivered
+    order.paymentStatus = 'paid';  // Mark payment as complete
     order.paidAt = new Date();  // Record exact time of payment confirmation
-    this.logger.log(`[markOrderAsPaid] 订单状态已更新为 paid，即将保存到数据库`);
+    this.logger.log(`[markOrderAsPaid] 订单状态已更新为 paid，payment_status 已更新为 paid，即将保存到数据库`);
 
     const savedOrder = await this.orderRepository.save(order);
     this.logger.log(`[markOrderAsPaid] 订单已成功保存，新状态=${savedOrder.status}, paidAt=${savedOrder.paidAt}`);
@@ -484,8 +485,9 @@ export class OrdersService {
     }
 
     order.status = 'paid';
+    order.paymentStatus = 'paid';  // Mark payment as complete
     order.paidAt = new Date();
-    this.logger.log(`[markOrderAsPaidByOutTradeNo] 订单状态已更新为 paid，orderId=${orderId}, outTradeNo=${outTradeNo}`);
+    this.logger.log(`[markOrderAsPaidByOutTradeNo] 订单状态已更新为 paid，payment_status 已更新为 paid，orderId=${orderId}, outTradeNo=${outTradeNo}`);
 
     const savedOrder = await this.orderRepository.save(order);
     this.logger.log(`[markOrderAsPaidByOutTradeNo] 订单已成功保存，orderId=${orderId}, status=${savedOrder.status}, paidAt=${savedOrder.paidAt}`);
