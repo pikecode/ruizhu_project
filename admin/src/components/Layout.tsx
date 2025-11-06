@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
-import { Layout as AntLayout, Menu, Button, Dropdown, Space, Spin } from 'antd'
+import { Layout as AntLayout, Menu, Button, Dropdown, Space } from 'antd'
 import { MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store'
@@ -13,7 +13,6 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [collapsed, setCollapsed] = useState(false)
-  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const { logout, user } = useAuthStore()
@@ -27,17 +26,7 @@ export default function Layout({ children }: LayoutProps) {
   const handleNavigate = useCallback((path: string) => {
     // 如果已经在该路径，不要导航
     if (location.pathname === path) return
-
-    // 添加加载状态
-    setLoading(true)
-    // 使用setTimeout来触发路由导航，让加载状态能够显示
-    const timer = setTimeout(() => {
-      navigate(path)
-      // 导航完成后关闭加载状态
-      setTimeout(() => setLoading(false), 100)
-    }, 50)
-
-    return () => clearTimeout(timer)
+    navigate(path)
   }, [location.pathname, navigate])
 
   // 使用useMemo来缓存menuItems，避免每次都重新创建
@@ -173,11 +162,7 @@ export default function Layout({ children }: LayoutProps) {
         </Header>
 
         <Content className={styles.content}>
-          <Spin spinning={loading} delay={50}>
-            <div className={loading ? styles.contentFading : ''}>
-              {children}
-            </div>
-          </Spin>
+          {children}
         </Content>
       </AntLayout>
     </AntLayout>
