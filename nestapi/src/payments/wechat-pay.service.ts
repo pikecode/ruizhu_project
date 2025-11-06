@@ -101,7 +101,7 @@ export class WechatPayService {
       appid: this.appid,
       description,
       out_trade_no: outTradeNo,
-      notify_url: `${this.configService.get('API_BASE_URL')}/payments/wechat-callback`,
+      notify_url: `${this.configService.get('API_BASE_URL')}/wechat/payment/callback`,
       amount: {
         total: totalAmount,
         currency: 'CNY',
