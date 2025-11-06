@@ -5,9 +5,14 @@ export const authService = {
   /**
    * Admin 管理系统登录
    * 使用 /auth/admin/login 端点
+   * 后端返回 access_token，需要转换为 accessToken
    */
   adminLogin: (payload: LoginPayload): Promise<AuthResponse> => {
-    return api.post('/auth/admin/login', payload).then((res) => res.data)
+    return api.post('/auth/admin/login', payload).then((res) => ({
+      accessToken: res.data.access_token,
+      refreshToken: res.data.refresh_token || '',
+      user: res.data.user,
+    }))
   },
 
   /**
