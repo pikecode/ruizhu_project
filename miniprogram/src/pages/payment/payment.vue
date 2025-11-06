@@ -210,6 +210,20 @@ export default {
         paySign: paymentData.paySign,
         success: async (res) => {
           console.log('✅ [Payment] 微信支付成功:', res)
+
+          // 立即标记订单为已支付（在显示成功提示时同步更新）
+          try {
+            if (this.order && this.order.id) {
+              console.log('📡 [Payment] 立即标记订单为已支付...')
+              const ordersService = require('../../services/orders').default
+              await ordersService.markOrderAsPaid(this.order.id)
+              console.log('✅ [Payment] 订单已标记为已支付')
+            }
+          } catch (error) {
+            console.warn('⚠️ [Payment] 标记订单失败:', error)
+            // 不阻止支付流程，继续进行
+          }
+
           // 支付成功后查询订单状态确认
           await this.confirmPaymentSuccess(paymentData.outTradeNo)
         },

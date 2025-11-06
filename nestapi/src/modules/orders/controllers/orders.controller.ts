@@ -183,4 +183,25 @@ export class OrdersController {
       data: null,
     };
   }
+
+  /**
+   * Mark order as paid (called immediately after WeChat payment succeeds)
+   * PUT /api/orders/:orderId/mark-as-paid
+   */
+  @Put(':orderId/mark-as-paid')
+  @ApiOperation({ summary: 'Mark order as paid after payment success' })
+  async markOrderAsPaid(
+    @Request() req,
+    @Param('orderId', ParseIntPipe) orderId: number,
+  ) {
+    const order = await this.ordersService.markOrderAsPaid(
+      req.user.id,
+      orderId,
+    );
+    return {
+      code: 200,
+      message: 'Order marked as paid successfully',
+      data: order,
+    };
+  }
 }

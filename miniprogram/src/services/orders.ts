@@ -272,6 +272,24 @@ const ordersService = {
       console.error(`Failed to update order ${orderId}:`, error)
       throw error
     }
+  },
+
+  /**
+   * 标记订单为已支付（在微信支付成功后立即调用）
+   * API: PUT /orders/:orderId/mark-as-paid
+   */
+  markOrderAsPaid: async (orderId: number): Promise<Order | null> => {
+    try {
+      const response = await api.put<ApiResponse<Order>>(
+        `/orders/${orderId}/mark-as-paid`
+      )
+
+      console.log('标记订单为已支付成功:', response)
+      return response.data || null
+    } catch (error) {
+      console.error(`Failed to mark order ${orderId} as paid:`, error)
+      throw error
+    }
   }
 }
 
