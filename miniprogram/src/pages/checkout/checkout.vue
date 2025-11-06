@@ -309,8 +309,28 @@ export default {
       } catch (error) {
         uni.hideLoading()
         console.error('Failed to create order:', error)
+
+        // 提取错误消息，优先使用后端返回的详细信息
+        let errorMsg = '创建订单失败，请重试'
+
+        // 后端返回的结构化错误
+        if (error && typeof error === 'object') {
+          if (error.message) {
+            errorMsg = error.message
+          } else if (error.data && error.data.message) {
+            errorMsg = error.data.message
+          }
+        } else if (typeof error === 'string') {
+          errorMsg = error
+        }
+
+        console.log('📡 [Checkout] 错误详情:', {
+          errorMessage: errorMsg,
+          fullError: error
+        })
+
         uni.showToast({
-          title: error.message || '创建订单失败，请重试',
+          title: errorMsg,
           icon: 'none'
         })
       }

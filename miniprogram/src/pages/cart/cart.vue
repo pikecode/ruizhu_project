@@ -274,8 +274,17 @@ export default {
         }
       } catch (error) {
         console.error('Failed to update quantity:', error)
+
+        // 提取错误消息，优先使用后端返回的详细信息
+        let errorMsg = '更新数量失败'
+        if (error && error.message) {
+          errorMsg = error.message
+        } else if (typeof error === 'string') {
+          errorMsg = error
+        }
+
         uni.showToast({
-          title: '更新数量失败',
+          title: errorMsg,
           icon: 'none'
         })
       }
