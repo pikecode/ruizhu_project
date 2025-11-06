@@ -220,7 +220,6 @@ export default function CouponsPage() {
             <Col span={6}>
               <Input.Search
                 placeholder="搜索优惠券代码..."
-                icon={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 onSearch={handleSearch}

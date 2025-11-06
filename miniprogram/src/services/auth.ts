@@ -194,19 +194,22 @@ export const authService = {
   /**
    * 获取微信登录信息（openId 和 sessionKey）
    * 这是手机号授权的前置条件
+   *
+   * @param forceRefresh 是否强制刷新sessionKey（手机号授权时需要新的sessionKey）
    */
-  async wechatLogin(): Promise<{ openId: string; sessionKey: string }> {
+  async wechatLogin(forceRefresh: boolean = false): Promise<{ openId: string; sessionKey: string }> {
     return new Promise((resolve, reject) => {
       // 首先尝试获取存储的信息
       const storedOpenId = uni.getStorageSync('openId')
       const storedSessionKey = uni.getStorageSync('sessionKey')
 
-      if (storedOpenId && storedSessionKey) {
+      // 如果存在缓存且不需要强制刷新，直接返回缓存
+      if (storedOpenId && storedSessionKey && !forceRefresh) {
         resolve({ openId: storedOpenId, sessionKey: storedSessionKey })
         return
       }
 
-      // 如果没有存储，调用微信登录
+      // 如果没有存储或需要强制刷新，调用微信登录
       uni.login({
         provider: 'weixin',
         success: (loginRes: any) => {
@@ -224,6 +227,7 @@ export const authService = {
                 // 存储 openId 和 sessionKey
                 uni.setStorageSync('openId', openId)
                 uni.setStorageSync('sessionKey', sessionKey)
+                console.log('✅ 微信登录成功，获得新的 sessionKey')
                 resolve({ openId, sessionKey })
               })
               .catch((error) => {
@@ -258,16 +262,15 @@ export const authService = {
     }
 
     try {
-      // 确保有微信登录信息
-      let openId = uni.getStorageSync('openId')
-      let sessionKey = uni.getStorageSync('sessionKey')
+      // 注意：WeChat sessionKey 有有效期（通常30分钟）
+      // 我们需要在手机号授权前重新获取新的 sessionKey 以确保有效
+      // 强制刷新 sessionKey，不使用缓存中可能过期的 sessionKey
+      // 这是 WeChat 手机号授权的关键要求
+      const loginInfo = await this.wechatLogin(true) // forceRefresh = true
+      const openId = loginInfo.openId
+      const sessionKey = loginInfo.sessionKey
 
-      if (!openId || !sessionKey) {
-        // 需要先进行微信登录
-        const loginInfo = await this.wechatLogin()
-        openId = loginInfo.openId
-        sessionKey = loginInfo.sessionKey
-      }
+      console.log('🔄 已获取新的 sessionKey 用于手机号解密')
 
       console.log('📱 调用 /auth/wechat/phone-login 接口...')
       // 调用后端接口进行手机号登录/注册

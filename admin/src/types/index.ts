@@ -3,6 +3,8 @@ export interface User {
   id: string
   username: string
   email: string
+  nickname?: string
+  status?: string
   role: Role
   createdAt: string
   updatedAt: string

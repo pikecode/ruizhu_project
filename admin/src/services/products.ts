@@ -21,7 +21,7 @@ export const productsService = {
     sort?: string
     isNew?: boolean
     onSale?: boolean
-    productType?: 'standard' | 'custom'
+    productType?: 'standard' | 'custom' | 'vip_recharge'
   }): Promise<ProductListResponse> => {
     return api.get('/admin/products', { params }).then((res) => res.data.data)
   },
