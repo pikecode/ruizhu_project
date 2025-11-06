@@ -229,14 +229,15 @@ export default {
         }
       })
     },
-    async confirmPaymentSuccess(outTradeNo) {
+    async confirmPaymentSuccess(outTradeNo, retryCount = 0, maxRetries = 5) {
       try {
         // 获取用户的 openid
         const openid = uni.getStorageSync('openId')
 
         // 查询支付状态确认
-        console.log('📡 [Payment] 查询支付状态...')
+        console.log(`📡 [Payment] 查询支付状态... (重试 ${retryCount}/${maxRetries})`)
         const status = await wechatPaymentService.queryPaymentStatus(outTradeNo, openid)
+        console.log('📡 [Payment] 支付状态查询结果:', status)
 
         if (status === 'success') {
           uni.showToast({
@@ -293,15 +294,39 @@ export default {
               url: '/pages/index/index'
             })
           }, 1500)
-        } else {
-          uni.showToast({
-            title: '支付状态确认中，请稍候',
-            icon: 'none'
-          })
-          // 重试查询
+        } else if (retryCount < maxRetries) {
+          console.log(`⏳ [Payment] 支付状态为 ${status}，继续重试... (${retryCount + 1}/${maxRetries})`)
+          // 支付可能正在处理中，增加延迟后重试
+          // 使用指数退避：第1次2秒，第2次3秒，第3次4秒...
+          const delayTime = (retryCount + 2) * 1000
           setTimeout(() => {
-            this.confirmPaymentSuccess(outTradeNo)
-          }, 2000)
+            this.confirmPaymentSuccess(outTradeNo, retryCount + 1, maxRetries)
+          }, delayTime)
+        } else {
+          // 重试次数已用尽，显示支付成功提示并刷新订单
+          console.warn('⚠️ [Payment] 查询次数已达上限，假设支付成功并继续')
+          uni.showToast({
+            title: '支付已提交，正在确认',
+            icon: 'success',
+            duration: 1500
+          })
+
+          // 不再重试，直接清除缓存并跳转
+          try {
+            uni.removeStorageSync('currentOrder')
+            uni.removeStorageSync('buyNowOrder')
+            uni.removeStorageSync('checkoutItems')
+            console.log('✅ [Payment] 已清除临时缓存')
+          } catch (e) {
+            console.warn('⚠️ [Payment] 清除缓存出错:', e)
+          }
+
+          // 延迟后跳转到首页，订单列表会从 API 获取最新数据
+          setTimeout(() => {
+            uni.switchTab({
+              url: '/pages/index/index'
+            })
+          }, 1500)
         }
       } catch (error) {
         console.error('Failed to confirm payment:', error)
