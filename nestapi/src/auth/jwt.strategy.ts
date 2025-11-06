@@ -20,6 +20,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       username: payload.username,
       phone: payload.phone,
       openId: payload.openId,
+      type: payload.type,
+      role: payload.role, // 包含角色信息，用于 RolesGuard 检查
     };
   }
 }

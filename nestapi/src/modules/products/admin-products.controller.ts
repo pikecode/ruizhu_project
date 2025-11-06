@@ -9,8 +9,15 @@ import {
   Query,
   HttpCode,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { ProductsService } from './products.service';
+import { AdminAuthGuard } from '../../auth/guards/admin-auth.guard';
+import { RolesGuard } from '../../auth/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { PRODUCT_PERMISSIONS } from '../../auth/constants/permissions';
+import { Permissions } from '../../auth/decorators/permissions.decorator';
 import {
   CreateCompleteProductDto,
   QueryProductDto,
@@ -29,18 +36,21 @@ import {
 /**
  * Admin 产品管理控制器
  * 路由前缀: /api/admin/products
- * 注：管理系统使用独立的 /admin/* 路由与消费端区分，不需要额外的权限守卫
+ * 权限控制: 所有路由都需要管理员登录 + 相应权限
  */
 @Controller('admin/products')
+@UseGuards(AdminAuthGuard, RolesGuard)
 export class AdminProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   /**
    * 创建商品
    * POST /api/admin/products
+   * 权限: 只有 admin 和 manager 可以创建
    */
   @Post()
   @HttpCode(201)
+  @Roles('admin', 'manager')
   async createProduct(
     @Body() createDto: CreateCompleteProductDto,
   ): Promise<{
@@ -59,8 +69,10 @@ export class AdminProductsController {
   /**
    * 获取商品列表（带分页、搜索、筛选）
    * GET /api/admin/products
+   * 权限: 所有管理员都可以查看
    */
   @Get()
+  @Roles('admin', 'manager', 'operator')
   async getProductList(
     @Query() query: QueryProductDto,
   ): Promise<{
@@ -79,8 +91,10 @@ export class AdminProductsController {
   /**
    * 搜索商品
    * GET /api/admin/products/search?keyword=关键词
+   * 权限: 所有管理员都可以搜索
    */
   @Get('search')
+  @Roles('admin', 'manager', 'operator')
   async searchProducts(
     @Query('keyword') keyword: string,
     @Query('limit') limit?: string,
@@ -103,8 +117,10 @@ export class AdminProductsController {
   /**
    * 获取商品详情
    * GET /api/admin/products/:id
+   * 权限: 所有管理员都可以查看详情
    */
   @Get(':id')
+  @Roles('admin', 'manager', 'operator')
   async getProductDetail(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<{
@@ -123,8 +139,10 @@ export class AdminProductsController {
   /**
    * 更新商品
    * PUT /api/admin/products/:id
+   * 权限: 只有 admin 和 manager 可以更新
    */
   @Put(':id')
+  @Roles('admin', 'manager')
   async updateProduct(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateDto: UpdateProductDto,
@@ -144,9 +162,11 @@ export class AdminProductsController {
   /**
    * 删除商品
    * DELETE /api/admin/products/:id
+   * 权限: 只有 admin 可以删除
    */
   @Delete(':id')
   @HttpCode(204)
+  @Roles('admin')
   async deleteProduct(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<void> {
@@ -156,9 +176,11 @@ export class AdminProductsController {
   /**
    * 添加商品图片
    * POST /api/admin/products/:id/images
+   * 权限: 只有 admin 和 manager 可以添加
    */
   @Post(':id/images')
   @HttpCode(201)
+  @Roles('admin', 'manager')
   async addProductImage(
     @Param('id', ParseIntPipe) id: number,
     @Body() addImageDto: AddProductImageDto,
@@ -178,8 +200,10 @@ export class AdminProductsController {
   /**
    * 获取商品的所有图片
    * GET /api/admin/products/:id/images
+   * 权限: 所有管理员都可以查看
    */
   @Get(':id/images')
+  @Roles('admin', 'manager', 'operator')
   async getProductImages(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<{
@@ -198,8 +222,10 @@ export class AdminProductsController {
   /**
    * 更新商品图片
    * PUT /api/admin/products/:id/images/:imageId
+   * 权限: 只有 admin 和 manager 可以更新
    */
   @Put(':id/images/:imageId')
+  @Roles('admin', 'manager')
   async updateProductImage(
     @Param('id', ParseIntPipe) id: number,
     @Param('imageId', ParseIntPipe) imageId: number,
@@ -220,9 +246,11 @@ export class AdminProductsController {
   /**
    * 删除商品图片
    * DELETE /api/admin/products/:id/images/:imageId
+   * 权限: 只有 admin 可以删除
    */
   @Delete(':id/images/:imageId')
   @HttpCode(204)
+  @Roles('admin')
   async deleteProductImage(
     @Param('id', ParseIntPipe) id: number,
     @Param('imageId', ParseIntPipe) imageId: number,
@@ -233,8 +261,10 @@ export class AdminProductsController {
   /**
    * 批量更新商品图片顺序
    * PUT /api/admin/products/:id/images/sort
+   * 权限: 只有 admin 和 manager 可以更新
    */
   @Put(':id/images/sort')
+  @Roles('admin', 'manager')
   async updateProductImagesSort(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateSortDto: UpdateProductImagesSortDto,

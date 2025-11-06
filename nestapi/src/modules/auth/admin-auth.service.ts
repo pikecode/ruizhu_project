@@ -55,7 +55,13 @@ export class AdminAuthService {
     // 更新最后登录信息
     await this.adminUsersService.updateLastLogin(user.id, '0.0.0.0');
 
-    const payload = { username: user.username, sub: user.id, type: 'admin' };
+    // 生成 JWT payload，包含用户角色信息用于权限检查
+    const payload = {
+      username: user.username,
+      sub: user.id,
+      type: 'admin',
+      role: user.role, // 添加角色信息，用于 RolesGuard 检查
+    };
     return {
       access_token: this.jwtService.sign(payload, {
         expiresIn: '7d',
@@ -79,6 +85,7 @@ export class AdminAuthService {
       username: payload.username,
       sub: payload.sub,
       type: 'admin',
+      role: payload.role, // 保留角色信息
     };
     return {
       access_token: this.jwtService.sign(newPayload, {

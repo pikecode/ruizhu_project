@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Order } from '../entities/order.entity';
+import { Order, OrderItem } from '../../../entities/product.entity';
 import { CreateOrderDto, UpdateOrderDto } from '../dto';
 import { AddressesService } from '../../addresses/services/addresses.service';
 
@@ -91,14 +91,13 @@ export class OrdersService {
     // Create order
     const order = this.orderRepository.create({
       userId,
-      orderNumber: this.generateOrderNumber(),
+      orderNo: this.generateOrderNumber(),
       ...(createDto.addressId && { addressId: createDto.addressId }),  // Optional for recharge orders
-      items: createDto.items,
-      totalAmount: createDto.totalAmount,  // Items total after VIP discount applied (in cents)
-      shippingAmount: createDto.shippingAmount || 0,  // Shipping cost (in cents)
+      subtotal: createDto.totalAmount,  // Items total (in cents)
+      shippingCost: createDto.shippingAmount || 0,  // Shipping cost (in cents)
       discountAmount: createDto.discountAmount || 0,  // Additional discounts (in cents)
-      finalAmount: createDto.finalAmount,  // Final amount to pay = totalAmount + shipping - discount (in cents)
-      remark: createDto.remark,
+      totalAmount: createDto.finalAmount,  // Final amount to pay (in cents)
+      notes: createDto.remark,
       status: 'pending',  // Order awaiting payment
     });
 
@@ -240,7 +239,7 @@ export class OrdersService {
     }
 
     if (updateDto.remark !== undefined) {
-      order.remark = updateDto.remark;
+      order.notes = updateDto.remark;
     }
 
     return await this.orderRepository.save(order);
@@ -329,9 +328,9 @@ export class OrdersService {
   /**
    * Get order by order number
    */
-  async getOrderByNumber(orderNumber: string): Promise<Order> {
+  async getOrderByNumber(orderNo: string): Promise<Order> {
     const order = await this.orderRepository.findOne({
-      where: { orderNumber: orderNumber },
+      where: { orderNo: orderNo },
     });
 
     if (!order) {
@@ -539,7 +538,7 @@ export class OrdersService {
     }
 
     if (updateDto.remark !== undefined) {
-      order.remark = updateDto.remark;
+      order.notes = updateDto.remark;
     }
 
     return await this.orderRepository.save(order);

@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 /**
@@ -16,12 +16,12 @@ export class AdminAuthGuard extends AuthGuard('jwt') implements CanActivate {
   handleRequest(err, user, info) {
     // 这将在 JWT 验证后被调用
     if (err || !user) {
-      throw err || new ForbiddenException('Unauthorized');
+      throw err || new UnauthorizedException('Invalid or expired token');
     }
 
     // 检查 token 中的 type 是否为 'admin'
     if (user.type !== 'admin') {
-      throw new ForbiddenException('Admin authorization required');
+      throw new ForbiddenException('只有管理员可以访问此资源');
     }
 
     return user;
