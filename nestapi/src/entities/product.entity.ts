@@ -513,7 +513,7 @@ export class Order {
   @Column({ type: 'int', name: 'user_id' })
   userId: number;
 
-  @ManyToOne(() => User, { lazy: true })
+  @ManyToOne(() => User, { lazy: false })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
