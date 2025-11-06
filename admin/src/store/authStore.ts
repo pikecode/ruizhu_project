@@ -35,7 +35,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   setToken: (token: string | null) => {
-    set({ token, isLoggedIn: !!token })
+    set({ token, isLoggedIn: !!token, isHydrated: true })
     if (token) {
       localStorage.setItem('token', token)
     } else {
@@ -57,6 +57,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       token: null,
       isLoggedIn: false,
       error: null,
+      isHydrated: true,
     })
     localStorage.removeItem('user')
     localStorage.removeItem('token')
