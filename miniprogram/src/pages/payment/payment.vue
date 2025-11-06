@@ -51,6 +51,7 @@
 <script>
 import wechatPaymentService from '../../services/wechatPayment'
 import ordersService from '../../services/orders'
+import usersService from '../../services/users'
 
 export default {
   data() {
@@ -278,24 +279,37 @@ export default {
         console.log('📡 [Payment] 支付状态查询结果:', status)
 
         if (status === 'success') {
+          console.log('📡 [Payment] 支付状态已确认为成功，开始更新订单状态...')
+
+          // 再次确保订单状态已更新（作为补充保障，以防前面的调用失败）
+          try {
+            if (this.order && this.order.id) {
+              console.log('📡 [Payment] 再次调用 markOrderAsPaid 确保订单状态已更新...')
+              const updateResponse = await ordersService.markOrderAsPaid(this.order.id)
+              console.log('✅ [Payment] 订单状态更新成功:', updateResponse?.status)
+            }
+          } catch (error) {
+            console.warn('⚠️ [Payment] 订单状态更新失败 (可能已由前面的调用更新):', error?.message)
+          }
+
           uni.showToast({
             title: '支付成功',
             icon: 'success',
             duration: 1500
           })
 
-          // 从后端刷新最新的订单信息（后端已通过微信回调更新了订单状态）
+          // 从后端刷新最新的订单信息（订单状态已由前面的调用或微信回调更新）
           try {
-            const ordersService = require('../../services/orders').default
             if (this.order && this.order.id) {
               console.log('📡 [Payment] 从后端刷新订单信息...')
               const freshOrder = await ordersService.getOrderDetail(this.order.id)
               if (freshOrder) {
-                console.log('✅ [Payment] 订单已从后端刷新:', freshOrder)
+                console.log('✅ [Payment] 订单已从后端刷新:', JSON.stringify(freshOrder))
+                console.log('✅ [Payment] 订单最新状态:', freshOrder.status, '支付状态:', freshOrder.paymentStatus)
               }
             }
           } catch (error) {
-            console.warn('⚠️ [Payment] 刷新订单信息失败:', error)
+            console.warn('⚠️ [Payment] 刷新订单信息失败:', error?.message)
           }
 
           // 如果订单包含vip_recharge产品，需要刷新用户信息以获取最新的discount
@@ -304,7 +318,6 @@ export default {
               const hasVipProduct = this.order.items.some(item => item.productType === 'vip_recharge' || item.type === 'vip_recharge')
               if (hasVipProduct) {
                 console.log('📡 [Payment] 订单包含VIP产品，刷新用户信息...')
-                const usersService = require('../../services/users').default
                 const freshUserInfo = await usersService.getUserInfo()
                 if (freshUserInfo) {
                   uni.setStorageSync('userInfo', freshUserInfo)
