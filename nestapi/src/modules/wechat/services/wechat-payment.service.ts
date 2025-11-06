@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import * as xml2js from 'xml2js';
@@ -51,6 +51,7 @@ export class WechatPaymentService {
     private readonly productRepository: Repository<Product>,
     private configService: ConfigService,
     private ordersService: OrdersService,
+    private dataSource: DataSource,
   ) {
     this.appId = configService.get<string>('WECHAT_APP_ID') || '';
     this.mchId = configService.get<string>('WECHAT_MCH_ID', '');
@@ -174,14 +175,19 @@ export class WechatPaymentService {
   async handlePaymentCallback(
     callbackData: WechatPaymentCallbackDto,
   ): Promise<void> {
-    try {
-      // 验证签名
-      if (!this.verifyCallbackSign(callbackData)) {
-        throw new BadRequestException('回调签名验证失败');
-      }
+    // 验证签名（在事务外执行）
+    if (!this.verifyCallbackSign(callbackData)) {
+      throw new BadRequestException('回调签名验证失败');
+    }
 
+    // 使用事务处理支付和订单的更新
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
       // 查找对应的支付记录
-      const payment = await this.paymentRepository.findOne({
+      const payment = await queryRunner.manager.findOne(WechatPaymentEntity, {
         where: { outTradeNo: callbackData.out_trade_no },
       });
 
@@ -208,26 +214,48 @@ export class WechatPaymentService {
           const orderId = metadata.orderId;
           const userId = metadata.userId;
 
-          try {
-            // 更新订单状态为 paid
-            await this.ordersService.markOrderAsPaid(userId, orderId, payment.id);
+          // 在同一事务内更新订单状态
+          const order = await queryRunner.manager.findOne(Order, {
+            where: { id: orderId, userId },
+          });
+
+          if (order) {
+            if (order.status !== 'pending') {
+              throw new Error(`订单状态不是pending，无法标记为已支付: status=${order.status}`);
+            }
+
+            // 🔴 关键: 验证支付金额与订单金额是否一致
+            if (payment.totalFee !== order.totalAmount) {
+              throw new Error(
+                `支付金额不匹配: 支付金额=${payment.totalFee}分, 订单金额=${order.totalAmount}分。` +
+                `可能是欺诈行为，订单未标记为已支付。`,
+              );
+            }
+
+            order.status = 'paid';
+            order.paidAt = new Date();
+            await queryRunner.manager.save(Order, order);
+
             this.logger.log(
-              `订单状态已更新为已支付: orderId=${orderId}, userId=${userId}, paymentId=${payment.id}`,
+              `[事务内] 订单状态已更新为已支付: orderId=${orderId}, userId=${userId}`,
             );
 
-            // 检查订单中是否有vip_recharge产品，如果有则更新用户discount
+            // 检查订单中是否有vip_recharge产品，在同一事务内更新用户discount
             try {
-              await this.applyVipDiscountIfApplicable(orderId, userId);
+              await this.applyVipDiscountIfApplicableInTransaction(
+                queryRunner,
+                orderId,
+                userId,
+              );
             } catch (discountError) {
-              // 记录错误但不中断整个流程
+              // VIP折扣失败不应该回滚整个事务
               this.logger.error(
                 `应用VIP折扣失败: orderId=${orderId}, userId=${userId}, error=${discountError.message}`,
               );
             }
-          } catch (orderError) {
-            // 记录订单更新错误但不中断支付记录的保存
-            this.logger.error(
-              `更新订单状态失败: orderId=${orderId}, userId=${userId}, error=${orderError.message}`,
+          } else {
+            this.logger.warn(
+              `找不到订单: orderId=${orderId}, userId=${userId}`,
             );
           }
         } else {
@@ -243,14 +271,21 @@ export class WechatPaymentService {
       }
 
       payment.wechatCallback = callbackData;
-      await this.paymentRepository.save(payment);
-      this.logger.log(`支付记录已保存: outTradeNo=${callbackData.out_trade_no}`);
+      await queryRunner.manager.save(WechatPaymentEntity, payment);
+
+      // 提交事务
+      await queryRunner.commitTransaction();
+      this.logger.log(`[事务已提交] 支付记录已保存: outTradeNo=${callbackData.out_trade_no}`);
     } catch (error) {
-      this.logger.error(`处理支付回调出错: ${error.message}`);
+      // 回滚事务
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`[事务已回滚] 处理支付回调出错: ${error.message}`);
       throw new HttpException(
         `处理支付回调失败: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    } finally {
+      await queryRunner.release();
     }
   }
 
@@ -587,6 +622,81 @@ export class WechatPaymentService {
    * @param orderId - 订单ID
    * @param userId - 用户ID
    */
+  /**
+   * 在事务内应用VIP折扣（用于支付回调）
+   * @param queryRunner 数据库事务运行器
+   * @param orderId 订单ID
+   * @param userId 用户ID
+   */
+  private async applyVipDiscountIfApplicableInTransaction(
+    queryRunner: any,
+    orderId: number,
+    userId: number,
+  ): Promise<void> {
+    try {
+      // 在事务内查询订单
+      const order = await queryRunner.manager.findOne(Order, {
+        where: { id: orderId },
+        relations: ['items'],
+      });
+
+      if (!order || !order.items || order.items.length === 0) {
+        this.logger.debug(
+          `订单未找到或无订单项: orderId=${orderId}, userId=${userId}`,
+        );
+        return;
+      }
+
+      // 检查订单中是否有vip_recharge产品
+      let vipProductDiscount: number | null = null;
+
+      for (const item of order.items) {
+        // 查询产品信息
+        const product = await queryRunner.manager.findOne(Product, {
+          where: { id: item.productId },
+        });
+
+        if (
+          product &&
+          product.productType === 'vip_recharge' &&
+          product.discount
+        ) {
+          vipProductDiscount = product.discount;
+          this.logger.log(
+            `找到VIP充值产品: productId=${item.productId}, discount=${vipProductDiscount}`,
+          );
+          break;
+        }
+      }
+
+      // 如果找到VIP产品，在事务内更新用户的discount字段
+      if (vipProductDiscount !== null) {
+        const user = await queryRunner.manager.findOne(User, {
+          where: { id: userId },
+        });
+
+        if (!user) {
+          this.logger.warn(`用户未找到: userId=${userId}`);
+          return;
+        }
+
+        const oldDiscount = user.discount;
+        user.discount = vipProductDiscount;
+        await queryRunner.manager.save(User, user);
+
+        this.logger.log(
+          `[事务内] 用户VIP折扣已更新: userId=${userId}, orderId=${orderId}, oldDiscount=${oldDiscount}, newDiscount=${vipProductDiscount}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `[事务内] 应用VIP折扣时出错: orderId=${orderId}, userId=${userId}, error=${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
+
   private async applyVipDiscountIfApplicable(
     orderId: string,
     userId: string,

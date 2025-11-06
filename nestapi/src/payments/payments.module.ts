@@ -5,7 +5,7 @@ import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 import { WechatPayService } from './wechat-pay.service';
 import { Payment } from './entities/payment.entity';
-import { Order } from '../orders/entities/order.entity';
+import { Order } from '../entities/product.entity';
 import { UsersModule } from '../users/users.module';
 
 @Module({

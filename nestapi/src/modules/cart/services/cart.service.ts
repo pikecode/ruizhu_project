@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CartItem } from '../entities/cart-item.entity';
+import { Product } from '../../../entities/product.entity';
 import { CreateCartItemDto, UpdateCartItemDto, CartItemResponseDto } from '../dto';
 
 @Injectable()
@@ -9,6 +10,8 @@ export class CartService {
   constructor(
     @InjectRepository(CartItem)
     private readonly cartItemRepository: Repository<CartItem>,
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
   ) {}
 
   /**
@@ -53,6 +56,40 @@ export class CartService {
       },
       relations: ['product'],
     });
+
+    // 库存验证：检查产品是否有足够的库存
+    if (cartItem && cartItem.product) {
+      const totalQuantity = cartItem.quantity + createDto.quantity;
+
+      if (cartItem.product.stockQuantity < totalQuantity) {
+        throw new BadRequestException(
+          `库存不足。当前购物车中有 ${cartItem.quantity} 件，想再加 ${createDto.quantity} 件，总共需要 ${totalQuantity} 件，但库存仅有 ${cartItem.product.stockQuantity} 件`,
+        );
+      }
+
+      if (cartItem.product.stockStatus === 'soldOut') {
+        throw new BadRequestException('产品已售罄，无法加入购物车');
+      }
+    } else if (!cartItem) {
+      // 新增商品时检查库存
+      const product = await this.productRepository.findOne({
+        where: { id: createDto.productId },
+      });
+
+      if (!product) {
+        throw new NotFoundException(`Product ID ${createDto.productId} not found`);
+      }
+
+      if (product.stockQuantity < createDto.quantity) {
+        throw new BadRequestException(
+          `库存不足，仅剩 ${product.stockQuantity} 件，无法加入 ${createDto.quantity} 件`,
+        );
+      }
+
+      if (product.stockStatus === 'soldOut') {
+        throw new BadRequestException('产品已售罄，无法加入购物车');
+      }
+    }
 
     if (cartItem) {
       // Update quantity if item already exists
@@ -113,6 +150,18 @@ export class CartService {
       if (updateDto.quantity < 1) {
         throw new BadRequestException('Quantity must be at least 1');
       }
+
+      // 库存验证：更新数量时检查库存
+      if (cartItem.product && cartItem.product.stockQuantity < updateDto.quantity) {
+        throw new BadRequestException(
+          `库存不足，仅剩 ${cartItem.product.stockQuantity} 件，无法更新为 ${updateDto.quantity} 件`,
+        );
+      }
+
+      if (cartItem.product && cartItem.product.stockStatus === 'soldOut') {
+        throw new BadRequestException('产品已售罄，无法在购物车中修改数量');
+      }
+
       cartItem.quantity = updateDto.quantity;
     }
 

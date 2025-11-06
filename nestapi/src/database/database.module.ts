@@ -19,8 +19,7 @@ import { Category } from '../categories/entities/category.entity';
 import { Cart } from '../carts/entities/cart.entity';
 import { CartItem } from '../carts/entities/cart-item.entity';
 // Orders
-import { Order } from '../orders/entities/order.entity';
-import { OrderItem } from '../orders/entities/order-item.entity';
+import { Order, OrderItem } from '../entities/product.entity';
 // Wishlists
 import { Wishlist } from '../wishlists/entities/wishlist.entity';
 import { WishlistItem } from '../wishlists/entities/wishlist-item.entity';

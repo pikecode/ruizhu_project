@@ -9,7 +9,7 @@ import {
   OneToOne,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
-import { Order } from '../../orders/entities/order.entity';
+import { Order } from '../../entities/product.entity';
 
 export enum PaymentStatus {
   PENDING = 'pending',        // 待支付

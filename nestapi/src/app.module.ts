@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -33,6 +34,9 @@ import { getDatabaseConfig } from './database/database.config';
       isGlobal: true,
       envFilePath: '.env',
     }),
+
+    // 定时任务调度模块 - 用于自动取消超时订单等定时任务
+    ScheduleModule.forRoot(),
 
     // TypeORM 数据库连接 - 仅连接云数据库
     TypeOrmModule.forRoot(getDatabaseConfig()),

@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import axios from 'axios';
 import * as crypto from 'crypto';
-import { Order, OrderStatus } from '../orders/entities/order.entity';
+import { Order } from '../entities/product.entity';
 import { Payment, PaymentStatus, PaymentMethod } from './entities/payment.entity';
 import { CreateWechatPayDto, WechatPayResponseDto } from './dto/wechat-pay.dto';
 import { UsersService } from '../users/users.service';
@@ -67,7 +67,7 @@ export class WechatPayService {
     const payment = this.paymentsRepository.create({
       orderId,
       userId,
-      amount: Math.round(order.totalPrice * 100), // 转换为分
+      amount: order.totalAmount, // 已经是分为单位
       status: PaymentStatus.PENDING,
       paymentMethod: PaymentMethod.WECHAT,
       transactionNo: this.generateOutTradeNo(orderId),
@@ -78,7 +78,7 @@ export class WechatPayService {
     // 调用微信统一下单接口
     const prepayData = await this.unifiedOrder(
       payment.transactionNo,
-      Math.round(order.totalPrice * 100),
+      order.totalAmount,
       description || `订单 ${orderId}`,
     );
 
@@ -243,7 +243,7 @@ export class WechatPayService {
         });
 
         if (order) {
-          order.status = OrderStatus.CONFIRMED;
+          order.status = 'paid';
           await this.ordersRepository.save(order);
           this.logger.log(`订单支付成功: ${payment.orderId}`);
 
@@ -375,9 +375,9 @@ export class WechatPayService {
    */
   private async handleRechargeOrder(order: Order, payment: Payment): Promise<void> {
     try {
-      // 检查订单中是否有会员充值产品（通过检查订单的 addressId 是否为空）
+      // 检查订单中是否有会员充值产品（通过检查订单的 shippingAddress 是否为空）
       // 充值订单通常没有收货地址
-      if (order.addressId === null) {
+      if (!order.shippingAddress) {
         // 这是一个充值订单，尝试从订单项中提取折扣信息
         // 在这个简化的实现中，我们假设折扣已经在创建订单时就已知道
         // 实际环境中，应该从产品信息或订单备注中获取折扣

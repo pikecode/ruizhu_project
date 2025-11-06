@@ -67,6 +67,7 @@
           v-for="(product, index) in filteredProducts"
           :key="index"
           class="product-item"
+          :class="{ 'product-item-disabled': product.isSold }"
           @tap="onProductTap(product)"
         >
           <view class="product-image-wrapper">
@@ -76,7 +77,9 @@
               mode="aspectFill"
               @load="onImageLoad"
             ></image>
-            <view v-if="product.isNew" class="product-badge">新品</view>
+            <!-- 库存状态徽章 -->
+            <view v-if="product.isSold" class="product-badge sold-out">售罄</view>
+            <view v-else-if="product.isNew" class="product-badge">新品</view>
           </view>
           <view class="product-info">
             <text class="product-name">{{ product.name }}</text>
@@ -414,6 +417,15 @@ export default {
       opacity: 0.9;
     }
 
+    &.product-item-disabled {
+      opacity: 0.6;
+      pointer-events: auto;
+
+      .product-image {
+        filter: grayscale(100%);
+      }
+    }
+
     .product-image-wrapper {
       position: relative;
       width: 100%;
@@ -436,6 +448,10 @@ export default {
         font-size: 20rpx;
         font-weight: 500;
         border-radius: 4rpx;
+
+        &.sold-out {
+          background: #ff4444;
+        }
       }
     }
 

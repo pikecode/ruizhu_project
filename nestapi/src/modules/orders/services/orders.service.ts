@@ -2,10 +2,12 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Order, OrderItem } from '../../../entities/product.entity';
+import { Repository, LessThan, DataSource } from 'typeorm';
+import { Order, OrderItem, Product } from '../../../entities/product.entity';
 import { CreateOrderDto, UpdateOrderDto } from '../dto';
 import { AddressesService } from '../../addresses/services/addresses.service';
 
@@ -20,10 +22,18 @@ export interface IOrderItem {
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
+  // 订单超时时间（分钟）- 30分钟内必须支付
+  private readonly ORDER_TIMEOUT_MINUTES = 30;
+
   constructor(
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
     private readonly addressesService: AddressesService,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -83,16 +93,29 @@ export class OrdersService {
       );
     }
 
-    // Validate address exists and belongs to user (skip for recharge orders)
+    // Validate address exists and fetch full address data (skip for recharge orders)
+    let shippingAddress: Record<string, any> | undefined;
     if (!createDto.isRecharge && createDto.addressId) {
-      await this.addressesService.getAddress(userId, createDto.addressId);
+      const address = await this.addressesService.getAddress(userId, createDto.addressId);
+      shippingAddress = {
+        id: address.id,
+        receiverName: address.receiverName,
+        receiverPhone: address.receiverPhone,
+        province: address.province,
+        city: address.city,
+        district: address.district,
+        addressDetail: address.addressDetail,
+        postalCode: address.postalCode,
+        label: address.label,
+      };
     }
 
-    // Create order
+    // Create order with full address information
     const order = this.orderRepository.create({
       userId,
       orderNo: this.generateOrderNumber(),
-      ...(createDto.addressId && { addressId: createDto.addressId }),  // Optional for recharge orders
+      // 🔴 重要: 保存完整地址信息到shippingAddress JSON字段，而不是addressId
+      ...(shippingAddress && { shippingAddress }),
       subtotal: createDto.totalAmount,  // Items total (in cents)
       shippingCost: createDto.shippingAmount || 0,  // Shipping cost (in cents)
       discountAmount: createDto.discountAmount || 0,  // Additional discounts (in cents)
@@ -101,7 +124,56 @@ export class OrdersService {
       status: 'pending',  // Order awaiting payment
     });
 
-    return await this.orderRepository.save(order);
+    const savedOrder = await this.orderRepository.save(order);
+
+    // 扣减库存：订单创建时立即扣减库存（使用乐观锁防止超卖）
+    // 乐观锁原理: 通过version字段版本检查，确保并发时库存正确扣减
+    for (const item of createDto.items) {
+      const product = await this.getProductById(item.productId);
+
+      if (product.stockQuantity < item.quantity) {
+        throw new BadRequestException(
+          `产品 ${product.name} 库存不足，仅剩 ${product.stockQuantity} 件`,
+        );
+      }
+
+      // 使用乐观锁更新库存：只有当version匹配时才成功更新
+      // 如果其他请求并发修改了该产品，这里会失败，需要重试
+      const updateResult = await this.productRepository.update(
+        {
+          id: product.id,
+          version: product.version  // 乐观锁条件
+        },
+        {
+          stockQuantity: product.stockQuantity - item.quantity,
+          // 使用 () => '...' 语法执行数据库函数来递增版本
+          version: () => 'version + 1',
+          // 动态计算库存状态
+          stockStatus:
+            product.stockQuantity - item.quantity <= 0
+              ? 'soldOut'
+              : product.stockQuantity - item.quantity <= product.lowStockThreshold
+              ? 'outOfStock'
+              : 'normal',
+          isSoldOut:
+            product.stockQuantity - item.quantity <= 0 ? true : false,
+          isOutOfStock:
+            product.stockQuantity - item.quantity > 0 &&
+            product.stockQuantity - item.quantity <= product.lowStockThreshold
+              ? true
+              : false,
+        },
+      );
+
+      // 检查是否成功更新（乐观锁冲突检测）
+      if (updateResult.affected === 0) {
+        throw new BadRequestException(
+          `产品 ${product.name} 库存已被其他订单占用，请重试。(乐观锁冲突)`,
+        );
+      }
+    }
+
+    return savedOrder;
   }
 
   /**
@@ -249,12 +321,41 @@ export class OrdersService {
    * Cancel order
    */
   async cancelOrder(userId: number, orderId: number): Promise<Order> {
-    const order = await this.getOrder(userId, orderId);
+    const order = await this.orderRepository.findOne({
+      where: {
+        id: orderId,
+        userId,
+      },
+      relations: ['items'], // Load order items for stock restoration
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
 
     if (!['pending', 'paid'].includes(order.status)) {
       throw new BadRequestException(
         'Can only cancel pending or paid orders',
       );
+    }
+
+    // 恢复库存：订单取消时恢复所有商品的库存
+    if (order.items && order.items.length > 0) {
+      for (const item of order.items) {
+        const product = await this.getProductById(item.productId);
+
+        // 恢复库存
+        product.stockQuantity += item.quantity;
+
+        // 恢复库存状态为正常
+        if (product.stockQuantity > product.lowStockThreshold) {
+          product.stockStatus = 'normal';
+          product.isOutOfStock = false;
+          product.isSoldOut = false;
+        }
+
+        await this.saveProduct(product);
+      }
     }
 
     order.status = 'cancelled';
@@ -545,5 +646,136 @@ export class OrdersService {
     }
 
     return await this.orderRepository.save(order);
+  }
+
+  /**
+   * Admin: Delete order (hard delete)
+   */
+  async remove(orderId: number): Promise<void> {
+    const order = await this.getOrderById(orderId);
+    await this.orderRepository.remove(order);
+  }
+
+  /**
+   * Helper: Get product by ID
+   */
+  private async getProductById(productId: number): Promise<Product> {
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Product ID ${productId} not found`);
+    }
+
+    return product;
+  }
+
+  /**
+   * Helper: Save product
+   */
+  private async saveProduct(product: Product): Promise<Product> {
+    return await this.productRepository.save(product);
+  }
+
+  /**
+   * 定时任务: 每分钟检查一次并自动取消超时的pending订单
+   * 订单在创建后30分钟内如果未支付，将被自动取消
+   */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async cancelExpiredPendingOrders(): Promise<void> {
+    try {
+      const now = new Date();
+      const timeoutThreshold = new Date(
+        now.getTime() - this.ORDER_TIMEOUT_MINUTES * 60 * 1000,
+      );
+
+      // 查询所有超时的pending订单
+      const expiredOrders = await this.orderRepository.find({
+        where: {
+          status: 'pending',
+          createdAt: LessThan(timeoutThreshold),
+        },
+        relations: ['items'],
+      });
+
+      if (expiredOrders.length === 0) {
+        return;
+      }
+
+      this.logger.log(
+        `[定时任务] 发现 ${expiredOrders.length} 个超时未支付的订单，开始取消...`,
+      );
+
+      // 逐个取消订单并恢复库存
+      let cancelledCount = 0;
+      let errorCount = 0;
+
+      for (const order of expiredOrders) {
+        try {
+          await this.cancelExpiredOrder(order);
+          cancelledCount++;
+          this.logger.log(
+            `[定时任务] 已取消超时订单 #${order.id} (orderId: ${order.orderNo})，库存已恢复`,
+          );
+        } catch (error) {
+          errorCount++;
+          this.logger.error(
+            `[定时任务] 取消订单 #${order.id} 失败: ${error.message}`,
+          );
+        }
+      }
+
+      this.logger.log(
+        `[定时任务] 超时订单处理完成: 成功取消 ${cancelledCount} 个, 失败 ${errorCount} 个`,
+      );
+    } catch (error) {
+      this.logger.error(`[定时任务] 自动取消超时订单时出错: ${error.message}`);
+    }
+  }
+
+  /**
+   * 取消过期的订单并恢复库存
+   * @param order 要取消的订单
+   */
+  private async cancelExpiredOrder(order: Order): Promise<void> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 恢复库存
+      if (order.items && order.items.length > 0) {
+        for (const item of order.items) {
+          const product = await queryRunner.manager.findOne(Product, {
+            where: { id: item.productId },
+          });
+
+          if (product) {
+            product.stockQuantity += item.quantity;
+
+            // 恢复库存状态
+            if (product.stockQuantity > product.lowStockThreshold) {
+              product.stockStatus = 'normal';
+              product.isOutOfStock = false;
+              product.isSoldOut = false;
+            }
+
+            await queryRunner.manager.save(Product, product);
+          }
+        }
+      }
+
+      // 更新订单状态
+      order.status = 'cancelled';
+      await queryRunner.manager.save(Order, order);
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw new Error(`取消订单失败: ${error.message}`);
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

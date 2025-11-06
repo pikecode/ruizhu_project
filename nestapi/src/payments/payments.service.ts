@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Payment, PaymentStatus, PaymentMethod } from './entities/payment.entity';
-import { Order, OrderStatus } from '../orders/entities/order.entity';
+import { Order } from '../entities/product.entity';
 import { CreatePaymentDto } from './dto/payment.dto';
 import * as crypto from 'crypto';
 
@@ -146,7 +146,7 @@ export class PaymentsService {
 
       // 更新订单状态
       if (payment.order) {
-        payment.order.status = OrderStatus.CONFIRMED;
+        payment.order.status = 'paid';
         await this.orderRepository.save(payment.order);
       }
     } else if (trade_state === 'FAILED') {

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Put,
+  Delete,
   Param,
   Body,
   Query,
@@ -102,6 +103,21 @@ export class AdminOrdersController {
       code: 200,
       message: 'Order updated successfully',
       data: order,
+    };
+  }
+
+  /**
+   * 删除订单（硬删除）
+   * DELETE /api/admin/orders/:orderId
+   * 权限: 只有 admin 可以删除
+   */
+  @Delete(':orderId')
+  @Roles('admin')
+  async deleteOrder(@Param('orderId', ParseIntPipe) orderId: number) {
+    await this.ordersService.remove(orderId);
+    return {
+      code: 200,
+      message: 'Order deleted successfully',
     };
   }
 }

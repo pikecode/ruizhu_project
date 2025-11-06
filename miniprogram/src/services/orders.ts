@@ -102,6 +102,15 @@ const ordersService = {
 
       console.log('📡 [OrdersService] 原始 API response:', response)
       console.log('📡 [OrdersService] response.data:', response.data)
+
+      // 数据转换: 将backend的orderNo字段映射到前端期望的orderNumber字段
+      if (response.data && response.data.items) {
+        response.data.items = response.data.items.map((order: any) => ({
+          ...order,
+          orderNumber: order.orderNo || order.orderNumber, // 优先使用orderNo，兼容orderNumber
+        }))
+      }
+
       console.log('📡 [OrdersService] 即将返回:', response.data || null)
       return response.data || null
     } catch (error) {
@@ -121,6 +130,15 @@ const ordersService = {
       )
 
       console.log(`获取${status}状态订单成功:`, response)
+
+      // 数据转换: 将backend的orderNo字段映射到前端期望的orderNumber字段
+      if (response.data && response.data.items) {
+        response.data.items = response.data.items.map((order: any) => ({
+          ...order,
+          orderNumber: order.orderNo || order.orderNumber,
+        }))
+      }
+
       return response.data || null
     } catch (error) {
       console.error(`Failed to get orders by status ${status}:`, error)
@@ -139,6 +157,15 @@ const ordersService = {
       )
 
       console.log('获取订单详情成功:', response)
+
+      // 数据转换: 将backend的orderNo字段映射到前端期望的orderNumber字段
+      if (response.data) {
+        response.data = {
+          ...response.data,
+          orderNumber: response.data.orderNo || response.data.orderNumber,
+        } as any
+      }
+
       return response.data || null
     } catch (error) {
       console.error(`Failed to get order detail for ${orderId}:`, error)
@@ -194,6 +221,15 @@ const ordersService = {
       )
 
       console.log('创建订单成功:', response)
+
+      // 数据转换: 将backend的orderNo字段映射到前端期望的orderNumber字段
+      if (response.data) {
+        response.data = {
+          ...response.data,
+          orderNumber: response.data.orderNo || response.data.orderNumber,
+        } as any
+      }
+
       return response.data || null
     } catch (error) {
       console.error('Failed to create order:', error)

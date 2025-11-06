@@ -83,6 +83,9 @@ export class Product {
   @Column({ type: 'int', default: 10, name: 'low_stock_threshold' })
   lowStockThreshold: number;
 
+  @Column({ type: 'int', default: 0, name: 'version' })
+  version: number; // 用于乐观锁，防止库存超卖
+
   @Column({ type: 'int', nullable: true })
   weight: number; // 克
 
