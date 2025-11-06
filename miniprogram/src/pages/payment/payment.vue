@@ -215,12 +215,18 @@ export default {
           try {
             if (this.order && this.order.id) {
               console.log('📡 [Payment] 立即标记订单为已支付...')
+              console.log('📡 [Payment] 订单ID:', this.order.id)
               const ordersService = require('../../services/orders').default
-              await ordersService.markOrderAsPaid(this.order.id)
-              console.log('✅ [Payment] 订单已标记为已支付')
+              const response = await ordersService.markOrderAsPaid(this.order.id)
+              console.log('✅ [Payment] 订单已标记为已支付，响应:', response)
+              console.log('✅ [Payment] 订单状态已更新为:', response?.status || '未知')
             }
           } catch (error) {
-            console.warn('⚠️ [Payment] 标记订单失败:', error)
+            console.error('❌ [Payment] 标记订单失败，详细错误:', {
+              errorMessage: error?.message,
+              errorCode: error?.code,
+              fullError: error
+            })
             // 不阻止支付流程，继续进行
           }
 

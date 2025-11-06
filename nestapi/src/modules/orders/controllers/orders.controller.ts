@@ -194,14 +194,24 @@ export class OrdersController {
     @Request() req,
     @Param('orderId', ParseIntPipe) orderId: number,
   ) {
-    const order = await this.ordersService.markOrderAsPaid(
-      req.user.id,
-      orderId,
-    );
-    return {
-      code: 200,
-      message: 'Order marked as paid successfully',
-      data: order,
-    };
+    console.log('[OrdersController] markOrderAsPaid 端点被调用');
+    console.log('[OrdersController] userId:', req.user.id);
+    console.log('[OrdersController] orderId:', orderId);
+
+    try {
+      const order = await this.ordersService.markOrderAsPaid(
+        req.user.id,
+        orderId,
+      );
+      console.log('[OrdersController] 订单已成功标记为已支付:', order);
+      return {
+        code: 200,
+        message: 'Order marked as paid successfully',
+        data: order,
+      };
+    } catch (error) {
+      console.error('[OrdersController] 标记订单为已支付时出错:', error);
+      throw error;
+    }
   }
 }

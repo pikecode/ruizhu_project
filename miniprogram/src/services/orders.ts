@@ -280,14 +280,23 @@ const ordersService = {
    */
   markOrderAsPaid: async (orderId: number): Promise<Order | null> => {
     try {
+      console.log('📡 [OrdersService] 正在调用 markOrderAsPaid API...')
+      console.log('📡 [OrdersService] 订单ID:', orderId)
+
       const response = await api.put<ApiResponse<Order>>(
         `/orders/${orderId}/mark-as-paid`
       )
 
-      console.log('标记订单为已支付成功:', response)
+      console.log('✅ [OrdersService] 标记订单为已支付成功，响应:', response)
+      console.log('✅ [OrdersService] 返回的订单对象:', response.data)
       return response.data || null
     } catch (error) {
-      console.error(`Failed to mark order ${orderId} as paid:`, error)
+      console.error('❌ [OrdersService] 标记订单为已支付失败，详细信息:', {
+        orderId,
+        errorMessage: error?.message,
+        errorCode: error?.code,
+        fullError: error
+      })
       throw error
     }
   }

@@ -415,16 +415,24 @@ export class OrdersService {
     orderId: number,
     paymentId?: number,
   ): Promise<Order> {
+    this.logger.log(`[markOrderAsPaid] 开始处理订单支付标记，userId=${userId}, orderId=${orderId}`);
+
     const order = await this.getOrder(userId, orderId);
+    this.logger.log(`[markOrderAsPaid] 获取订单成功，当前状态=${order.status}, orderNo=${order.orderNo}`);
 
     if (order.status !== 'pending') {
+      this.logger.error(`[markOrderAsPaid] 订单状态不是 pending，当前状态=${order.status}`);
       throw new BadRequestException('Only pending orders can be marked as paid');
     }
 
     order.status = 'paid';  // Status field tracks the full lifecycle: pending → paid → shipped → delivered
     order.paidAt = new Date();  // Record exact time of payment confirmation
+    this.logger.log(`[markOrderAsPaid] 订单状态已更新为 paid，即将保存到数据库`);
 
-    return await this.orderRepository.save(order);
+    const savedOrder = await this.orderRepository.save(order);
+    this.logger.log(`[markOrderAsPaid] 订单已成功保存，新状态=${savedOrder.status}, paidAt=${savedOrder.paidAt}`);
+
+    return savedOrder;
   }
 
   /**
