@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -212,5 +213,32 @@ export class UsersService {
       throw new NotFoundException('用户不存在');
     }
     return updatedUser;
+  }
+
+  /**
+   * 更新用户信息（用于管理员编辑）
+   */
+  async update(id: number, updateUserDto: UpdateUserDto): Promise<Omit<User, 'password'>> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+
+    // 验证折扣倍数范围
+    if (updateUserDto.discount !== undefined) {
+      if (updateUserDto.discount < 0.01 || updateUserDto.discount > 1.0) {
+        throw new BadRequestException('折扣倍数必须在0.01和1.0之间');
+      }
+    }
+
+    await this.usersRepository.update(id, updateUserDto);
+
+    const updatedUser = await this.usersRepository.findOne({ where: { id } });
+    if (!updatedUser) {
+      throw new NotFoundException('用户不存在');
+    }
+
+    const { password, ...result } = updatedUser;
+    return result;
   }
 }

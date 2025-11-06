@@ -5,12 +5,14 @@ import {
   Body,
   Param,
   Delete,
+  Patch,
   UseGuards,
   Request,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('users')
 export class UsersController {
@@ -48,5 +50,15 @@ export class UsersController {
   @UseGuards(AuthGuard('jwt'))
   async remove(@Param('id') id: string) {
     return this.usersService.remove(+id);
+  }
+
+  /**
+   * Update user information (e.g., discount field)
+   * PATCH /api/users/:id
+   */
+  @Patch(':id')
+  @UseGuards(AuthGuard('jwt'))
+  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.usersService.update(+id, updateUserDto);
   }
 }

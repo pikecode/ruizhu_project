@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Table, Button, Space, Card, Tag, message, Popconfirm } from 'antd'
-import { DeleteOutlined, ReloadOutlined, LockOutlined } from '@ant-design/icons'
+import { Table, Button, Space, Card, Tag, message, Popconfirm, Modal, Form, Input } from 'antd'
+import { DeleteOutlined, ReloadOutlined, LockOutlined, EditOutlined } from '@ant-design/icons'
 import Layout from '@/components/Layout'
 import { useAuthStore } from '@/store'
 import { consumerUsersService, ConsumerUser } from '@/services/consumer-users'
@@ -9,6 +9,9 @@ export default function ConsumerUsersPage() {
   const [users, setUsers] = useState<ConsumerUser[]>([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
+  const [editingUser, setEditingUser] = useState<ConsumerUser | null>(null)
+  const [discountModalOpen, setDiscountModalOpen] = useState(false)
+  const [discountForm] = Form.useForm()
   const { isHydrated } = useAuthStore()
 
   useEffect(() => {
@@ -54,6 +57,32 @@ export default function ConsumerUsersPage() {
       loadUsers()
     } catch (error) {
       message.error('禁用用户失败')
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEditDiscount = (user: ConsumerUser) => {
+    setEditingUser(user)
+    discountForm.setFieldsValue({
+      discount: user.discount,
+    })
+    setDiscountModalOpen(true)
+  }
+
+  const handleSaveDiscount = async () => {
+    try {
+      const values = await discountForm.validateFields()
+      if (!editingUser) return
+
+      setLoading(true)
+      await consumerUsersService.updateDiscount(editingUser.id, values.discount)
+      message.success('折扣更新成功')
+      setDiscountModalOpen(false)
+      loadUsers()
+    } catch (error) {
+      message.error('更新折扣失败')
       console.error(error)
     } finally {
       setLoading(false)
@@ -132,6 +161,16 @@ export default function ConsumerUsersPage() {
       width: 100,
     },
     {
+      title: '折扣倍数',
+      dataIndex: 'discount',
+      key: 'discount',
+      width: 100,
+      render: (discount: number) => {
+        const percentage = (discount * 100).toFixed(0)
+        return <Tag color="blue">{percentage}折</Tag>
+      },
+    },
+    {
       title: '最后登录',
       dataIndex: 'lastLoginAt',
       key: 'lastLoginAt',
@@ -145,6 +184,13 @@ export default function ConsumerUsersPage() {
       fixed: 'right' as const,
       render: (_: any, record: ConsumerUser) => (
         <Space size="small">
+          <Button
+            type="primary"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEditDiscount(record)}
+            title="编辑折扣"
+          />
           <Popconfirm
             title="禁用用户"
             description="确定要禁用这个用户吗？"
@@ -152,7 +198,7 @@ export default function ConsumerUsersPage() {
             okText="禁用"
             cancelText="取消"
           >
-            <Button type="primary" size="small" icon={<LockOutlined />} />
+            <Button type="primary" danger size="small" icon={<LockOutlined />} title="禁用用户" />
           </Popconfirm>
           <Popconfirm
             title="删除用户"
@@ -161,7 +207,7 @@ export default function ConsumerUsersPage() {
             okText="删除"
             cancelText="取消"
           >
-            <Button danger size="small" icon={<DeleteOutlined />} />
+            <Button danger size="small" icon={<DeleteOutlined />} title="删除用户" />
           </Popconfirm>
         </Space>
       ),
@@ -195,6 +241,67 @@ export default function ConsumerUsersPage() {
           />
         </Card>
       </div>
+
+      {/* 编辑折扣 Modal */}
+      <Modal
+        title={`编辑用户折扣 - ${editingUser?.nickname || editingUser?.phone || `用户${editingUser?.id}`}`}
+        open={discountModalOpen}
+        onOk={handleSaveDiscount}
+        onCancel={() => setDiscountModalOpen(false)}
+        confirmLoading={loading}
+        okText="保存"
+        cancelText="取消"
+      >
+        <Form
+          form={discountForm}
+          layout="vertical"
+          style={{ marginTop: 20 }}
+        >
+          <Form.Item
+            label="折扣倍数"
+            name="discount"
+            rules={[
+              { required: true, message: '请输入折扣倍数' },
+              {
+                pattern: /^(0\.\d{2}|[0-9]\d*\.?\d{0,2}|1\.00|1\.0|1)$/,
+                message: '请输入0.01-1.0之间的数值，最多两位小数',
+              },
+              {
+                validator: (_, value) => {
+                  if (value === undefined || value === '') return Promise.resolve()
+                  const num = parseFloat(value)
+                  if (num < 0.01 || num > 1.0) {
+                    return Promise.reject(new Error('折扣倍数必须在0.01和1.0之间'))
+                  }
+                  return Promise.resolve()
+                },
+              },
+            ]}
+          >
+            <Input
+              type="number"
+              placeholder="例如：0.8（表示8折）、0.5（表示5折）"
+              min={0.01}
+              max={1.0}
+              step={0.01}
+            />
+          </Form.Item>
+          <div style={{ marginTop: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
+            <p style={{ margin: 0, fontSize: 12, color: '#666' }}>
+              📝 说明：折扣倍数范围从 0.01 到 1.0
+            </p>
+            <p style={{ margin: '8px 0 0 0', fontSize: 12, color: '#666' }}>
+              • 1.0 = 无折扣（原价）
+            </p>
+            <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#666' }}>
+              • 0.9 = 9折（优惠10%）
+            </p>
+            <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#666' }}>
+              • 0.5 = 5折（优惠50%）
+            </p>
+          </div>
+        </Form>
+      </Modal>
     </Layout>
   )
 }

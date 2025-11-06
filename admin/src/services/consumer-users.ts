@@ -19,6 +19,7 @@ export interface ConsumerUser {
   lastLoginAt?: string
   lastLoginIp?: string
   loginCount: number
+  discount: number
   createdAt: string
   updatedAt: string
 }
@@ -105,6 +106,21 @@ export const consumerUsersService = {
       await api.patch(`/users/${id}`, { status: 'banned' })
     } catch (error) {
       console.error('Failed to ban consumer user:', error)
+      throw error
+    }
+  },
+
+  /**
+   * 更新用户折扣倍数
+   * @param id 用户ID
+   * @param discount 折扣倍数（0.01-1.0）
+   */
+  updateDiscount: async (id: number, discount: number): Promise<ConsumerUser> => {
+    try {
+      const response = await api.patch(`/users/${id}`, { discount })
+      return response.data.data || response.data
+    } catch (error) {
+      console.error('Failed to update user discount:', error)
       throw error
     }
   },
