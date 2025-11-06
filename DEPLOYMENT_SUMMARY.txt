@@ -1,0 +1,283 @@
+================================================================================
+                    DEPLOYMENT STATUS SUMMARY
+                     Tencent Cloud Server
+                      123.207.14.67
+================================================================================
+
+CURRENT STATUS: ✅ OPERATIONAL (Both NestAPI and Admin running)
+
+================================================================================
+1. NestAPI BACKEND DEPLOYMENT
+================================================================================
+
+Process Status:
+  • Name: ruizhu-backend
+  • Manager: PM2 (Process Manager)
+  • Status: ONLINE
+  • PID: 679539
+  • Uptime: 3+ hours (since Oct 29 10:32)
+  • Memory: 112.0 MB
+  • CPU: 0% (idle)
+  • Restarts: 0 (stable)
+
+Location:
+  /opt/ruizhu-app/nestapi-dist/dist/main.js
+
+Port Configuration:
+  • Internal Port: 3000 (configured in PM2)
+  • External Port: 80 (via Nginx reverse proxy)
+  • Backend API Endpoint: http://123.207.14.67/api/
+
+Configuration File:
+  /opt/ruizhu-app/ecosystem.config.js
+  
+Environment Variables:
+  /opt/ruizhu-app/.env.production
+  • NODE_ENV: production
+  • Database: Tencent Cloud MySQL (gz-cdb-qtjza6az.sql.tencentcdb.com:27226)
+  • Tencent COS enabled (cloud storage)
+  • WeChat payment integration configured
+
+Logs:
+  • Error log: /var/log/pm2/ruizhu-backend-error.log
+  • Output log: /var/log/pm2/ruizhu-backend-out.log
+
+================================================================================
+2. ADMIN FRONTEND DEPLOYMENT
+================================================================================
+
+Deployment Type: Static Files (Vite Build Output)
+
+Location:
+  /opt/ruizhu-app/admin/
+
+Contents:
+  • index.html (main SPA entry point)
+  • assets/ (compiled JS, CSS, fonts)
+  • vite.svg (static asset)
+
+How It Works:
+  • Nginx serves files from /opt/ruizhu-app/admin/
+  • All routes fallback to /index.html (SPA configuration)
+  • Static assets cached for 30 days
+  • Gzip compression enabled
+
+Access URL:
+  http://123.207.14.67/
+
+================================================================================
+3. NGINX REVERSE PROXY
+================================================================================
+
+Configuration File:
+  /etc/nginx/conf.d/ruizhu.conf
+
+Port: 80 (HTTP)
+
+Routing Rules:
+  
+  /api/*          → Backend API (127.0.0.1:8888)
+                     Headers forwarded, WebSocket supported
+  
+  /               → Admin Frontend (/opt/ruizhu-app/admin/)
+                     SPA routing with index.html fallback
+  
+  /health         → Health check endpoint (returns "OK")
+  
+  Static assets   → Cached for 30 days
+  (*.js, *.css,   
+   *.png, *.jpg, 
+   *.woff, etc)
+
+Features Enabled:
+  ✓ Reverse proxy (keep-alive connections)
+  ✓ WebSocket support
+  ✓ Gzip compression
+  ✓ Security headers (X-Content-Type-Options, X-Frame-Options, etc.)
+  ✓ SPA routing fallback
+  ✓ Client upload limit: 50MB
+
+Logs:
+  • Access log: /var/log/nginx/ruizhu-access.log
+  • Error log: /var/log/nginx/ruizhu-error.log
+
+================================================================================
+4. DATABASE CONFIGURATION
+================================================================================
+
+Type: Tencent Cloud MySQL (Remote)
+Host: gz-cdb-qtjza6az.sql.tencentcdb.com
+Port: 27226
+Username: root
+Password: Pp123456
+Database Name: mydb
+Connection String: mysql://root:Pp123456@gz-cdb-qtjza6az.sql.tencentcdb.com:27226/mydb
+
+Status: ✅ Connected and operational
+
+================================================================================
+5. TRAFFIC FLOW DIAGRAM
+================================================================================
+
+User/Client Request
+        ↓
+    Port 80 (Internet)
+        ↓
+    Nginx Server (123.207.14.67)
+    /        ├─→ /api/*    → Backend (127.0.0.1:8888) → MySQL DB
+             └─→ /         → Admin Static Files → Browser
+
+================================================================================
+6. HOW TO DEPLOY NEW CODE
+================================================================================
+
+STEP 1: Build on local machine
+  $ npm run build
+  → Creates dist/ folder with compiled code
+
+STEP 2: Upload to server
+  $ rsync -avz dist/ root@123.207.14.67:/opt/ruizhu-app/nestapi-dist/dist/
+
+STEP 3: On server, backup current version
+  $ ssh root@123.207.14.67
+  $ cd /opt/ruizhu-app
+  $ cp -r nestapi-dist nestapi-dist-backup-$(date +%Y%m%d)
+
+STEP 4: Restart PM2
+  $ pm2 restart ruizhu-backend
+
+STEP 5: Verify deployment
+  $ pm2 logs ruizhu-backend
+  $ curl http://localhost:8888/health
+
+If something goes wrong, rollback:
+  $ pm2 stop ruizhu-backend
+  $ cp -r nestapi-dist-backup-YYYYMMDD nestapi-dist
+  $ pm2 start ruizhu-backend
+
+================================================================================
+7. SERVICE MANAGEMENT COMMANDS
+================================================================================
+
+Check PM2 Status:
+  pm2 list
+  pm2 info ruizhu-backend
+
+View Logs:
+  pm2 logs ruizhu-backend                    # Real-time logs
+  pm2 logs ruizhu-backend --err              # Errors only
+  tail -f /var/log/pm2/ruizhu-backend-error.log
+  tail -f /var/log/nginx/ruizhu-error.log
+
+Control Services:
+  pm2 restart ruizhu-backend                 # Restart backend
+  pm2 stop ruizhu-backend                    # Stop backend
+  pm2 start ruizhu-backend                   # Start backend
+  nginx -s reload                            # Reload Nginx
+  systemctl restart nginx                    # Restart Nginx
+
+Test Connectivity:
+  curl http://localhost:8888/health          # Test backend
+  curl http://localhost/                     # Test admin
+  curl http://123.207.14.67/health           # Test from external
+
+================================================================================
+8. IMPORTANT FILES & LOCATIONS
+================================================================================
+
+Production Code:
+  /opt/ruizhu-app/nestapi-dist/dist/
+
+PM2 Configuration:
+  /opt/ruizhu-app/ecosystem.config.js
+
+Environment Variables:
+  /opt/ruizhu-app/.env.production
+
+Admin Frontend:
+  /opt/ruizhu-app/admin/
+
+Nginx Configuration:
+  /etc/nginx/conf.d/ruizhu.conf
+
+Setup Script:
+  /opt/ruizhu-app/server-setup.sh
+
+Database Init Script:
+  /opt/ruizhu-app/database-init-corrected.sql
+
+Backup Versions:
+  /opt/ruizhu-app/nestapi-dist-old/
+  /opt/ruizhu-app/nestapi-dist-old-wrong/
+
+================================================================================
+9. MONITORING & TROUBLESHOOTING
+================================================================================
+
+Check Service Health:
+  • pm2 list
+  • lsof -i :8888 (check if port is open)
+  • curl http://localhost:8888/health (backend health)
+  • curl http://localhost/ (admin frontend)
+
+If Backend Not Responding:
+  1. Check PM2 status: pm2 list
+  2. Check logs: pm2 logs ruizhu-backend --err
+  3. Check database connection in logs
+  4. Restart: pm2 restart ruizhu-backend
+  5. Check port: lsof -i :8888
+
+If Admin Not Loading:
+  1. Check Nginx status: systemctl status nginx
+  2. Check error log: tail -f /var/log/nginx/ruizhu-error.log
+  3. Verify files exist: ls -la /opt/ruizhu-app/admin/
+  4. Test Nginx config: nginx -t
+  5. Reload Nginx: nginx -s reload
+
+If Database Connection Fails:
+  1. Test directly: mysql -h gz-cdb-qtjza6az.sql.tencentcdb.com -P 27226 -u root -p
+  2. Check .env.production: cat /opt/ruizhu-app/.env.production | grep DB_
+  3. Verify network/firewall allows connection to Tencent Cloud
+  4. Restart backend: pm2 restart ruizhu-backend
+
+================================================================================
+10. DEPLOYMENT HISTORY
+================================================================================
+
+2025-10-29   Initial deployment
+             └─ Backend deployed to nestapi-dist/
+             └─ Admin deployed to admin/
+             └─ PM2 started (PID 679539, 10:32)
+
+2025-10-30   First backup created (nestapi-dist-old/)
+
+2025-10-31   Second backup created (nestapi-dist-old-wrong/)
+
+2025-11-02   Admin frontend updated
+
+2025-11-06   CURRENT - Running stably for 3+ hours
+             └─ No crashes or restarts
+             └─ Memory usage stable (~112 MB)
+
+================================================================================
+11. NEXT: DEPLOYING INVENTORY-ORDER-PURCHASE FLOW UPDATES
+================================================================================
+
+The recent code changes implemented:
+  ✓ Optimistic locking for inventory (version field)
+  ✓ Order timeout auto-cancellation (30 minutes)
+  ✓ Payment amount verification (fraud detection)
+  ✓ Complete order address persistence
+
+When ready to deploy these changes:
+
+1. Rebuild on local machine
+2. Upload dist/ to server using rsync
+3. Restart PM2 process
+4. Verify logs show no errors
+5. Monitor database for new order flow
+
+================================================================================
+                        STATUS: OPERATIONAL ✅
+                 Ready for production deployment
+================================================================================

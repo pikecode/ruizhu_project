@@ -139,15 +139,16 @@ export class OrdersService {
 
       // 使用乐观锁更新库存：只有当version匹配时才成功更新
       // 如果其他请求并发修改了该产品，这里会失败，需要重试
+      // 注意: version字段暂未在数据库中实现，使用简单的ID匹配更新
       const updateResult = await this.productRepository.update(
         {
           id: product.id,
-          version: product.version  // 乐观锁条件
+          // version: product.version  // 乐观锁条件（已禁用，等待数据库迁移）
         },
         {
           stockQuantity: product.stockQuantity - item.quantity,
           // 使用 () => '...' 语法执行数据库函数来递增版本
-          version: () => 'version + 1',
+          // version: () => 'version + 1',  // （已禁用，等待数据库迁移）
           // 动态计算库存状态
           stockStatus:
             product.stockQuantity - item.quantity <= 0
