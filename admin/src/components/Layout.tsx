@@ -41,78 +41,86 @@ export default function Layout({ children }: LayoutProps) {
   }, [location.pathname, navigate])
 
   // 使用useMemo来缓存menuItems，避免每次都重新创建
-  const menuItems = useMemo(() => [
-    {
-      key: '/products',
-      label: '产品',
-      onClick: () => handleNavigate('/products'),
-    },
-    {
-      key: '/collections',
-      label: '集合',
-      onClick: () => handleNavigate('/collections'),
-    },
-    {
-      key: '/array-collections',
-      label: '数组集合',
-      onClick: () => handleNavigate('/array-collections'),
-    },
-    {
-      key: '/banners',
-      label: '首页Banner',
-      onClick: () => handleNavigate('/banners'),
-    },
-    {
-      key: '/custom-banners',
-      label: '私人定制Banner',
-      onClick: () => handleNavigate('/custom-banners'),
-    },
-    {
-      key: '/profile-banners',
-      label: '我的页面Banner',
-      onClick: () => handleNavigate('/profile-banners'),
-    },
-    {
-      key: '/about-banners',
-      label: '关于页面Banner',
-      onClick: () => handleNavigate('/about-banners'),
-    },
-    {
-      key: '/featured-banners',
-      label: '精选系列Banner',
-      onClick: () => handleNavigate('/featured-banners'),
-    },
-    {
-      key: '/news',
-      label: '资讯',
-      onClick: () => handleNavigate('/news'),
-    },
-    {
-      key: '/orders',
-      label: '订单',
-      onClick: () => handleNavigate('/orders'),
-    },
-    {
-      key: '/consultations',
-      label: '💬 产品咨询',
-      onClick: () => handleNavigate('/consultations'),
-    },
-    {
-      key: '/member-benefits',
-      label: '🎁 会员礼遇',
-      onClick: () => handleNavigate('/member-benefits'),
-    },
-    {
-      key: '/users',
-      label: '🔐 Admin用户',
-      onClick: () => handleNavigate('/users'),
-    },
-    {
-      key: '/consumer-users',
-      label: '👥 消费者用户',
-      onClick: () => handleNavigate('/consumer-users'),
-    },
-  ], [handleNavigate])
+  const menuItems = useMemo(() => {
+    const baseItems = [
+      {
+        key: '/products',
+        label: '产品',
+        onClick: () => handleNavigate('/products'),
+      },
+      {
+        key: '/collections',
+        label: '集合',
+        onClick: () => handleNavigate('/collections'),
+      },
+      {
+        key: '/array-collections',
+        label: '数组集合',
+        onClick: () => handleNavigate('/array-collections'),
+      },
+      {
+        key: '/banners',
+        label: '首页Banner',
+        onClick: () => handleNavigate('/banners'),
+      },
+      {
+        key: '/custom-banners',
+        label: '私人定制Banner',
+        onClick: () => handleNavigate('/custom-banners'),
+      },
+      {
+        key: '/profile-banners',
+        label: '我的页面Banner',
+        onClick: () => handleNavigate('/profile-banners'),
+      },
+      {
+        key: '/about-banners',
+        label: '关于页面Banner',
+        onClick: () => handleNavigate('/about-banners'),
+      },
+      {
+        key: '/featured-banners',
+        label: '精选系列Banner',
+        onClick: () => handleNavigate('/featured-banners'),
+      },
+      {
+        key: '/news',
+        label: '资讯',
+        onClick: () => handleNavigate('/news'),
+      },
+      {
+        key: '/orders',
+        label: '订单',
+        onClick: () => handleNavigate('/orders'),
+      },
+      {
+        key: '/consultations',
+        label: '💬 产品咨询',
+        onClick: () => handleNavigate('/consultations'),
+      },
+      {
+        key: '/member-benefits',
+        label: '🎁 会员礼遇',
+        onClick: () => handleNavigate('/member-benefits'),
+      },
+      {
+        key: '/consumer-users',
+        label: '👥 消费者用户',
+        onClick: () => handleNavigate('/consumer-users'),
+      },
+    ]
+
+    // 只有admin角色才能看到Admin用户菜单
+    if (user?.role?.name === 'admin') {
+      baseItems.push({
+        key: '/users',
+        label: '🔐 Admin用户',
+        onClick: () => handleNavigate('/users'),
+      })
+    }
+
+    return baseItems
+  }, [handleNavigate, user?.role?.name])
 
   const userMenu = [
     {
