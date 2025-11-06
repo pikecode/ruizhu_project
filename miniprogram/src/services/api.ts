@@ -22,7 +22,7 @@ const PROD_URL = 'https://yunjie.online/api'
 
 // 根据环境选择 API 地址
 // 修改这里来切换开发/生产环境
-const BASE_URL = 'http://123.207.14.67/api'  // 已切换到线上环境 (http://123.207.14.67/api)
+const BASE_URL = 'https://yunjie.online/api'  // 已切换到线上环境 (https://yunjie.online/api)
 
 interface RequestOptions {
   method?: string
