@@ -412,7 +412,7 @@ export class OrdersService {
   }
 
   /**
-   * Admin: Get all orders with pagination
+   * Admin: Get all orders with pagination (includes user information)
    */
   async getAllOrders(
     page: number = 1,
@@ -426,6 +426,7 @@ export class OrdersService {
     const skip = (page - 1) * limit;
 
     const [orders, total] = await this.orderRepository.findAndCount({
+      relations: ['user'],
       skip,
       take: limit,
       order: { createdAt: 'DESC' },
@@ -440,7 +441,7 @@ export class OrdersService {
   }
 
   /**
-   * Admin: Get orders by status
+   * Admin: Get orders by status (includes user information)
    */
   async getOrdersByStatusAdmin(
     status: string,
@@ -467,6 +468,7 @@ export class OrdersService {
     }
 
     const [orders, total] = await this.orderRepository.findAndCount({
+      relations: ['user'],
       where: { status },
       skip,
       take: limit,
@@ -482,10 +484,11 @@ export class OrdersService {
   }
 
   /**
-   * Admin: Get order by ID (no user check)
+   * Admin: Get order by ID (no user check, includes user information)
    */
   async getOrderById(orderId: number): Promise<Order> {
     const order = await this.orderRepository.findOne({
+      relations: ['user'],
       where: { id: orderId },
     });
 

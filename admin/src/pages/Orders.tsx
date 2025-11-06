@@ -63,13 +63,23 @@ export default function OrdersPage() {
       title: '订单ID',
       dataIndex: 'id',
       key: 'id',
-      width: 150,
+      width: 120,
     },
     {
-      title: '用户ID',
-      dataIndex: 'userId',
-      key: 'userId',
-      width: 150,
+      title: '用户信息',
+      key: 'userInfo',
+      width: 220,
+      render: (_: any, record: Order) => {
+        const user = record.user
+        return (
+          <div>
+            {user?.nickname && <div><strong>{user.nickname}</strong></div>}
+            {user?.phone && <div style={{ fontSize: 12, color: '#666' }}>{user.phone}</div>}
+            {user?.email && <div style={{ fontSize: 12, color: '#666' }}>{user.email}</div>}
+            {!user && <span style={{ color: '#999' }}>用户ID: {record.userId}</span>}
+          </div>
+        )
+      },
     },
     {
       title: '总额',
@@ -135,7 +145,7 @@ export default function OrdersPage() {
                 setPagination({ ...pagination, current: page, pageSize })
               },
             }}
-            scroll={{ x: 1300 }}
+            scroll={{ x: 1200 }}
           />
         </Card>
       </div>

@@ -153,8 +153,15 @@ export interface ArrayCollection {
 export interface Order {
   id: string
   userId: string
+  user?: {
+    id: number
+    nickname?: string
+    phone?: string
+    email?: string
+  }
   items: OrderItem[]
   totalPrice: number
+  totalAmount?: number
   status: OrderStatus
   shippingAddress: Address
   createdAt: string

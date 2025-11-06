@@ -16,6 +16,7 @@ import {
   Unique,
   JoinColumn,
 } from 'typeorm';
+import { User } from './user.entity';
 
 /**
  * 商品实体
@@ -511,6 +512,10 @@ export class Order {
 
   @Column({ type: 'int', name: 'user_id' })
   userId: number;
+
+  @ManyToOne(() => User, { lazy: true })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
 
   @Column({ type: 'int' })
   subtotal: number; // 分为单位
