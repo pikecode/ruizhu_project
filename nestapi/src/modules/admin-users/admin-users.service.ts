@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AdminUser } from '../../entities/admin-user.entity';
+import * as bcryptjs from 'bcryptjs';
 
 export interface CreateAdminUserDto {
   username: string;
@@ -40,8 +41,12 @@ export class AdminUsersService {
       throw new BadRequestException('用户名或邮箱已存在');
     }
 
+    // Hash password before saving
+    const hashedPassword = await bcryptjs.hash(createAdminUserDto.password, 10);
+
     const adminUser = this.adminUsersRepository.create({
       ...createAdminUserDto,
+      password: hashedPassword,
       status: 'active',
     });
 
@@ -106,7 +111,13 @@ export class AdminUsersService {
       throw new NotFoundException('用户不存在');
     }
 
-    await this.adminUsersRepository.update(id, updateAdminUserDto);
+    // Hash password if provided in update
+    const updateData = { ...updateAdminUserDto };
+    if (updateData.password) {
+      updateData.password = await bcryptjs.hash(updateData.password, 10);
+    }
+
+    await this.adminUsersRepository.update(id, updateData);
     const updatedUser = await this.adminUsersRepository.findOne({ where: { id } });
 
     if (!updatedUser) {

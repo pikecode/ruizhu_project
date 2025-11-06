@@ -77,8 +77,12 @@ export default function UsersPage() {
       setLoading(true)
 
       if (editingUser) {
-        // 编辑用户
-        await usersService.updateUser(editingUser.id, values)
+        // 编辑用户 - 如果密码为空，则从提交数据中删除
+        const updateData = { ...values }
+        if (!updateData.password) {
+          delete updateData.password
+        }
+        await usersService.updateUser(editingUser.id, updateData)
         message.success('用户更新成功')
       } else {
         // 新增用户
@@ -301,18 +305,16 @@ export default function UsersPage() {
             </Select>
           </Form.Item>
 
-          {!editingUser && (
-            <Form.Item
-              label="密码"
-              name="password"
-              rules={[
-                { required: true, message: '请输入密码' },
-                { min: 8, message: '密码至少8个字符' },
-              ]}
-            >
-              <Input.Password placeholder="密码（至少8个字符）" />
-            </Form.Item>
-          )}
+          <Form.Item
+            label="密码"
+            name="password"
+            rules={[
+              { required: !editingUser, message: '请输入密码' },
+              { min: 8, message: '密码至少8个字符' },
+            ]}
+          >
+            <Input.Password placeholder={editingUser ? "留空则不修改密码（至少8个字符）" : "密码（至少8个字符）"} />
+          </Form.Item>
         </Form>
       </Modal>
     </Layout>
