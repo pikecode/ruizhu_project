@@ -165,8 +165,10 @@ export default function ConsumerUsersPage() {
       dataIndex: 'discount',
       key: 'discount',
       width: 100,
-      render: (discount: number) => {
-        const percentage = (discount * 100).toFixed(0)
+      render: (discount: number | string) => {
+        if (!discount) return '-'
+        const discountNum = typeof discount === 'string' ? parseFloat(discount) : discount
+        const percentage = (discountNum * 100).toFixed(0)
         return <Tag color="blue">{percentage}折</Tag>
       },
     },
