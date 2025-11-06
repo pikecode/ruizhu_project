@@ -24,6 +24,11 @@ export class UpdateMembershipDto {
   @Matches(/^1[3-9]\d{9}$/)
   mobile?: string;
 
+  @IsString()
+  @IsOptional()
+  @Length(1, 100)
+  email?: string;
+
   @IsDateString()
   @IsOptional()
   birthDate?: string;

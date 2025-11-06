@@ -9,6 +9,20 @@
       <text class="subtitle">选择您感兴趣的产品开启定制之旅</text>
     </view>
 
+    <!-- 搜索框 -->
+    <view class="search-bar">
+      <view class="search-input-wrapper">
+        <text class="search-icon">🔍</text>
+        <input
+          v-model="searchKeyword"
+          type="text"
+          placeholder="搜索产品..."
+          @input="onSearchInput"
+          class="search-input"
+        />
+      </view>
+    </view>
+
     <!-- 分类标签 -->
     <view class="category-tabs">
       <scroll-view scroll-x class="tabs-scroll">
@@ -23,20 +37,6 @@
           </view>
         </view>
       </scroll-view>
-    </view>
-
-    <!-- 搜索框 -->
-    <view class="search-bar">
-      <view class="search-input-wrapper">
-        <text class="search-icon">🔍</text>
-        <input
-          v-model="searchKeyword"
-          type="text"
-          placeholder="搜索产品..."
-          @input="onSearchInput"
-          class="search-input"
-        />
-      </view>
     </view>
 
     <!-- 产品网格 -->
@@ -72,7 +72,6 @@
           <view class="product-info">
             <text class="product-name">{{ product.name }}</text>
             <text class="product-color">{{ product.color }}</text>
-            <text class="product-price">¥{{ product.price }}</text>
           </view>
 
         </view>
@@ -116,7 +115,8 @@
           <input v-model="consultForm.email" type="email" placeholder="请输入您的邮箱" />
         </view>
 
-        <view class="form-group">
+        <!-- 通用颜色选择（珠宝和香水产品除外） -->
+        <view v-if="selectedProduct.categoryId !== 2 && selectedProduct.categoryId !== 4" class="form-group">
           <text class="label">颜色</text>
           <input v-model="consultForm.color" type="text" placeholder="请输入颜色，如：红色、黑色等" />
         </view>
@@ -125,11 +125,24 @@
         <view v-if="selectedProduct.categoryId === 1" class="form-section">
           <view class="section-title">服装尺码信息</view>
           <view class="form-group">
-            <text class="label">身高 (cm) *</text>
+            <text class="label">通用尺码 *</text>
+            <view class="size-selector">
+              <view
+                v-for="size in ['XS', 'S', 'M', 'L', 'XL', 'XXL']"
+                :key="size"
+                :class="['size-btn', { active: consultForm.clothingSize === size }]"
+                @tap="consultForm.clothingSize = size"
+              >
+                <text>{{ size }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="form-group">
+            <text class="label">身高 (cm)</text>
             <input v-model="consultForm.height" type="number" placeholder="请输入身高，如170" />
           </view>
           <view class="form-group">
-            <text class="label">体重 (kg) *</text>
+            <text class="label">体重 (kg)</text>
             <input v-model="consultForm.weight" type="number" placeholder="请输入体重，如65" />
           </view>
           <view class="form-group">
@@ -155,31 +168,7 @@
           </view>
         </view>
 
-        <!-- 珠宝类产品表单 -->
-        <view v-if="selectedProduct.categoryId === 2" class="form-section">
-          <view class="section-title">珠宝定制信息</view>
-          <view class="form-group">
-            <text class="label">戒指码</text>
-            <input v-model="consultForm.ringSize" type="text" placeholder="如：13, 14, 15等" />
-          </view>
-          <view class="form-group">
-            <text class="label">珠宝尺寸 (mm)</text>
-            <input v-model="consultForm.jewelrySize" type="number" placeholder="请输入珠宝尺寸" />
-          </view>
-          <view class="form-group">
-            <text class="label">材质偏好</text>
-            <input v-model="consultForm.jewelryMaterial" type="text" placeholder="如：18K金、铂金、925银等" />
-          </view>
-        </view>
-
-        <!-- 香水类产品表单 -->
-        <view v-if="selectedProduct.categoryId === 4" class="form-section">
-          <view class="section-title">香水偏好</view>
-          <view class="form-group">
-            <text class="label">香调偏好</text>
-            <input v-model="consultForm.perfumePreference" type="text" placeholder="如：花香、果香、木质等" />
-          </view>
-        </view>
+        <!-- 珠宝类产品表单 - 直接使用备注说明定制需求 -->
 
         <view class="form-group">
           <text class="label">备注信息</text>
@@ -236,6 +225,7 @@ export default {
         email: '',
         color: '',
         // 服装相关
+        clothingSize: '',
         height: '',
         weight: '',
         chest: '',
@@ -307,7 +297,7 @@ export default {
       this.currentPage = 1
       this.displayProducts = []
       this.hasMore = true
-      this.loadProducts()
+      this.filterAndDisplayProducts()
     },
 
     // 加载产品（从API获取私人定制产品）
@@ -323,14 +313,9 @@ export default {
           productType: 'custom' // 获取私人定制产品
         }
 
-        // 如果选择了特定分类（非全部），添加分类参数
-        if (this.selectedCategory !== 0) {
-          options.categoryId = this.selectedCategory
-        }
-
         console.log('[consultation] 查询选项:', options)
 
-        // 调用API获取产品
+        // 调用API获取产品（不在API层面过滤，在前端过滤）
         const apiProducts = await getProducts(options)
         console.log('[consultation] 从API获取的产品数量:', apiProducts.length)
         console.log('[consultation] API返回的产品数据:', apiProducts)
@@ -346,17 +331,12 @@ export default {
         // 如果是第一页，替换数据；否则追加
         if (this.currentPage === 1) {
           this.allProducts = frontendProducts
-          this.displayProducts = frontendProducts.slice(0, this.pageSize)
         } else {
           this.allProducts = this.allProducts.concat(frontendProducts)
-          this.displayProducts = this.displayProducts.concat(
-            frontendProducts.slice(0, this.pageSize)
-          )
         }
 
-        // 检查是否还有更多数据
-        this.totalProducts = this.allProducts.length
-        this.hasMore = this.displayProducts.length < this.totalProducts
+        // 应用搜索和分类过滤
+        this.filterAndDisplayProducts()
 
         console.log('[consultation] 当前显示产品数:', this.displayProducts.length)
         console.log('[consultation] 总产品数:', this.totalProducts)
@@ -372,21 +352,43 @@ export default {
       }
     },
 
+    // 过滤和显示产品（根据搜索关键词和分类）
+    filterAndDisplayProducts() {
+      let filtered = this.allProducts
+
+      // 1. 先按搜索关键词过滤
+      if (this.searchKeyword.trim()) {
+        const keyword = this.searchKeyword.toLowerCase()
+        filtered = filtered.filter(p =>
+          p.name.toLowerCase().includes(keyword) ||
+          p.color.toLowerCase().includes(keyword)
+        )
+      }
+
+      // 2. 再按分类过滤
+      if (this.selectedCategory !== 0) {
+        filtered = filtered.filter(p => p.categoryId === this.selectedCategory)
+      }
+
+      // 3. 更新显示的产品列表
+      this.totalProducts = filtered.length
+      this.displayProducts = filtered.slice(0, this.currentPage * this.pageSize)
+      this.hasMore = this.displayProducts.length < this.totalProducts
+
+      console.log('[consultation] 过滤后的产品数:', this.displayProducts.length)
+    },
+
     // 加载更多
     loadMoreProducts() {
       this.currentPage++
-      this.loadProducts()
+      this.filterAndDisplayProducts()
     },
 
     // 搜索输入
     onSearchInput() {
-      // 实时搜索可能需要调用搜索API，目前简化处理
-      // 如果需要实时搜索，可以调用 searchProducts API
+      // 搜索时重置到第一页
       this.currentPage = 1
-      this.displayProducts = []
-      this.hasMore = true
-      // 注：当前实现简化，如需搜索功能需调用搜索API
-      this.loadProducts()
+      this.filterAndDisplayProducts()
     },
 
     // 选择产品
@@ -398,6 +400,7 @@ export default {
         email: '',
         color: '',
         // 服装相关
+        clothingSize: '',
         height: '',
         weight: '',
         chest: '',
@@ -472,17 +475,10 @@ export default {
 
       // 根据产品类别验证特定字段
       if (this.selectedProduct.categoryId === 1) {
-        // 服装类
-        if (!this.consultForm.height.trim()) {
+        // 服装类 - 验证尺码选择
+        if (!this.consultForm.clothingSize) {
           uni.showToast({
-            title: '请输入身高',
-            icon: 'none'
-          })
-          return
-        }
-        if (!this.consultForm.weight.trim()) {
-          uni.showToast({
-            title: '请输入体重',
+            title: '请选择尺码',
             icon: 'none'
           })
           return
@@ -509,6 +505,7 @@ export default {
         userEmail: this.consultForm.email?.trim() || undefined,
         color: this.consultForm.color?.trim() || undefined,
         // 服装相关
+        clothingSize: this.consultForm.clothingSize || undefined,
         height: this.consultForm.height?.trim() || undefined,
         weight: this.consultForm.weight?.trim() || undefined,
         chest: this.consultForm.chest?.trim() || undefined,
@@ -554,6 +551,7 @@ export default {
             email: '',
             color: '',
             // 服装相关
+            clothingSize: '',
             height: '',
             weight: '',
             chest: '',
@@ -778,15 +776,43 @@ export default {
       font-size: 20rpx;
       color: #999999;
     }
-
-    .product-price {
-      display: block;
-      font-size: 28rpx;
-      color: #000000;
-      font-weight: 600;
-    }
   }
 
+}
+
+/* 尺码选择器 */
+.size-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+
+  .size-btn {
+    padding: 12rpx 24rpx;
+    background: #f5f5f5;
+    border: 2rpx solid #e0e0e0;
+    border-radius: 8rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26rpx;
+    color: #333333;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:active {
+      opacity: 0.8;
+    }
+
+    &.active {
+      background: #000000;
+      color: #ffffff;
+      border-color: #000000;
+    }
+
+    text {
+      font-weight: 500;
+    }
+  }
 }
 
 /* 空状态 */

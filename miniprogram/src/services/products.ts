@@ -307,24 +307,33 @@ export interface ProductDetail {
 /**
  * 将后端商品详情数据转换为前端格式
  *
- * 注意：当前后端暂时只返回 coverImageUrl（单张图片）
- * 前端将其转换为数组以适配轮播组件
- * 后续后端支持多张图片后，可直接使用 images 数组
+ * 图片合并策略：
+ * 1. coverImageUrl 是产品主图（作为轮播的第一张）
+ * 2. images 数组是 ProductImage 表的所有图片
+ * 3. 前端合并这两个字段，构建完整的轮播图片列表
+ *
+ * 顺序：[coverImageUrl, images[0], images[1], ...]
  */
 function mapProductDetailToFrontend(
   backendProduct: ProductDetailResponse
 ): ProductDetail {
-  // 获取图片列表
-  // 优先使用 images 数组（后端支持多张图时）
-  // 否则使用 coverImageUrl 创建单项数组
+  // 获取图片列表 - 合并 coverImageUrl 和 images 数组
   let images: string[] = []
 
-  if (backendProduct.images && backendProduct.images.length > 0) {
-    images = backendProduct.images
-  } else if (backendProduct.coverImageUrl) {
-    // 后端暂时只返回单张封面图，包装为数组供轮播组件使用
-    images = [backendProduct.coverImageUrl]
+  // 1. 先添加 coverImageUrl（如果存在）- 作为第一张图片
+  if (backendProduct.coverImageUrl) {
+    images.push(backendProduct.coverImageUrl)
   }
+
+  // 2. 再添加 images 数组中的所有图片（如果存在）
+  if (backendProduct.images && backendProduct.images.length > 0) {
+    // 提取 images 数组中的 imageUrl，添加到列表
+    const imageUrls = backendProduct.images.map(img => img.imageUrl)
+    images.push(...imageUrls)
+  }
+
+  // 3. 如果都没有，使用空数组
+  // images 将为空，轮播组件会处理这种情况
 
   // 颜色列表（如果后端没有颜色信息，使用默认选项）
   const colors = backendProduct.colors && backendProduct.colors.length > 0

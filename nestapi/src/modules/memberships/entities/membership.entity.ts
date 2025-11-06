@@ -26,6 +26,9 @@ export class Membership {
   @Column('varchar', { length: 20, name: 'mobile' })
   mobile: string; // 手机号
 
+  @Column('varchar', { length: 100, name: 'email', nullable: true })
+  email: string; // 邮箱
+
   @Column('date', { name: 'birth_date', nullable: true })
   birthDate: Date; // 出生日期
 

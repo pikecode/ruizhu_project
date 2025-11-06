@@ -375,7 +375,7 @@ export default {
     },
     goToProductDetail(productId) {
       uni.navigateTo({
-        url: `/pages/detail/detail?id=${productId}`
+        url: `/pages/product/detail?id=${productId}`
       })
     }
   }

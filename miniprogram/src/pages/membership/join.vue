@@ -33,6 +33,13 @@
         </view>
       </view>
 
+      <!-- 邮箱 -->
+      <view class="form-row">
+        <view class="form-col">
+          <input class="input" type="text" placeholder="请输入邮箱地址（可选）" v-model="email" />
+        </view>
+      </view>
+
       <!-- 出生日期：年/月/日 -->
       <view class="form-row three-cols">
         <view class="form-col">
@@ -138,6 +145,7 @@ export default {
       lastName: '',
       firstName: '',
       mobile: '',
+      email: '',
       years,
       months,
       days,
@@ -188,6 +196,7 @@ export default {
           this.lastName = data.lastName || ''
           this.firstName = data.firstName || ''
           this.mobile = data.mobile || ''
+          this.email = data.email || ''
 
           // Parse birth date if exists
           if (data.birthDate) {
@@ -296,6 +305,7 @@ export default {
           lastName: this.lastName,
           firstName: this.firstName,
           mobile: this.mobile,
+          email: this.email || null,
           birthDate: this.getBirthDate(),
           province: this.region[0] || null,
           city: this.region[1] || null,

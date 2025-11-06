@@ -50,7 +50,7 @@
       <swiper-item v-for="(slide, slideIndex) in productSlides" :key="slideIndex">
         <view class="products-section">
           <!-- 左侧大图展示 -->
-          <view class="featured-product" @tap="onProductTap(slide.featured)">
+          <view class="featured-product">
             <image
               class="featured-image"
               :src="slide.featured.image"
@@ -58,7 +58,6 @@
             ></image>
             <view class="featured-info">
               <text class="featured-name">{{ slide.featured.name }}</text>
-              <text class="featured-price">¥ {{ slide.featured.price }}</text>
             </view>
           </view>
 
@@ -68,7 +67,6 @@
               class="product-card"
               v-for="(product, index) in slide.products"
               :key="index"
-              @tap="onProductTap(product)"
             >
               <image
                 class="product-image"
@@ -77,7 +75,6 @@
               ></image>
               <view class="product-info">
                 <text class="product-name">{{ product.name }}</text>
-                <text class="product-price">¥ {{ product.price }}</text>
               </view>
             </view>
           </view>
@@ -304,16 +301,6 @@ export default {
 
     onSwiperChange(e) {
       this.currentSlide = e.detail.current
-    },
-
-    onProductTap(product) {
-      if (product && product.id) {
-        uni.navigateTo({
-          url: `/pages/product/detail?id=${product.id}`
-        })
-      } else {
-        uni.showToast({ title: '产品信息不完整', icon: 'none' })
-      }
     },
 
     onExploreMore() {

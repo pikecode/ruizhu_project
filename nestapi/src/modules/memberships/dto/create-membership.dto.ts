@@ -25,6 +25,11 @@ export class CreateMembershipDto {
   @Matches(/^1[3-9]\d{9}$/)
   mobile: string; // 手机号（11位）
 
+  @IsString()
+  @IsOptional()
+  @Length(1, 100)
+  email?: string; // 邮箱（可选）
+
   @IsDateString()
   @IsOptional()
   birthDate?: string; // 出生日期（YYYY-MM-DD）
