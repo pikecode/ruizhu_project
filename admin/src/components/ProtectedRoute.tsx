@@ -26,8 +26,11 @@ export default function ProtectedRoute({ element, requiredRole }: ProtectedRoute
   }
 
   // 检查角色权限（如果指定了）
-  if (requiredRole && user && !requiredRole.includes(user.role)) {
-    return <Navigate to="/products" replace />
+  if (requiredRole && user) {
+    const userRole = typeof user.role === 'string' ? user.role : user.role?.name
+    if (!requiredRole.includes(userRole || '')) {
+      return <Navigate to="/products" replace />
+    }
   }
 
   return element
