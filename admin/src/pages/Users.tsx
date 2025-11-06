@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Table, Button, Space, Card, Tag, message } from 'antd'
-import { EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
+import { Table, Button, Space, Card, Tag, message, Modal, Form, Input, Select, Popconfirm } from 'antd'
+import { EditOutlined, DeleteOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons'
 import Layout from '@/components/Layout'
 import { usersService } from '@/services/users'
 import { useAuthStore } from '@/store'
@@ -10,6 +10,9 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [form] = Form.useForm()
   const { isHydrated } = useAuthStore()
 
   useEffect(() => {
@@ -44,6 +47,50 @@ export default function UsersPage() {
       loadUsers()
     } catch (error) {
       message.error('删除用户失败')
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleOpenCreateModal = () => {
+    setEditingUser(null)
+    form.resetFields()
+    setModalOpen(true)
+  }
+
+  const handleOpenEditModal = (user: User) => {
+    setEditingUser(user)
+    form.setFieldsValue({
+      username: user.username,
+      nickname: user.nickname,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+    })
+    setModalOpen(true)
+  }
+
+  const handleSaveUser = async () => {
+    try {
+      const values = await form.validateFields()
+      setLoading(true)
+
+      if (editingUser) {
+        // 编辑用户
+        await usersService.updateUser(editingUser.id, values)
+        message.success('用户更新成功')
+      } else {
+        // 新增用户
+        await usersService.createUser(values)
+        message.success('用户创建成功')
+      }
+
+      setModalOpen(false)
+      form.resetFields()
+      loadUsers()
+    } catch (error) {
+      message.error(editingUser ? '更新用户失败' : '创建用户失败')
       console.error(error)
     } finally {
       setLoading(false)
@@ -123,12 +170,26 @@ export default function UsersPage() {
     {
       title: '操作',
       key: 'actions',
-      width: 100,
+      width: 150,
       fixed: 'right' as const,
       render: (_: any, record: User) => (
         <Space size="small">
-          <Button type="primary" size="small" icon={<EditOutlined />} disabled />
-          <Button danger size="small" icon={<DeleteOutlined />} onClick={() => handleDeleteUser(record.id)} />
+          <Button
+            type="primary"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleOpenEditModal(record)}
+            title="编辑用户"
+          />
+          <Popconfirm
+            title="删除用户"
+            description="确定要删除这个用户吗？此操作不可恢复。"
+            onConfirm={() => handleDeleteUser(record.id)}
+            okText="删除"
+            cancelText="取消"
+          >
+            <Button danger size="small" icon={<DeleteOutlined />} title="删除用户" />
+          </Popconfirm>
         </Space>
       ),
     },
@@ -140,9 +201,14 @@ export default function UsersPage() {
         <Card style={{ marginTop: 24 }}>
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0 }}>🔐 Admin 管理员用户</h2>
-            <Button icon={<ReloadOutlined />} onClick={() => loadUsers()} loading={loading}>
-              刷新
-            </Button>
+            <Space>
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenCreateModal}>
+                新增用户
+              </Button>
+              <Button icon={<ReloadOutlined />} onClick={() => loadUsers()} loading={loading}>
+                刷新
+              </Button>
+            </Space>
           </div>
           <Table
             columns={columns}
@@ -161,6 +227,94 @@ export default function UsersPage() {
           />
         </Card>
       </div>
+
+      {/* 新增/编辑用户 Modal */}
+      <Modal
+        title={editingUser ? `编辑用户 - ${editingUser.username}` : '新增管理员用户'}
+        open={modalOpen}
+        onOk={handleSaveUser}
+        onCancel={() => {
+          setModalOpen(false)
+          form.resetFields()
+          setEditingUser(null)
+        }}
+        confirmLoading={loading}
+        okText="保存"
+        cancelText="取消"
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          style={{ marginTop: 20 }}
+        >
+          <Form.Item
+            label="用户名"
+            name="username"
+            rules={[
+              { required: true, message: '请输入用户名' },
+              { min: 3, message: '用户名至少3个字符' },
+            ]}
+          >
+            <Input placeholder="用户名" disabled={!!editingUser} />
+          </Form.Item>
+
+          <Form.Item
+            label="昵称"
+            name="nickname"
+            rules={[{ required: true, message: '请输入昵称' }]}
+          >
+            <Input placeholder="昵称" />
+          </Form.Item>
+
+          <Form.Item
+            label="邮箱"
+            name="email"
+            rules={[
+              { required: true, message: '请输入邮箱' },
+              { type: 'email', message: '请输入有效的邮箱地址' },
+            ]}
+          >
+            <Input placeholder="邮箱" />
+          </Form.Item>
+
+          <Form.Item
+            label="角色"
+            name="role"
+            rules={[{ required: true, message: '请选择角色' }]}
+          >
+            <Select placeholder="选择角色">
+              <Select.Option value="admin">超级管理员</Select.Option>
+              <Select.Option value="manager">经理</Select.Option>
+              <Select.Option value="operator">操作员</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="状态"
+            name="status"
+            rules={[{ required: true, message: '请选择状态' }]}
+          >
+            <Select placeholder="选择状态">
+              <Select.Option value="active">启用</Select.Option>
+              <Select.Option value="inactive">禁用</Select.Option>
+              <Select.Option value="banned">封禁</Select.Option>
+            </Select>
+          </Form.Item>
+
+          {!editingUser && (
+            <Form.Item
+              label="密码"
+              name="password"
+              rules={[
+                { required: true, message: '请输入密码' },
+                { min: 8, message: '密码至少8个字符' },
+              ]}
+            >
+              <Input.Password placeholder="密码（至少8个字符）" />
+            </Form.Item>
+          )}
+        </Form>
+      </Modal>
     </Layout>
   )
 }

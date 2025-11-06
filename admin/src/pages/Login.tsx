@@ -72,15 +72,6 @@ export default function LoginPage() {
             </Button>
           </Form.Item>
         </Form>
-
-        <div className={styles.footer}>
-          <p>💡 默认测试账户：</p>
-          <p style={{ fontSize: '12px', color: '#666' }}>
-            超级管理员 admin / admin123456<br/>
-            经理 manager / manager123456<br/>
-            操作员 operator / operator123456
-          </p>
-        </div>
       </Card>
     </div>
   )
