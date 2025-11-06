@@ -138,6 +138,28 @@ export default {
         console.log('📡 [Payment] 订单ID:', this.order.orderId)
         console.log('📡 [Payment] 订单对象:', this.order)
 
+        // 从本地存储获取用户信息以获取userId
+        const userStr = uni.getStorageSync('user')
+        let userId = null
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr)
+            userId = user.id
+            console.log('📡 [Payment] 从本地存储获取userId:', userId)
+          } catch (e) {
+            console.warn('⚠️ [Payment] 解析用户信息失败:', e)
+          }
+        }
+
+        if (!userId) {
+          uni.showToast({
+            title: '无法获取用户ID，无法进行支付',
+            icon: 'none'
+          })
+          this.isLoading = false
+          return
+        }
+
         const paymentOrder = await wechatPaymentService.createPaymentOrder({
           openid,
           outTradeNo: this.order.orderId,
@@ -145,7 +167,7 @@ export default {
           body: `订单 ${this.order.orderId}`,
           metadata: {
             orderId: this.order.id,
-            userId: this.order.userId
+            userId: userId
           }
         })
 
