@@ -266,6 +266,8 @@ export interface ProductDetailResponse {
   subtitle?: string
   categoryId: number
   categoryName?: string
+  productType?: 'standard' | 'custom' | 'vip_recharge' // 产品类型
+  discount?: number // VIP 充值产品的折扣倍数（直接在产品上）
   price?: PriceObject // 价格对象（单位：元）
   currentPrice?: number // 兼容旧结构（单位：分）
   originalPrice?: number // 兼容旧结构（单位：分）
@@ -372,9 +374,10 @@ function mapProductDetailToFrontend(
 }
 
 /**
- * 获取商品详情
+ * 获取商品详情 - 返回完整的后端数据（包含 productType、selectedAttributes 等信息）
+ * 用于支付流程中提取 VIP 折扣信息
  */
-export async function getProductDetail(productId: number): Promise<ProductDetail | null> {
+export async function getProductDetail(productId: number): Promise<ProductDetailResponse | null> {
   try {
     const response = await api.get<{ code: number; message: string; data: ProductDetailResponse }>(
       `/products/${productId}`
@@ -383,14 +386,31 @@ export async function getProductDetail(productId: number): Promise<ProductDetail
     console.log('获取商品详情响应:', response)
 
     if (response && response.data) {
-      const productDetail = mapProductDetailToFrontend(response.data)
-      console.log('映射后的商品详情:', productDetail)
-      return productDetail
+      console.log('返回的商品详情:', response.data)
+      return response.data
     }
 
     return null
   } catch (error) {
     console.error('Failed to fetch product detail:', error)
+    return null
+  }
+}
+
+/**
+ * 获取商品详情页面显示格式 - 返回转换后的前端数据格式
+ */
+export async function getProductDetailForDisplay(productId: number): Promise<ProductDetail | null> {
+  try {
+    const rawData = await getProductDetail(productId)
+    if (rawData) {
+      const productDetail = mapProductDetailToFrontend(rawData)
+      console.log('映射后的商品详情:', productDetail)
+      return productDetail
+    }
+    return null
+  } catch (error) {
+    console.error('Failed to get product detail for display:', error)
     return null
   }
 }

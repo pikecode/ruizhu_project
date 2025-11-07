@@ -474,12 +474,12 @@ export default {
                       id: product.id,
                       name: product.name,
                       productType: product.productType,
-                      selectedAttributes: JSON.stringify(product.selectedAttributes)
+                      discount: product.discount
                     })
 
                     // 检查是否是会员充值产品，并有 discount 信息
-                    if (product.productType === 'vip_recharge' && product.selectedAttributes && product.selectedAttributes.discount) {
-                      memberDiscount = product.selectedAttributes.discount
+                    if (product.productType === 'vip_recharge' && product.discount) {
+                      memberDiscount = product.discount
                       console.log('✅ [Payment] 找到会员充值产品折扣:', memberDiscount)
                       break
                     }
