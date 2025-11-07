@@ -21,16 +21,6 @@
       </swiper-item>
     </swiper>
 
-    <!-- 图片指示器点 -->
-    <view class="image-dots">
-      <view
-        v-for="(dot, index) in productImages"
-        :key="index"
-        class="dot"
-        :class="{ active: index === currentImageIndex }"
-      ></view>
-    </view>
-
     <!-- 商品信息 -->
     <view class="product-info">
       <!-- 标题和价格 -->
@@ -500,27 +490,6 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-/* 图片指示器 */
-.image-dots {
-  position: absolute;
-  left: 24rpx;
-  bottom: 220rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-
-  .dot {
-    width: 8rpx;
-    height: 8rpx;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.3);
-
-    &.active {
-      background: #000000;
-    }
-  }
 }
 
 /* 商品信息 */
