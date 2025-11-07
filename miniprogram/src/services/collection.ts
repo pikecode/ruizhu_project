@@ -16,6 +16,7 @@ export interface CollectionProduct {
   currentPrice: number
   originalPrice: number
   discountRate: number
+  stockStatus?: 'normal' | 'outOfStock' | 'soldOut'
   tags: string[]
 }
 

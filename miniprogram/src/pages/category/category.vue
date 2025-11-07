@@ -418,12 +418,7 @@ export default {
     }
 
     &.product-item-disabled {
-      opacity: 0.6;
       pointer-events: auto;
-
-      .product-image {
-        filter: grayscale(100%);
-      }
     }
 
     .product-image-wrapper {

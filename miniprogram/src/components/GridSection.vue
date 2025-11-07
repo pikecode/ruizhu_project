@@ -6,11 +6,15 @@
         v-for="(item, index) in items"
         :key="index"
         class="grid-item"
-        :class="cardType"
+        :class="[cardType, { 'grid-item-disabled': item.isSold }]"
         @tap="onItemTap(item)"
       >
         <!-- 卡片图片 -->
-        <image class="item-image" :src="item.image" mode="aspectFill"></image>
+        <view class="image-wrapper">
+          <image class="item-image" :src="item.image" mode="aspectFill"></image>
+          <!-- 库存状态徽章 -->
+          <view v-if="item.isSold" class="product-badge sold-out">售罄</view>
+        </view>
 
         <!-- 会员卡片标签 -->
         <text v-if="cardType === 'member-card'" class="card-label">{{ item.label }}</text>
@@ -91,11 +95,35 @@ export default {
       opacity: 0.9;
     }
 
+
+    .image-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
     .item-image {
       width: 100%;
       height: 400rpx;
       background: #f5f5f5;
       display: block;
+    }
+
+    .product-badge {
+      position: absolute;
+      top: 12rpx;
+      right: 12rpx;
+      background: rgba(0, 0, 0, 0.7);
+      color: #ffffff;
+      padding: 8rpx 16rpx;
+      border-radius: 4rpx;
+      font-size: 20rpx;
+      font-weight: 600;
+      text-align: center;
+      z-index: 10;
+
+      &.sold-out {
+        background: rgba(0, 0, 0, 0.8);
+      }
     }
   }
 

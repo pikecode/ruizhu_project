@@ -97,9 +97,14 @@
                   v-for="(p, i) in shelfProducts.slice(pageIndex * 4, pageIndex * 4 + 2)"
                   :key="'row1-' + i"
                   class="shelf-item"
+                  :class="{ 'shelf-item-disabled': p.isSold }"
                   @tap="onShelfProductTap(p)"
                 >
-                  <image class="shelf-image" :src="p.image" mode="aspectFit"></image>
+                  <view class="shelf-image-wrapper">
+                    <image class="shelf-image" :src="p.image" mode="aspectFit"></image>
+                    <!-- 库存状态徽章 -->
+                    <view v-if="p.isSold" class="product-badge sold-out">售罄</view>
+                  </view>
                   <view class="shelf-meta">
                     <text class="shelf-en">{{ p.en }}</text>
                     <text class="shelf-cn">{{ p.cn }}</text>
@@ -117,9 +122,14 @@
                   v-for="(p, i) in shelfProducts.slice(pageIndex * 4 + 2, pageIndex * 4 + 4)"
                   :key="'row2-' + i"
                   class="shelf-item"
+                  :class="{ 'shelf-item-disabled': p.isSold }"
                   @tap="onShelfProductTap(p)"
                 >
-                  <image class="shelf-image" :src="p.image" mode="aspectFit"></image>
+                  <view class="shelf-image-wrapper">
+                    <image class="shelf-image" :src="p.image" mode="aspectFit"></image>
+                    <!-- 库存状态徽章 -->
+                    <view v-if="p.isSold" class="product-badge sold-out">售罄</view>
+                  </view>
                   <view class="shelf-meta">
                     <text class="shelf-en">{{ p.en }}</text>
                     <text class="shelf-cn">{{ p.cn }}</text>
@@ -162,10 +172,13 @@
                 v-for="(item, i) in jewelryProducts.slice(pageIndex * 4, pageIndex * 4 + 2)"
                 :key="'row1-' + i"
                 class="jewelry-item"
+                :class="{ 'jewelry-item-disabled': item.isSold }"
                 @tap="onJewelryProductTap(item)"
               >
                 <view class="jewelry-image-wrapper">
                   <image class="jewelry-image" :src="item.image" mode="aspectFit"></image>
+                  <!-- 库存状态徽章 -->
+                  <view v-if="item.isSold" class="product-badge sold-out">售罄</view>
                 </view>
                 <view class="jewelry-info">
                   <text class="jewelry-name">{{ item.name }}</text>
@@ -180,10 +193,13 @@
                 v-for="(item, i) in jewelryProducts.slice(pageIndex * 4 + 2, pageIndex * 4 + 4)"
                 :key="'row2-' + i"
                 class="jewelry-item"
+                :class="{ 'jewelry-item-disabled': item.isSold }"
                 @tap="onJewelryProductTap(item)"
               >
                 <view class="jewelry-image-wrapper">
                   <image class="jewelry-image" :src="item.image" mode="aspectFit"></image>
+                  <!-- 库存状态徽章 -->
+                  <view v-if="item.isSold" class="product-badge sold-out">售罄</view>
                 </view>
                 <view class="jewelry-info">
                   <text class="jewelry-name">{{ item.name }}</text>
@@ -376,7 +392,8 @@ export default {
               en: product.name,
               cn: product.subtitle || '\u00A0', // 如果没有副标题，使用不换行空格占位
               price: product.currentPrice ? (product.currentPrice / 100).toFixed(2) : '0.00',
-              image: product.coverImageUrl || ''
+              image: product.coverImageUrl || '',
+              isSold: product.stockStatus === 'outOfStock' || product.stockStatus === 'soldOut' || product.isOutOfStock === 1 || product.stockQuantity === 0
             }))
 
             console.log('货架商品加载成功:', this.shelfProducts)
@@ -406,7 +423,8 @@ export default {
             name: product.name,
             category: product.subtitle || '珠宝',
             price: product.currentPrice ? (product.currentPrice / 100).toFixed(2) : '0.00',
-            image: product.coverImageUrl || ''
+            image: product.coverImageUrl || '',
+            isSold: product.stockStatus === 'outOfStock' || product.stockStatus === 'soldOut' || product.isOutOfStock === 1 || product.stockQuantity === 0
           }))
 
           console.log('珠宝商品加载成功:', this.jewelryProducts)
@@ -462,7 +480,8 @@ export default {
             id: product.id,
             name: product.name,
             price: product.currentPrice ? (product.currentPrice / 100).toFixed(2) : '0.00',
-            image: product.coverImageUrl || ''
+            image: product.coverImageUrl || '',
+            isSold: product.stockStatus === 'outOfStock' || product.stockStatus === 'soldOut' || product.isOutOfStock === 1 || product.stockQuantity === 0
           }))
 
           console.log('推荐商品加载成功:', this.recommendProducts)
@@ -799,11 +818,36 @@ export default {
     align-items: center;
     text-align: center;
     gap: 16rpx;
+
+  }
+
+  .shelf-image-wrapper {
+    position: relative;
+    width: 260rpx;
+    height: 240rpx;
   }
 
   .shelf-image {
-    width: 260rpx;
-    height: 240rpx;
+    width: 100%;
+    height: 100%;
+  }
+
+  .product-badge {
+    position: absolute;
+    top: 12rpx;
+    right: 12rpx;
+    background: rgba(0, 0, 0, 0.7);
+    color: #ffffff;
+    padding: 8rpx 16rpx;
+    border-radius: 4rpx;
+    font-size: 20rpx;
+    font-weight: 600;
+    text-align: center;
+    z-index: 10;
+
+    &.sold-out {
+      background: rgba(0, 0, 0, 0.8);
+    }
   }
 
   .shelf-meta {
@@ -971,6 +1015,7 @@ export default {
       opacity: 0.8;
     }
 
+
     .jewelry-image-wrapper {
       position: relative;
       width: 100%;
@@ -984,6 +1029,24 @@ export default {
         width: 100%;
         height: 100%;
         object-fit: contain;
+      }
+
+      .product-badge {
+        position: absolute;
+        top: 12rpx;
+        right: 12rpx;
+        background: rgba(0, 0, 0, 0.7);
+        color: #ffffff;
+        padding: 8rpx 16rpx;
+        border-radius: 4rpx;
+        font-size: 20rpx;
+        font-weight: 600;
+        text-align: center;
+        z-index: 10;
+
+        &.sold-out {
+          background: rgba(0, 0, 0, 0.8);
+        }
       }
     }
 
