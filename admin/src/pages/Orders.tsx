@@ -1,16 +1,47 @@
 import { useState, useEffect } from 'react'
-import { Table, Button, Space, Card, Tag, message } from 'antd'
+import { Table, Button, Space, Card, Tag, message, Badge, Tooltip } from 'antd'
 import { EyeOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
 import Layout from '@/components/Layout'
 import { useAuthStore } from '@/store'
 import { ordersService } from '@/services/orders'
 import { Order } from '@/types'
+import api from '@/services/api'
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
+  const [productCache, setProductCache] = useState<Record<number, { name: string; productType: string }>>({})
   const { isHydrated } = useAuthStore()
+
+  // 获取产品信息
+  const getProductInfo = async (productId: number) => {
+    if (productCache[productId]) {
+      return productCache[productId]
+    }
+    try {
+      const response = await api.get(`/products/${productId}`)
+      const productInfo = { name: response.data.name || '未知产品', productType: response.data.productType || 'standard' }
+      setProductCache(prev => ({ ...prev, [productId]: productInfo }))
+      return productInfo
+    } catch (error) {
+      console.error(`Failed to fetch product ${productId}:`, error)
+      return { name: `产品 #${productId}`, productType: 'standard' }
+    }
+  }
+
+  // 获取订单的产品列表
+  const getOrderProducts = async (productIds: string | undefined) => {
+    if (!productIds) return []
+    try {
+      const ids = productIds.split(';').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id))
+      const products = await Promise.all(ids.map(id => getProductInfo(id)))
+      return products
+    } catch (error) {
+      console.error('Failed to fetch order products:', error)
+      return []
+    }
+  }
 
   useEffect(() => {
     // 等待认证状态完全恢复后再加载数据
@@ -95,6 +126,46 @@ export default function OrdersPage() {
       width: 100,
     },
     {
+      title: '商品信息',
+      key: 'products',
+      width: 280,
+      render: (_: any, record: Order) => {
+        const [products, setProducts] = useState<Array<{ name: string; productType: string }>>([])
+
+        useEffect(() => {
+          const loadProducts = async () => {
+            const prods = await getOrderProducts(record.productIds)
+            setProducts(prods)
+          }
+          loadProducts()
+        }, [record.productIds])
+
+        if (!record.productIds) {
+          return <span style={{ color: '#999' }}>无产品信息</span>
+        }
+
+        if (products.length === 0) {
+          return <span>加载中...</span>
+        }
+
+        return (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            {products.map((product, index) => (
+              <Tooltip key={index} title={product.name}>
+                <Tag
+                  color={product.productType === 'vip_recharge' ? 'gold' : 'blue'}
+                  style={{ cursor: 'pointer', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
+                  {product.productType === 'vip_recharge' && <Badge status="success" />}
+                  {product.name}
+                </Tag>
+              </Tooltip>
+            ))}
+          </div>
+        )
+      },
+    },
+    {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
@@ -145,7 +216,7 @@ export default function OrdersPage() {
                 setPagination({ ...pagination, current: page, pageSize })
               },
             }}
-            scroll={{ x: 1200 }}
+            scroll={{ x: 1600 }}
           />
         </Card>
       </div>

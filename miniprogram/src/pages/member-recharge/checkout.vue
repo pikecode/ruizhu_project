@@ -203,11 +203,22 @@ export default {
             if (price < 0 || !Number.isInteger(price)) {
               throw new Error(`商品价格无效: ${item.price}，必须是正整数（分为单位）`)
             }
-            return {
+            const itemData = {
               productId: item.id || item.productId,
               quantity: item.quantity,
               price: price
             }
+
+            // 如果有产品类型和折扣信息，添加到订单项中
+            if (item.type || item.productType) {
+              itemData.productType = item.type || item.productType
+            }
+            if (item.discount) {
+              itemData.discount = item.discount
+              console.log('💳 [RechargeCheckout] 订单项包含折扣:', { productId: itemData.productId, discount: itemData.discount })
+            }
+
+            return itemData
           }),
           // 充值订单不需要收货地址
           addressId: null,

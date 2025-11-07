@@ -1,12 +1,20 @@
 <template>
   <view class="page">
    
-    <!-- 订单金额 -->
-    <view class="payment-amount-section">
-      <text class="amount-label">应付金额</text>
-      <view class="amount-display">
-        <text class="currency">¥</text>
-        <text class="amount-value">{{ totalAmount }}</text>
+    <!-- 费用明细 -->
+    <view class="fee-summary-section">
+      <view class="section-title">费用明细</view>
+      <view class="fee-item">
+        <text class="fee-label">商品小计</text>
+        <text class="fee-value">¥{{ subtotal }}</text>
+      </view>
+      <view v-if="discountAmount > 0" class="fee-item discount">
+        <text class="fee-label">VIP折扣 ({{ discountPercent }}%)</text>
+        <text class="fee-value">-¥{{ discountAmount }}</text>
+      </view>
+      <view class="fee-item total">
+        <text class="fee-label">应付金额</text>
+        <text class="fee-value">¥{{ totalAmount }}</text>
       </view>
     </view>
 
@@ -52,16 +60,21 @@
 import wechatPaymentService from '../../services/wechatPayment'
 import ordersService from '../../services/orders'
 import usersService from '../../services/users'
+import * as productsService from '../../services/products'
 
 export default {
   data() {
     return {
       totalAmount: '0',
+      subtotal: '0',
+      discountAmount: '0',
+      discountPercent: 0,
       itemCount: 0,
       address: '',
       orderId: '',
       order: null,
-      isLoading: false
+      isLoading: false,
+      memberProductDiscount: null  // 存储会员产品的折扣值
     }
   },
   onLoad() {
@@ -75,8 +88,58 @@ export default {
 
         if (order) {
           this.order = order
-          this.totalAmount = order.total.toString()
           this.itemCount = order.items ? order.items.length : 0
+
+          // 计算小计（从order.items中推导）
+          // order.items 中的 price 是以分为单位的
+          const subtotalInFen = order.items ? order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) : 0
+          const subtotalInYuan = subtotalInFen / 100
+          this.subtotal = subtotalInYuan.toFixed(2)
+
+          // 从本地存储读取用户折扣信息
+          console.log('👤 [Payment] 从本地存储读取用户信息...')
+          let userInfo = uni.getStorageSync('user')
+          console.log('👤 [Payment] 原始用户信息:', userInfo)
+          console.log('👤 [Payment] 原始用户信息类型:', typeof userInfo)
+
+          let userDiscount = 1.0  // 默认无折扣
+
+          // 处理可能被存储为字符串的 JSON 数据
+          if (typeof userInfo === 'string') {
+            console.warn('⚠️ [Payment] 用户信息被存储为字符串，需要解析')
+            try {
+              userInfo = JSON.parse(userInfo)
+              console.log('✅ [Payment] 用户信息已解析为对象:', JSON.stringify(userInfo))
+            } catch (e) {
+              console.error('❌ [Payment] 解析用户信息失败:', e)
+              userInfo = {}
+            }
+          }
+
+          console.log('👤 [Payment] 解析后的用户信息:', JSON.stringify(userInfo))
+          console.log('👤 [Payment] userInfo.discount 值:', userInfo?.discount)
+
+          if (userInfo && userInfo.discount) {
+            userDiscount = parseFloat(userInfo.discount)
+            console.log('💳 [Payment] 用户折扣倍数:', userDiscount)
+          } else {
+            console.warn('⚠️ [Payment] 用户没有折扣，使用默认值 1.0')
+          }
+
+          // 根据用户折扣计算最终应付金额
+          const finalAmount = subtotalInYuan * userDiscount
+          this.totalAmount = finalAmount.toFixed(2)
+
+          // 计算折扣金额 = 小计 - 最终应付
+          const discount = (subtotalInYuan - finalAmount).toFixed(2)
+          this.discountAmount = discount
+
+          // 计算折扣百分比
+          if (subtotalInYuan > 0 && discount > 0) {
+            this.discountPercent = Math.round(((subtotalInYuan - finalAmount) / subtotalInYuan) * 100)
+          } else {
+            this.discountPercent = 0
+          }
 
           // 安全地处理地址信息
           if (order.address && typeof order.address === 'object') {
@@ -89,6 +152,7 @@ export default {
 
           this.orderId = order.orderId
           console.log('✅ [Payment] 订单信息加载成功')
+          console.log('💰 [Payment] 小计:', this.subtotal, '折扣:', this.discountAmount, '折扣百分比:', this.discountPercent + '%', '应付:', this.totalAmount)
         } else {
           console.warn('⚠️ [Payment] 订单信息为空')
         }
@@ -162,10 +226,14 @@ export default {
           return
         }
 
+        // 使用折扣后的金额（this.totalAmount）而不是原始订单金额
+        const finalPaymentAmount = Math.round(parseFloat(this.totalAmount) * 100) // 转换为分
+        console.log('💰 [Payment] 最终支付金额（元）:', this.totalAmount, '转换为分:', finalPaymentAmount)
+
         const paymentOrder = await wechatPaymentService.createPaymentOrder({
           openid,
           outTradeNo: this.order.orderId,
-          totalFee: Math.round(parseFloat(this.order.total) * 100), // 转换为分
+          totalFee: finalPaymentAmount, // 使用折扣后的金额
           body: `订单 ${this.order.orderId}`,
           metadata: {
             orderId: this.order.id,
@@ -183,6 +251,9 @@ export default {
 
         console.log('📡 [Payment] 支付参数:', paymentOrder)
 
+        // 在支付前，检查订单是否包含会员产品，如果有则准备更新 discount
+        this.prepareMemberProductDiscount()
+
         // 调起微信支付
         this.requestWechatPayment(paymentOrder)
       } catch (error) {
@@ -195,6 +266,70 @@ export default {
         this.isLoading = false
       }
     },
+    // 准备会员产品折扣信息
+    // 从后端返回的订单项中读取产品类型和折扣（存储在 selectedAttributes 中）
+    prepareMemberProductDiscount() {
+      try {
+        if (!this.order || !this.order.items || this.order.items.length === 0) {
+          console.log('📡 [Payment] 订单无商品，无需准备会员折扣')
+          return
+        }
+
+        console.log('📡 [Payment] 开始检查订单中的会员产品...')
+        console.log('📡 [Payment] 订单项数据:', JSON.stringify(this.order.items))
+
+        // 遍历订单项，检查是否有会员产品
+        for (const item of this.order.items) {
+          // 从多个可能的字段中获取产品类型（支持不同的数据结构）
+          let productType = ''
+
+          // 首先尝试从 selectedAttributes 中获取（这是后端保存的地方）
+          if (item.selectedAttributes && typeof item.selectedAttributes === 'object') {
+            productType = item.selectedAttributes.productType || ''
+          }
+
+          // 其次尝试直接字段
+          if (!productType) {
+            productType = item.productType || item.type || ''
+          }
+
+          console.log('📡 [Payment] 检查产品项:', {
+            productId: item.productId,
+            productName: item.productName,
+            productType,
+            selectedAttributes: item.selectedAttributes
+          })
+
+          // 检查是否是会员产品
+          const isMemberProduct = productType.toLowerCase().includes('vip') ||
+                                 productType.toLowerCase().includes('recharge') ||
+                                 productType.toLowerCase().includes('member')
+
+          if (isMemberProduct) {
+            // 尝试从 selectedAttributes 中获取折扣
+            let discount = null
+            if (item.selectedAttributes && typeof item.selectedAttributes === 'object') {
+              discount = item.selectedAttributes.discount
+            }
+
+            // 其次尝试直接字段
+            if (!discount) {
+              discount = item.discount
+            }
+
+            if (discount) {
+              this.memberProductDiscount = parseFloat(discount)
+              console.log('🎁 [Payment] 找到会员产品，折扣倍数:', this.memberProductDiscount)
+              console.log('🎁 [Payment] 产品类型:', productType)
+              break  // 只取第一个会员产品
+            }
+          }
+        }
+      } catch (error) {
+        console.error('❌ [Payment] 准备会员折扣时出错:', error)
+      }
+    },
+
     requestWechatPayment(paymentData) {
       console.log('📡 [Payment] 调起微信支付，参数:', {
         timeStamp: paymentData.timeStamp,
@@ -299,10 +434,11 @@ export default {
           })
 
           // 从后端刷新最新的订单信息（订单状态已由前面的调用或微信回调更新）
+          let freshOrder = null
           try {
             if (this.order && this.order.id) {
               console.log('📡 [Payment] 从后端刷新订单信息...')
-              const freshOrder = await ordersService.getOrderDetail(this.order.id)
+              freshOrder = await ordersService.getOrderDetail(this.order.id)
               if (freshOrder) {
                 console.log('✅ [Payment] 订单已从后端刷新:', JSON.stringify(freshOrder))
                 console.log('✅ [Payment] 订单最新状态:', freshOrder.status, '支付状态:', freshOrder.paymentStatus)
@@ -312,21 +448,77 @@ export default {
             console.warn('⚠️ [Payment] 刷新订单信息失败:', error?.message)
           }
 
-          // 如果订单包含vip_recharge产品，需要刷新用户信息以获取最新的discount
+          // 从订单的 productIds 字段查找会员充值产品，提取其 discount，更新用户的 discount
           try {
-            if (this.order && this.order.items && this.order.items.length > 0) {
-              const hasVipProduct = this.order.items.some(item => item.productType === 'vip_recharge' || item.type === 'vip_recharge')
-              if (hasVipProduct) {
-                console.log('📡 [Payment] 订单包含VIP产品，刷新用户信息...')
-                const freshUserInfo = await usersService.getUserInfo()
-                if (freshUserInfo) {
-                  uni.setStorageSync('userInfo', freshUserInfo)
-                  console.log('✅ [Payment] 用户信息已刷新，discount:', freshUserInfo.discount)
+            console.log('📡 [Payment] 从订单 productIds 中查找会员充值产品...')
+
+            let memberDiscount = null
+
+            // 检查订单是否有 productIds 字段（用分号分隔的产品ID，如 "56;2;3"）
+            if (freshOrder && freshOrder.productIds && typeof freshOrder.productIds === 'string') {
+              const productIds = freshOrder.productIds
+                .split(';')
+                .map(id => parseInt(id.trim(), 10))
+                .filter(id => !isNaN(id))
+
+              console.log('📡 [Payment] 从 productIds 提取的产品ID:', productIds)
+
+              // 遍历每个产品ID，查询产品信息以找到会员充值产品
+              for (const productId of productIds) {
+                try {
+                  console.log('📡 [Payment] 查询产品信息: productId=' + productId)
+                  const product = await productsService.getProductDetail(productId)
+
+                  if (product) {
+                    console.log('📡 [Payment] 产品信息:', {
+                      id: product.id,
+                      name: product.name,
+                      productType: product.productType,
+                      selectedAttributes: JSON.stringify(product.selectedAttributes)
+                    })
+
+                    // 检查是否是会员充值产品，并有 discount 信息
+                    if (product.productType === 'vip_recharge' && product.selectedAttributes && product.selectedAttributes.discount) {
+                      memberDiscount = product.selectedAttributes.discount
+                      console.log('✅ [Payment] 找到会员充值产品折扣:', memberDiscount)
+                      break
+                    }
+                  }
+                } catch (error) {
+                  console.warn('⚠️ [Payment] 查询产品信息失败 (productId=' + productId + '):', error?.message)
+                  // 继续查询下一个产品
                 }
               }
+            } else {
+              console.log('📡 [Payment] 订单中没有 productIds 字段，跳过折扣查询')
+            }
+
+            // 如果找到了会员折扣，则更新用户信息
+            if (memberDiscount !== null) {
+              let userInfo = uni.getStorageSync('user')
+
+              // 处理可能被存储为字符串的 JSON 数据
+              if (typeof userInfo === 'string') {
+                try {
+                  userInfo = JSON.parse(userInfo)
+                } catch (e) {
+                  console.warn('⚠️ [Payment] 解析用户信息失败，使用空对象')
+                  userInfo = {}
+                }
+              }
+
+              if (userInfo && userInfo.id) {
+                userInfo.discount = memberDiscount
+                uni.setStorageSync('user', userInfo)
+                uni.setStorageSync('userInfo', userInfo)
+                console.log('✅ [Payment] 用户折扣已更新:', memberDiscount)
+                console.log('✅ [Payment] 完整用户数据:', JSON.stringify(userInfo))
+              }
+            } else {
+              console.log('📡 [Payment] 订单中没有会员充值产品或产品没有折扣信息，跳过折扣更新')
             }
           } catch (error) {
-            console.warn('⚠️ [Payment] 刷新用户信息失败:', error)
+            console.error('❌ [Payment] 更新用户折扣失败:', error)
           }
 
           // 清除所有临时缓存（流程完成，不再需要本地缓存）
@@ -399,37 +591,69 @@ export default {
 
  
 
-/* 订单金额 */
-.payment-amount-section {
+/* 费用明细 */
+.fee-summary-section {
   background: #ffffff;
   margin: 16rpx 20rpx;
-  padding: 32rpx;
+  padding: 24rpx;
   border-radius: 8rpx;
-  text-align: center;
 
-  .amount-label {
+  .section-title {
     display: block;
-    font-size: 26rpx;
-    color: #999999;
-    margin-bottom: 16rpx;
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #000000;
+    margin-bottom: 20rpx;
   }
 
-  .amount-display {
+  .fee-item {
     display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 4rpx;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12rpx 0;
+    border-bottom: 1px solid #f0f0f0;
 
-    .currency {
-      font-size: 32rpx;
-      color: #000000;
-      font-weight: 600;
+    &:last-child {
+      border-bottom: none;
     }
 
-    .amount-value {
-      font-size: 56rpx;
+    .fee-label {
+      font-size: 26rpx;
+      color: #666666;
+    }
+
+    .fee-value {
+      font-size: 26rpx;
       color: #000000;
-      font-weight: 700;
+      font-weight: 500;
+    }
+
+    &.discount {
+      .fee-label {
+        color: #ff6b6b;
+      }
+
+      .fee-value {
+        color: #ff6b6b;
+      }
+    }
+
+    &.total {
+      padding-top: 16rpx;
+      margin-top: 12rpx;
+      border-top: 2px solid #f0f0f0;
+
+      .fee-label {
+        font-size: 28rpx;
+        color: #000000;
+        font-weight: 600;
+      }
+
+      .fee-value {
+        font-size: 32rpx;
+        color: #000000;
+        font-weight: 700;
+      }
     }
   }
 }

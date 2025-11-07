@@ -562,6 +562,9 @@ export class Order {
   @Column({ type: 'varchar', length: 20, nullable: true, name: 'receiver_phone' })
   receiverPhone: string;
 
+  @Column({ type: 'varchar', length: 500, nullable: true, name: 'product_ids' })
+  productIds?: string;  // 多个产品ID用分号分隔，例如: "1;2;3"
+
   @Column({ type: 'text', nullable: true })
   notes: string;
 
@@ -604,7 +607,7 @@ export class OrderItem {
   quantity: number;
 
   @Column({ type: 'json', nullable: true, name: 'selected_attributes' })
-  selectedAttributes: Record<string, string>;
+  selectedAttributes: Record<string, any>;
 
   @Column({ type: 'varchar', length: 200, name: 'product_name' })
   productName: string;

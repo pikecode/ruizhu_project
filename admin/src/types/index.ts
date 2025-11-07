@@ -166,6 +166,7 @@ export interface Order {
   totalAmount?: number
   status: OrderStatus
   shippingAddress: Address
+  productIds?: string  // 多个产品ID用分号分隔，例如: "1;2;3"
   createdAt: string
   updatedAt: string
 }

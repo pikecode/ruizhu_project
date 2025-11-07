@@ -78,12 +78,19 @@ export interface CreateOrderDto {
     productId: number
     quantity: number
     price: number  // 商品价格（以分为单位）
+    productType?: string  // 产品类型（用于识别会员产品）
+    discount?: number  // 产品折扣倍数（0.01-1.0）
+    selectedAttributes?: Record<string, any>  // 其他属性
   }>
-  shippingAddressId: number
+  addressId?: number  // 收货地址ID（可选，充值订单不需要）
+  shippingAddressId?: number  // 旧版字段名兼容
   totalAmount: number  // 订单总金额（以分为单位）
   finalAmount: number  // 最终支付金额（以分为单位）
+  discountAmount?: number  // 折扣金额（以分为单位）
+  shippingAmount?: number  // 运费（以分为单位）
   paymentMethod?: string
   remark?: string
+  isRecharge?: boolean  // 是否为充值订单
 }
 
 /**

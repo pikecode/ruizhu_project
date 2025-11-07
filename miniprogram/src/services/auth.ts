@@ -266,6 +266,12 @@ export const authService = {
       // 我们需要在手机号授权前重新获取新的 sessionKey 以确保有效
       // 强制刷新 sessionKey，不使用缓存中可能过期的 sessionKey
       // 这是 WeChat 手机号授权的关键要求
+
+      // 先清除旧的 sessionKey，确保强制刷新
+      console.log('🧹 清除旧的 sessionKey 缓存，强制重新获取...')
+      uni.removeStorageSync('sessionKey')
+      uni.removeStorageSync('openId')
+
       const loginInfo = await this.wechatLogin(true) // forceRefresh = true
       const openId = loginInfo.openId
       const sessionKey = loginInfo.sessionKey

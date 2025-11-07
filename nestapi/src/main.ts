@@ -6,7 +6,10 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 // Make crypto available globally for @nestjs/schedule compatibility with Node.js
-(global as any).crypto = crypto;
+// Note: In Node.js 22+, crypto is already available globally, so we check first
+if (typeof globalThis.crypto === 'undefined') {
+  (globalThis as any).crypto = crypto;
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

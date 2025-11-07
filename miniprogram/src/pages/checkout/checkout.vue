@@ -67,6 +67,7 @@
 
 <script>
 import ordersService from '../../services/orders'
+import { api } from '../../services/api'
 
 export default {
   data() {
@@ -224,11 +225,49 @@ export default {
       })
 
       try {
+        // 从后端获取最新的用户信息（包括折扣）
+        let userInfo = uni.getStorageSync('userInfo')
+        let freshUserData = null
+        let freshUserDiscount = 1.0  // 默认无折扣
+
+        if (userInfo && userInfo.id) {
+          try {
+            console.log('💳 [Checkout] 正在从后端获取最新用户信息...')
+            const response = await api.get(`/users/${userInfo.id}`)
+            console.log('💳 [Checkout] 从后端获取的完整用户数据:', JSON.stringify(response))
+
+            if (response) {
+              freshUserData = response
+
+              if (response.discount) {
+                freshUserDiscount = parseFloat(response.discount)
+                console.log('💳 [Checkout] 从后端获取的用户折扣:', freshUserDiscount, '(类型:', typeof response.discount, ')')
+
+                // 验证折扣有效性
+                if (freshUserDiscount < 0.01 || freshUserDiscount > 1.0) {
+                  console.warn('⚠️ [Checkout] 用户折扣字段无效:', freshUserDiscount, '使用默认值 1.0')
+                  freshUserDiscount = 1.0
+                }
+              } else {
+                console.warn('⚠️ [Checkout] 后端返回的用户数据中没有 discount 字段')
+              }
+            }
+          } catch (error) {
+            console.warn('⚠️ [Checkout] 获取用户信息失败，使用缓存值:', error)
+            // 失败时使用缓存的折扣值
+            freshUserDiscount = this.userDiscount
+          }
+        }
+
         // 计算订单总金额（以分为单位）
         const totalAmountInFen = this.cartItems.reduce((sum, item) => {
           // item.price 应该已经是分（整数），直接计算
           return sum + (item.price * item.quantity)
         }, 0)
+
+        // 计算折扣金额（以分为单位，使用后端获取的最新折扣）
+        const discountedAmountInFen = Math.round(totalAmountInFen * freshUserDiscount)
+        const discountAmountInFen = totalAmountInFen - discountedAmountInFen
 
         // 构造创建订单的请求数据
         const createOrderData = {
@@ -239,15 +278,26 @@ export default {
             if (price < 0 || !Number.isInteger(price)) {
               throw new Error(`商品价格无效: ${item.price}，必须是正整数（分为单位）`)
             }
-            return {
+            const itemData = {
               productId: item.id || item.productId,
               quantity: item.quantity,
               price: price  // 后端字段名是 price，以分为单位
             }
+
+            // 如果有产品类型和折扣信息，添加到订单项中（用于识别会员产品）
+            if (item.type || item.productType) {
+              itemData.productType = item.type || item.productType
+            }
+            if (item.discount) {
+              itemData.discount = item.discount
+            }
+
+            return itemData
           }),
           addressId: addressId,  // 使用 addressId 而不是 shippingAddressId
           totalAmount: totalAmountInFen,  // 添加总金额
-          finalAmount: totalAmountInFen,  // 最终支付金额（暂时等于总金额，不考虑优惠）
+          discountAmount: discountAmountInFen,  // 折扣金额（以分为单位）
+          finalAmount: discountedAmountInFen,  // 最终支付金额（已应用VIP折扣）
           paymentMethod: 'wechat'
         }
 
@@ -277,13 +327,37 @@ export default {
           orderId: createdOrder.orderNo,  // 后端返回的是 orderNo，不是 orderNumber
           items: this.cartItems,
           address: this.selectedAddress,
-          total: parseFloat(this.totalAmount),
+          total: discountedAmountInFen / 100,  // 转换为元，使用实际计算的最终金额
+          discount: discountAmountInFen,  // 保存折扣金额（分为单位）
+          discountPercent: Math.round((discountAmountInFen / totalAmountInFen) * 100),  // 保存折扣百分比
           status: createdOrder.status || 'pending',  // Status can be: pending, paid, shipped, delivered
-          createdAt: createdOrder.createdAt || new Date().toISOString()
+          createdAt: createdOrder.createdAt || new Date().toISOString(),
+          isRecharge: false  // 标记这不是充值订单
         }
 
+        console.log('💾 [Checkout] 准备保存订单数据到本地存储:', orderData)
+
         try {
+          // 保存订单数据
           uni.setStorageSync('currentOrder', orderData)
+          console.log('✅ [Checkout] 订单数据已保存到本地存储')
+
+          // 同时保存用户信息，确保确认页面能读到
+          // 优先使用从后端获取的完整用户数据，如果失败则使用缓存数据
+          const userDataToSave = freshUserData || userInfo
+          if (userDataToSave && userDataToSave.id) {
+            try {
+              uni.setStorageSync('user', userDataToSave)
+              console.log('✅ [Checkout] 用户信息已保存到本地存储:', JSON.stringify(userDataToSave))
+              console.log('✅ [Checkout] 保存的用户折扣:', userDataToSave.discount)
+            } catch (e) {
+              console.warn('⚠️ [Checkout] 保存用户信息失败:', e)
+            }
+          }
+
+          // 验证保存是否成功
+          const savedOrder = uni.getStorageSync('currentOrder')
+          console.log('✓ [Checkout] 验证保存的订单:', savedOrder)
 
           // 清除立即购买订单（如果存在），防止下次购物混淆
           try {
@@ -293,7 +367,12 @@ export default {
             console.warn('Failed to clear buyNowOrder:', e)
           }
         } catch (e) {
-          console.error('Failed to save order to storage:', e)
+          console.error('❌ [Checkout] 保存订单到本地存储失败:', e)
+          uni.showToast({
+            title: '保存订单失败，请重试',
+            icon: 'none'
+          })
+          return
         }
 
         // 跳转到订单确认页

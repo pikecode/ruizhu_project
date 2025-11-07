@@ -48,6 +48,7 @@ export const request = async <T = any>(
   options: RequestOptions = {}
 ): Promise<T> => {
   const token = uni.getStorageSync('accessToken')
+  const fullUrl = `${BASE_URL}${url}`
 
   const header: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -55,14 +56,25 @@ export const request = async <T = any>(
     ...options.header,
   }
 
+  // 请求开始时的日志
+  console.log('🚀 [API] 发起请求:')
+  console.log('  - 方法:', method)
+  console.log('  - 完整 URL:', fullUrl)
+  console.log('  - Token 存在:', !!token)
+  console.log('  - 请求数据:', data)
+
   return new Promise((resolve, reject) => {
     uni.request({
-      url: `${BASE_URL}${url}`,
+      url: fullUrl,
       method: method as any,
       data,
       header,
       timeout: options.timeout || 10000,
       success: (res: any) => {
+        console.log(`✅ [API] ${method} ${url} 响应成功`)
+        console.log('  - 状态码:', res.statusCode)
+        console.log('  - 响应数据:', res.data)
+
         if (res.statusCode === 200 || res.statusCode === 201) {
           resolve(res.data as T)
         } else if (res.statusCode === 401) {
@@ -81,6 +93,10 @@ export const request = async <T = any>(
         }
       },
       fail: (err: any) => {
+        console.error('❌ [API] 网络请求失败:')
+        console.error('  - 方法:', method)
+        console.error('  - URL:', fullUrl)
+        console.error('  - 错误信息:', err.errMsg || '未知错误')
         reject(new Error(err.errMsg || '网络请求失败'))
       },
     })

@@ -659,32 +659,67 @@ export class WechatPaymentService {
         relations: ['items'],
       });
 
-      if (!order || !order.items || order.items.length === 0) {
-        this.logger.debug(
-          `订单未找到或无订单项: orderId=${orderId}, userId=${userId}`,
-        );
+      if (!order) {
+        this.logger.debug(`订单未找到: orderId=${orderId}, userId=${userId}`);
         return;
       }
 
       // 检查订单中是否有vip_recharge产品
       let vipProductDiscount: number | null = null;
 
-      for (const item of order.items) {
-        // 查询产品信息
-        const product = await queryRunner.manager.findOne(Product, {
-          where: { id: item.productId },
-        });
+      // 方案1: 优先使用 product_ids 字段（新方案）
+      if (order.productIds) {
+        const productIds = order.productIds
+          .split(';')
+          .map(id => parseInt(id.trim(), 10))
+          .filter(id => !isNaN(id));
 
-        if (
-          product &&
-          product.productType === 'vip_recharge' &&
-          product.discount
-        ) {
-          vipProductDiscount = product.discount;
-          this.logger.log(
-            `找到VIP充值产品: productId=${item.productId}, discount=${vipProductDiscount}`,
-          );
-          break;
+        this.logger.log(
+          `[事务内] 从 product_ids 提取的产品ID: ${productIds.join(',')}`,
+        );
+
+        for (const productId of productIds) {
+          const product = await queryRunner.manager.findOne(Product, {
+            where: { id: productId },
+          });
+
+          if (
+            product &&
+            product.productType === 'vip_recharge' &&
+            product.discount
+          ) {
+            vipProductDiscount = product.discount;
+            this.logger.log(
+              `找到VIP充值产品: productId=${productId}, discount=${vipProductDiscount}`,
+            );
+            break;
+          }
+        }
+      }
+
+      // 方案2: 备选方案 - 使用 order.items（如果有的话）
+      if (vipProductDiscount === null && order.items && order.items.length > 0) {
+        this.logger.log(
+          `[事务内] 从 order.items 查找VIP产品...`,
+        );
+
+        for (const item of order.items) {
+          // 查询产品信息
+          const product = await queryRunner.manager.findOne(Product, {
+            where: { id: item.productId },
+          });
+
+          if (
+            product &&
+            product.productType === 'vip_recharge' &&
+            product.discount
+          ) {
+            vipProductDiscount = product.discount;
+            this.logger.log(
+              `找到VIP充值产品: productId=${item.productId}, discount=${vipProductDiscount}`,
+            );
+            break;
+          }
         }
       }
 
@@ -721,38 +756,71 @@ export class WechatPaymentService {
     userId: string,
   ): Promise<void> {
     try {
-      // 查询订单，获取所有订单项
+      // 查询订单
       const order = await this.orderRepository.findOne({
         where: { id: parseInt(orderId, 10) },
         relations: ['items'],
       });
 
-      if (!order || !order.items || order.items.length === 0) {
-        this.logger.debug(
-          `订单未找到或无订单项: orderId=${orderId}, userId=${userId}`,
-        );
+      if (!order) {
+        this.logger.debug(`订单未找到: orderId=${orderId}, userId=${userId}`);
         return;
       }
 
       // 检查订单中是否有vip_recharge产品
       let vipProductDiscount: number | null = null;
 
-      for (const item of order.items) {
-        // 查询产品信息
-        const product = await this.productRepository.findOne({
-          where: { id: item.productId },
-        });
+      // 方案1: 优先使用 product_ids 字段（新方案）
+      if (order.productIds) {
+        const productIds = order.productIds
+          .split(';')
+          .map(id => parseInt(id.trim(), 10))
+          .filter(id => !isNaN(id));
 
-        if (
-          product &&
-          product.productType === 'vip_recharge' &&
-          product.discount
-        ) {
-          vipProductDiscount = product.discount;
-          this.logger.log(
-            `找到VIP充值产品: productId=${item.productId}, discount=${vipProductDiscount}`,
-          );
-          break; // 只需要找到一个VIP产品，因为一个订单中可能有多个VIP产品但我们只取第一个
+        this.logger.log(
+          `从 product_ids 提取的产品ID: ${productIds.join(',')}`,
+        );
+
+        for (const productId of productIds) {
+          const product = await this.productRepository.findOne({
+            where: { id: productId },
+          });
+
+          if (
+            product &&
+            product.productType === 'vip_recharge' &&
+            product.discount
+          ) {
+            vipProductDiscount = product.discount;
+            this.logger.log(
+              `找到VIP充值产品: productId=${productId}, discount=${vipProductDiscount}`,
+            );
+            break;
+          }
+        }
+      }
+
+      // 方案2: 备选方案 - 使用 order.items（如果有的话）
+      if (vipProductDiscount === null && order.items && order.items.length > 0) {
+        this.logger.log(`从 order.items 查找VIP产品...`);
+
+        for (const item of order.items) {
+          // 查询产品信息
+          const product = await this.productRepository.findOne({
+            where: { id: item.productId },
+          });
+
+          if (
+            product &&
+            product.productType === 'vip_recharge' &&
+            product.discount
+          ) {
+            vipProductDiscount = product.discount;
+            this.logger.log(
+              `找到VIP充值产品: productId=${item.productId}, discount=${vipProductDiscount}`,
+            );
+            break;
+          }
         }
       }
 

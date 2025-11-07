@@ -52,11 +52,25 @@ export class UsersService {
    * 根据ID获取用户
    */
   async findOne(id: number): Promise<Omit<User, 'password'> | null> {
+    console.log('🔍 [UsersService] 查询用户 ID:', id);
+
     const user = await this.usersRepository.findOne({
       where: { id, status: 'active' },
     });
-    if (!user) return null;
+
+    if (!user) {
+      console.warn('⚠️ [UsersService] 用户未找到或已删除 ID:', id);
+      return null;
+    }
+
     const { password, ...result } = user;
+    console.log('✅ [UsersService] 用户信息已获取:', {
+      id: result.id,
+      discount: result.discount,
+      status: result.status,
+    });
+    console.log('✅ [UsersService] 完整用户对象:', JSON.stringify(result));
+
     return result;
   }
 

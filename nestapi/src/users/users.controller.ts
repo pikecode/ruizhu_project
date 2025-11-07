@@ -29,10 +29,56 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  /**
+   * Get current user's profile
+   * GET /api/users/profile
+   * Uses JWT token to identify the user
+   */
+  @Get('profile')
+  @UseGuards(AuthGuard('jwt'))
+  async getProfile(@Request() req) {
+    console.log('📍 [UsersController] GET /users/profile 被调用');
+    console.log('  - 从JWT提取的用户ID:', req.user?.sub || req.user?.id);
+
+    const userId = req.user?.sub || req.user?.id;
+    if (!userId) {
+      console.warn('⚠️ [UsersController] JWT中未找到用户ID');
+      return { code: 400, message: '无效的用户信息' };
+    }
+
+    const user = await this.usersService.findOne(userId);
+    if (!user) {
+      console.warn('⚠️ [UsersController] 用户未找到或已删除:', userId);
+      return { code: 404, message: '用户不存在' };
+    }
+
+    console.log('✅ [UsersController] 用户信息已返回:', {
+      id: user.id,
+      discount: user.discount,
+    });
+
+    return user;
+  }
+
   @Get(':id')
   @UseGuards(AuthGuard('jwt'))
   async findOne(@Param('id') id: string) {
-    return this.usersService.findOne(+id);
+    const userId = +id;
+    console.log('📍 [UsersController] GET /users/:id 被调用');
+    console.log('  - 请求的用户ID:', userId);
+
+    const user = await this.usersService.findOne(userId);
+    if (!user) {
+      console.warn('⚠️ [UsersController] 用户未找到或已删除:', userId);
+      return { code: 404, message: '用户不存在' };
+    }
+
+    console.log('✅ [UsersController] 用户信息已返回:', {
+      id: user.id,
+      discount: user.discount,
+    });
+
+    return user;
   }
 
   /**

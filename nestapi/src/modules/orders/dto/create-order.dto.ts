@@ -14,6 +14,12 @@ export class OrderItemDto {
   price: number; // Price in cents
 
   @IsOptional()
+  productType?: string; // Product type (e.g., 'vip_recharge')
+
+  @IsOptional()
+  discount?: number; // Discount multiplier (0.01-1.0)
+
+  @IsOptional()
   selectedAttributes?: Record<string, any>;
 }
 

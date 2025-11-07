@@ -8,6 +8,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, DataSource } from 'typeorm';
 import { Order, OrderItem, Product } from '../../../entities/product.entity';
+import { User } from '../../../entities/user.entity';
 import { CreateOrderDto, UpdateOrderDto } from '../dto';
 import { AddressesService } from '../../addresses/services/addresses.service';
 
@@ -32,6 +33,8 @@ export class OrdersService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly addressesService: AddressesService,
     private readonly dataSource: DataSource,
   ) {}
@@ -93,6 +96,41 @@ export class OrdersService {
       );
     }
 
+    // Validate discount amount against user's actual discount field
+    if (createDto.discountAmount && createDto.discountAmount > 0) {
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Calculate expected discount amount based on user's discount field
+      // User.discount is a decimal between 0.01 and 1.00, where 1.00 = no discount
+      const userDiscount = parseFloat(user.discount.toString());
+      if (userDiscount < 0.01 || userDiscount > 1.0) {
+        throw new BadRequestException(
+          'User discount field is invalid: ' + userDiscount,
+        );
+      }
+
+      // Expected discounted amount = totalAmount * userDiscount
+      const expectedDiscountedAmount = Math.round(
+        createDto.totalAmount * userDiscount,
+      );
+      // Expected discount amount = totalAmount - expectedDiscountedAmount
+      const expectedDiscountAmount = createDto.totalAmount - expectedDiscountedAmount;
+
+      // Allow a small tolerance (1 cent) for rounding differences
+      const tolerance = 1;
+      if (
+        Math.abs(createDto.discountAmount - expectedDiscountAmount) > tolerance
+      ) {
+        throw new BadRequestException(
+          `Discount amount ${createDto.discountAmount} does not match user's discount. ` +
+            `Expected: ${expectedDiscountAmount} (user discount: ${(userDiscount * 100).toFixed(2)}%)`,
+        );
+      }
+    }
+
     // Validate address exists and fetch full address data (skip for recharge orders)
     let shippingAddress: Record<string, any> | undefined;
     if (!createDto.isRecharge && createDto.addressId) {
@@ -110,6 +148,11 @@ export class OrdersService {
       };
     }
 
+    // 提取所有产品ID并用分号分隔
+    const productIds = createDto.items && createDto.items.length > 0
+      ? createDto.items.map(item => item.productId).join(';')
+      : undefined;
+
     // Create order with full address information
     const order = this.orderRepository.create({
       userId,
@@ -122,20 +165,75 @@ export class OrdersService {
       totalAmount: createDto.finalAmount,  // Final amount to pay (in cents)
       notes: createDto.remark,
       status: 'pending',  // Order awaiting payment
+      // 保存所有产品的 ID 到订单表（用分号分隔）
+      productIds,
     });
 
     const savedOrder = await this.orderRepository.save(order);
+
+    // 保存订单项：记录订单中包含的每个产品信息和产品类型
+    // 这样可以在查询订单时获取完整的订单项信息，包括产品类型和折扣
+    const orderItems: OrderItem[] = [];
+    try {
+      for (const item of createDto.items) {
+        try {
+          const product = await this.getProductById(item.productId);
+
+          if (product.stockQuantity < item.quantity) {
+            throw new BadRequestException(
+              `产品 ${product.name} 库存不足，仅剩 ${product.stockQuantity} 件`,
+            );
+          }
+
+          // 先构造 selectedAttributes，包含 productType 和 discount
+          const selectedAttributes: Record<string, any> = item.selectedAttributes || {};
+          if (item.productType) {
+            selectedAttributes.productType = item.productType;
+          }
+          if (item.discount) {
+            selectedAttributes.discount = item.discount;
+          }
+
+          console.log(`[OrdersService] 创建订单项 - productId: ${item.productId}, selectedAttributes:`, selectedAttributes);
+
+          // 创建订单项记录（关键字段包括产品类型和折扣）
+          const orderItemData = {
+            orderId: savedOrder.id,
+            productId: item.productId,
+            productName: product.name,
+            sku: product.sku || undefined,
+            quantity: item.quantity,
+            priceSnapshot: item.price,
+            subtotal: item.price * item.quantity,
+            selectedAttributes,
+            status: 'pending' as const,
+          };
+
+          const orderItem = this.dataSource
+            .getRepository(OrderItem)
+            .create(orderItemData);
+
+          const savedItem = await this.dataSource
+            .getRepository(OrderItem)
+            .save(orderItem);
+
+          console.log(`[OrdersService] 订单项保存成功 - ID: ${savedItem.id}, orderId: ${savedItem.orderId}`);
+
+          orderItems.push(savedItem);
+        } catch (itemError) {
+          console.error(`[OrdersService] 保存订单项失败 - productId: ${item.productId}:`, itemError);
+          throw itemError;
+        }
+      }
+    } catch (itemsError) {
+      console.error('[OrdersService] 保存订单项列表失败:', itemsError);
+      throw itemsError;
+    }
 
     // 扣减库存：订单创建时立即扣减库存（使用乐观锁防止超卖）
     // 乐观锁原理: 通过version字段版本检查，确保并发时库存正确扣减
     for (const item of createDto.items) {
       const product = await this.getProductById(item.productId);
-
-      if (product.stockQuantity < item.quantity) {
-        throw new BadRequestException(
-          `产品 ${product.name} 库存不足，仅剩 ${product.stockQuantity} 件`,
-        );
-      }
 
       // 使用乐观锁更新库存：只有当version匹配时才成功更新
       // 如果其他请求并发修改了该产品，这里会失败，需要重试
@@ -174,11 +272,15 @@ export class OrdersService {
       }
     }
 
-    return savedOrder;
+    // 返回订单，同时包含订单项信息
+    return {
+      ...savedOrder,
+      items: orderItems,
+    } as any;
   }
 
   /**
-   * Get single order by ID
+   * Get single order by ID with order items
    */
   async getOrder(userId: number, orderId: number): Promise<Order> {
     const order = await this.orderRepository.findOne({
@@ -192,7 +294,17 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    return order;
+    // 获取订单项，这样前端可以得到完整的订单信息（包括产品类型和折扣）
+    const items = await this.dataSource
+      .getRepository(OrderItem)
+      .find({
+        where: { orderId: order.id },
+      });
+
+    return {
+      ...order,
+      items,
+    } as any;
   }
 
   /**
