@@ -205,21 +205,58 @@ export default {
         console.log('📡 [Payment] 订单对象:', this.order)
 
         // 从本地存储获取用户信息以获取userId
-        const userStr = uni.getStorageSync('user')
         let userId = null
+        const userStr = uni.getStorageSync('user')
+        const userInfo = uni.getStorageSync('userInfo')
+
+        console.log('📡 [Payment] 本地存储user字段:', userStr)
+        console.log('📡 [Payment] 本地存储userInfo字段:', userInfo)
+
+        // 尝试从user字段获取
         if (userStr) {
           try {
-            const user = JSON.parse(userStr)
-            userId = user.id
-            console.log('📡 [Payment] 从本地存储获取userId:', userId)
+            const parsedUser = typeof userStr === 'string' ? JSON.parse(userStr) : userStr
+            userId = parsedUser.id || parsedUser.userId
+            if (userId) {
+              console.log('✅ [Payment] 从user字段获取userId:', userId)
+            }
           } catch (e) {
-            console.warn('⚠️ [Payment] 解析用户信息失败:', e)
+            console.warn('⚠️ [Payment] 解析user字段失败:', e)
+          }
+        }
+
+        // 如果从user字段获取失败，尝试从userInfo字段获取
+        if (!userId && userInfo) {
+          try {
+            const parsedUserInfo = typeof userInfo === 'string' ? JSON.parse(userInfo) : userInfo
+            userId = parsedUserInfo.id || parsedUserInfo.userId
+            if (userId) {
+              console.log('✅ [Payment] 从userInfo字段获取userId:', userId)
+            }
+          } catch (e) {
+            console.warn('⚠️ [Payment] 解析userInfo字段失败:', e)
+          }
+        }
+
+        // 最后尝试从auth service获取
+        if (!userId) {
+          try {
+            const localUser = authService.getLocalUser()
+            userId = localUser?.id || localUser?.userId
+            if (userId) {
+              console.log('✅ [Payment] 从authService获取userId:', userId)
+            }
+          } catch (e) {
+            console.warn('⚠️ [Payment] 从authService获取userId失败:', e)
           }
         }
 
         if (!userId) {
+          console.error('❌ [Payment] 无法从任何来源获取用户ID')
+          console.error('user字段:', userStr)
+          console.error('userInfo字段:', userInfo)
           uni.showToast({
-            title: '无法获取用户ID，无法进行支付',
+            title: '无法获取用户ID，请重新登录',
             icon: 'none'
           })
           this.isLoading = false
@@ -513,6 +550,14 @@ export default {
                 uni.setStorageSync('userInfo', userInfo)
                 console.log('✅ [Payment] 用户折扣已更新:', memberDiscount)
                 console.log('✅ [Payment] 完整用户数据:', JSON.stringify(userInfo))
+
+                // 同时更新后端数据库中的用户记录
+                try {
+                  await authService.updateProfile({ discount: memberDiscount })
+                  console.log('✅ [Payment] 后端用户折扣已保存到数据库')
+                } catch (error) {
+                  console.warn('⚠️ [Payment] 后端更新失败，但本地缓存已更新:', error?.message)
+                }
               }
             } else {
               console.log('📡 [Payment] 订单中没有会员充值产品或产品没有折扣信息，跳过折扣更新')
