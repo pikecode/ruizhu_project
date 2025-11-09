@@ -32,7 +32,7 @@
 
           <!-- 折扣标签 -->
           <view v-if="product.discount && product.discount < 1.0" class="discount-badge">
-            <text class="discount-text">{{ (product.discount * 100).toFixed(0) }}折</text>
+            <text class="discount-text">{{ (product.discount * 10).toFixed(0) }}折</text>
           </view>
         </view>
 
