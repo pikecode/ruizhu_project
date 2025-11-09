@@ -36,6 +36,7 @@ export default function CollectionProductsModal({
   const [loading, setLoading] = useState(false)
   const [selectedProductIds, setSelectedProductIds] = useState<(string | number)[]>([])
   const [collectionName, setCollectionName] = useState('')
+  const [collectionSlug, setCollectionSlug] = useState<string>('') // 集合的 slug
   const [sortChanged, setSortChanged] = useState(false)
   const [tempProducts, setTempProducts] = useState<ProductListItem[]>([])
   const [searchText, setSearchText] = useState('')
@@ -48,16 +49,23 @@ export default function CollectionProductsModal({
   useEffect(() => {
     if (visible) {
       loadCollectionProducts()
-      loadAllProducts()
       loadCategories()
     }
   }, [visible, collectionId])
+
+  // 当 collectionSlug 更新后加载产品列表
+  useEffect(() => {
+    if (visible && collectionSlug) {
+      loadAllProducts()
+    }
+  }, [collectionSlug, visible])
 
   const loadCollectionProducts = async () => {
     try {
       setLoading(true)
       const data = await collectionsService.getCollectionDetail(collectionId)
       setCollectionName(data.name)
+      setCollectionSlug(data.slug || '') // 保存集合的 slug
       const productList = data.products || []
       setProducts(productList)
       setTempProducts(productList)
@@ -72,10 +80,17 @@ export default function CollectionProductsModal({
 
   const loadAllProducts = async () => {
     try {
-      const data = await productsService.getProducts({
+      // 如果是 private-customization 集合，只加载 productType='custom' 的产品
+      const params: any = {
         page: 1,
         limit: 100,
-      })
+      }
+
+      if (collectionSlug === 'private-customization') {
+        params.productType = 'custom'
+      }
+
+      const data = await productsService.getProducts(params)
       setAllProducts(data.items)
     } catch (error) {
       console.error(error)
@@ -465,6 +480,18 @@ export default function CollectionProductsModal({
               style={{ marginBottom: 0 }}
             >
               <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                {collectionSlug === 'private-customization' && (
+                  <div style={{
+                    padding: '8px 12px',
+                    backgroundColor: '#e6f7ff',
+                    border: '1px solid #91d5ff',
+                    borderRadius: 4,
+                    fontSize: 12,
+                    color: '#0050b3',
+                  }}>
+                    提示：「私人定制」集合只能添加产品类型为"定制"的产品
+                  </div>
+                )}
                 <Input
                   placeholder="搜索产品名称或SKU..."
                   prefix={<SearchOutlined />}

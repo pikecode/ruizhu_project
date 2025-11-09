@@ -62,7 +62,10 @@
           <!-- 产品图片 -->
           <view class="product-image-wrapper">
             <image class="product-image" :src="product.image" mode="aspectFill"></image>
-            <view class="badge">{{ product.isNew ? '新品' : '' }}</view>
+            <!-- 售罄标志 -->
+            <view v-if="product.isSold" class="badge sold-out">售罄</view>
+            <!-- 新品标志 -->
+            <view v-else-if="product.isNew" class="badge">新品</view>
             <text class="favorite-icon" @tap.stop="toggleFavorite(product.id)">
               {{ product.isFavorite ? '♥' : '♡' }}
             </text>
@@ -287,6 +290,7 @@ export default {
         categoryId: apiProduct.categoryId,
         isNew: apiProduct.isNew || false,
         isFavorite: false,
+        isSold: apiProduct.stockStatus === 'outOfStock' || apiProduct.stockStatus === 'soldOut' || apiProduct.isOutOfStock === 1 || apiProduct.stockQuantity === 0,
         colors: defaultColors
       }
     },
@@ -391,32 +395,12 @@ export default {
       this.filterAndDisplayProducts()
     },
 
-    // 选择产品
+    // 选择产品 - 跳转到产品详情页
     onProductSelect(product) {
-      this.selectedProduct = product
-      this.consultForm = {
-        name: '',
-        phone: '',
-        email: '',
-        color: '',
-        // 服装相关
-        clothingSize: '',
-        height: '',
-        weight: '',
-        chest: '',
-        waist: '',
-        hip: '',
-        // 鞋子相关
-        shoeSize: '',
-        // 珠宝相关
-        ringSize: '',
-        jewelrySize: '',
-        jewelryMaterial: '',
-        // 香水相关
-        perfumePreference: '',
-        // 通用
-        remarks: ''
-      }
+      console.log('[consultation] 点击产品，跳转到详情页:', product)
+      uni.navigateTo({
+        url: `/pages/product/detail?id=${product.id}`
+      })
     },
 
     // 切换收藏
@@ -740,6 +724,12 @@ export default {
       font-size: 20rpx;
       font-weight: 600;
       border-radius: 4rpx;
+
+      &.sold-out {
+        background: rgba(0, 0, 0, 0.8);
+        left: 12rpx;
+        right: auto;
+      }
     }
 
     .favorite-icon {

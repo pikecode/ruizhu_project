@@ -157,12 +157,13 @@ export default {
     await this.loadCartData()
   },
   async onShow() {
+    // 每次显示页面时重新加载购物车数据（可能从其他页面添加了商品）
+    await this.loadCartData()
+
     // 检查是否有待合并的商品（来自其他页面的"即刻购买"）
     try {
       const pending = uni.getStorageSync('pendingCartItems')
       if (pending && pending.length > 0) {
-        // 有待加入的商品，重新加载购物车
-        await this.loadCartData()
         uni.removeStorageSync('pendingCartItems')
       }
     } catch (e) {
@@ -183,12 +184,20 @@ export default {
           collectionService.getCollectionBySlug('guess-you-like')
         ])
 
+        console.log('[cart] 从API获取的购物车数据:', cartData)
+        console.log('[cart] 数据类型:', Array.isArray(cartData) ? '数组' : typeof cartData)
+        console.log('[cart] 数据长度:', Array.isArray(cartData) ? cartData.length : 'N/A')
+
         // 处理购物车数据（API已包含name, image, price等信息）
         if (cartData && Array.isArray(cartData)) {
           this.cartItems = cartData.map(item => ({
             ...item,
             selected: item.selected || false // 保留或初始化选中状态
           }))
+          console.log('[cart] 处理后的购物车项:', this.cartItems)
+        } else {
+          console.warn('[cart] 购物车数据格式不正确:', cartData)
+          this.cartItems = []
         }
 
         // 处理推荐商品数据

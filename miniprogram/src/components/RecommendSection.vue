@@ -6,10 +6,12 @@
         v-for="(item, index) in items"
         :key="index"
         class="recommend-card"
-        @tap="$emit('product-tap', item)"
+        @tap="onProductTap(item)"
       >
         <view class="recommend-image-wrapper">
           <image :src="item.image" class="recommend-image" mode="aspectFill"></image>
+          <!-- 售罄标志 -->
+          <view v-if="item.isSold" class="sold-out-badge">售罄</view>
           <text class="favorite-btn" @tap.stop="toggleFavorite(index)">{{ item.isFavorite ? '♥' : '♡' }}</text>
           <view class="image-indicators">
             <text
@@ -69,6 +71,22 @@ export default {
     }
   },
   methods: {
+    /**
+     * 点击产品卡片
+     * 如果售罄,跳转到咨询页面;否则触发父组件的product-tap事件
+     */
+    onProductTap(item) {
+      if (item.isSold) {
+        // 售罄商品,跳转到咨询页面
+        uni.navigateTo({
+          url: '/pages/consultation/consultation'
+        })
+      } else {
+        // 正常商品,触发父组件事件
+        this.$emit('product-tap', item)
+      }
+    },
+
     /**
      * 切换收藏状态
      * 同时更新本地状态和远程API
@@ -173,6 +191,19 @@ export default {
           width: 100%;
           height: 100%;
           display: block;
+        }
+
+        .sold-out-badge {
+          position: absolute;
+          top: 12rpx;
+          left: 12rpx;
+          background: rgba(0, 0, 0, 0.8);
+          color: #ffffff;
+          padding: 8rpx 16rpx;
+          border-radius: 4rpx;
+          font-size: 20rpx;
+          font-weight: 600;
+          z-index: 5;
         }
 
         .favorite-btn {

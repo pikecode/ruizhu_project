@@ -258,6 +258,21 @@ export interface PriceObject {
 }
 
 /**
+ * 产品图片对象
+ */
+export interface ProductImage {
+  id: number
+  imageUrl: string
+  imageType: string
+  altText?: string
+  sortOrder: number
+  width?: number
+  height?: number
+  fileSize?: number
+  createdAt: string
+}
+
+/**
  * 商品详情响应数据类型（后端返回）
  */
 export interface ProductDetailResponse {
@@ -273,7 +288,7 @@ export interface ProductDetailResponse {
   originalPrice?: number // 兼容旧结构（单位：分）
   discountRate?: number
   description?: string
-  images?: string[] // 商品图片数组
+  images?: ProductImage[] // 商品图片对象数组
   coverImageUrl?: string
   colors?: string[] // 商品颜色选项
   specs?: Record<string, string[]> // 其他规格
@@ -329,7 +344,7 @@ function mapProductDetailToFrontend(
 
   // 2. 再添加 images 数组中的所有图片（如果存在）
   if (backendProduct.images && backendProduct.images.length > 0) {
-    // 提取 images 数组中的 imageUrl，添加到列表
+    // 提取 images 数组中每个对象的 imageUrl 属性
     const imageUrls = backendProduct.images.map(img => img.imageUrl)
     images.push(...imageUrls)
   }

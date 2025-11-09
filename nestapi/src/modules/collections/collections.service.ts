@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import { Collection } from '../../entities/collection.entity';
 import { CollectionProduct } from '../../entities/collection-product.entity';
 import { CreateCollectionDto } from './dto/create-collection.dto';
@@ -254,6 +254,33 @@ export class CollectionsService {
       throw new NotFoundException(`集合 ID ${collectionId} 不存在`);
     }
 
+    // 如果是 private-customization 集合，验证产品类型必须是 custom
+    if (collection.slug === 'private-customization') {
+      const products = await this.dataSource
+        .createQueryBuilder()
+        .select('p.id', 'id')
+        .addSelect('p.name', 'name')
+        .addSelect('p.product_type', 'productType')
+        .from('products', 'p')
+        .where('p.id IN (:...productIds)', { productIds: addDto.productIds })
+        .getRawMany();
+
+      // 检查是否有非 custom 类型的产品
+      const invalidProducts = products.filter(p => p.productType !== 'custom');
+
+      if (invalidProducts.length > 0) {
+        const invalidNames = invalidProducts.map(p => p.name).join('、');
+        throw new BadRequestException(
+          `集合 "私人定制" 只能添加定制类型的产品。以下产品不是定制类型: ${invalidNames}`
+        );
+      }
+
+      // 检查是否有产品不存在
+      if (products.length !== addDto.productIds.length) {
+        throw new BadRequestException('部分产品不存在');
+      }
+    }
+
     // 获取该集合当前最大的sortOrder
     const maxSortOrder = await this.dataSource
       .createQueryBuilder()
@@ -304,7 +331,7 @@ export class CollectionsService {
     // 删除指定的产品关联
     await this.collectionProductRepository.delete({
       collectionId,
-      productId: removeDto.productIds as any,
+      productId: In(removeDto.productIds),
     });
   }
 

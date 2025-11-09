@@ -533,10 +533,17 @@ export default {
       })
     },
     onShelfProductTap(p) {
-      // 跳转到商品详情页，通过URL参数传递productId
-      uni.navigateTo({
-        url: `/pages/product/detail?id=${p.id}`
-      })
+      // 如果商品售罄,跳转到咨询页面
+      if (p.isSold) {
+        uni.navigateTo({
+          url: '/pages/consultation/consultation'
+        })
+      } else {
+        // 跳转到商品详情页，通过URL参数传递productId
+        uni.navigateTo({
+          url: `/pages/product/detail?id=${p.id}`
+        })
+      }
     },
     onExploreMoreShelves() {
       // 跳转到系列探索页
@@ -620,10 +627,17 @@ export default {
       }
     },
     onJewelryProductTap(product) {
-      // 跳转到商品详情页，通过URL参数传递productId
-      uni.navigateTo({
-        url: `/pages/product/detail?id=${product.id}`
-      })
+      // 如果商品售罄,跳转到咨询页面
+      if (product.isSold) {
+        uni.navigateTo({
+          url: '/pages/consultation/consultation'
+        })
+      } else {
+        // 跳转到商品详情页，通过URL参数传递productId
+        uni.navigateTo({
+          url: `/pages/product/detail?id=${product.id}`
+        })
+      }
     },
     onProductTap(product) {
       // 跳转到商品详情页，通过URL参数传递productId

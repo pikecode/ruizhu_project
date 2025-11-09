@@ -59,7 +59,15 @@ export default {
   },
   methods: {
     onItemTap(item) {
-      this.$emit('item-tap', item)
+      // 如果商品售罄,跳转到咨询页面
+      if (item.isSold) {
+        uni.navigateTo({
+          url: '/pages/consultation/consultation'
+        })
+      } else {
+        // 否则触发父组件的点击事件
+        this.$emit('item-tap', item)
+      }
     }
   }
 }

@@ -251,9 +251,16 @@ export default defineComponent({
      * 商品点击 - 导航到详情页
      */
     onProductTap(product: Product) {
-      uni.navigateTo({
-        url: `/pages/product-detail/product-detail?id=${product.id}`
-      })
+      // 如果商品售罄,跳转到咨询页面
+      if (product.status.isSoldOut || product.status.isOutOfStock) {
+        uni.navigateTo({
+          url: '/pages/consultation/consultation'
+        })
+      } else {
+        uni.navigateTo({
+          url: `/pages/product-detail/product-detail?id=${product.id}`
+        })
+      }
     },
 
     /**

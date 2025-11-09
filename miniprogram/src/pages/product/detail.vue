@@ -38,8 +38,8 @@
         <text class="description-text">{{ productData.description }}</text>
       </view>
 
-      <!-- 数量选择 -->
-      <view class="quantity-section">
+      <!-- 数量选择 - 只在非定制产品时显示 -->
+      <view v-if="productData.productType !== 'custom'" class="quantity-section">
         <text class="section-title">数量</text>
         <view class="quantity-control">
           <view class="qty-btn" @tap="decreaseQuantity">−</view>
@@ -54,11 +54,127 @@
 
     <!-- 底部操作按钮 -->
     <view class="footer-actions">
-      <view class="action-btn add-cart" @tap="addToCart">
-        <text>加入购物袋</text>
+      <!-- 定制产品：只显示咨询按钮 -->
+      <view v-if="productData.productType === 'custom'" class="action-btn consult-btn" @tap="openConsultation">
+        <text>立即咨询</text>
       </view>
-      <view class="action-btn buy-now" @tap="buyNow">
-        <text>立即购买</text>
+
+      <!-- 普通产品：显示加入购物袋和立即购买 -->
+      <template v-else>
+        <view class="action-btn add-cart" @tap="addToCart">
+          <text>加入购物袋</text>
+        </view>
+        <view class="action-btn buy-now" @tap="buyNow">
+          <text>立即购买</text>
+        </view>
+      </template>
+    </view>
+
+    <!-- 遮罩层 -->
+    <view v-if="showConsultForm" class="mask" @tap="closeConsultation"></view>
+
+    <!-- 咨询表单（浮窗） -->
+    <view class="consultation-form" v-if="showConsultForm">
+      <view class="form-header">
+        <text class="form-title">定制咨询</text>
+        <text class="close-btn" @tap="closeConsultation">✕</text>
+      </view>
+
+      <view class="form-content">
+        <!-- 产品预览 -->
+        <view class="product-preview">
+          <image v-if="productImages && productImages.length > 0" :src="productImages[0]" mode="aspectFit"></image>
+          <text class="preview-name">{{ productData.name }}</text>
+        </view>
+
+        <!-- 咨询表单 -->
+        <view class="form-group">
+          <text class="label">姓名 *</text>
+          <input v-model="consultForm.name" type="text" placeholder="请输入您的姓名" />
+        </view>
+
+        <view class="form-group">
+          <text class="label">电话 *</text>
+          <input v-model="consultForm.phone" type="tel" placeholder="请输入您的电话" />
+        </view>
+
+        <view class="form-group">
+          <text class="label">邮箱</text>
+          <input v-model="consultForm.email" type="email" placeholder="请输入您的邮箱" />
+        </view>
+
+        <!-- 通用颜色选择（珠宝和香水产品除外） -->
+        <view v-if="productData.categoryId !== 2 && productData.categoryId !== 4" class="form-group">
+          <text class="label">颜色</text>
+          <input v-model="consultForm.color" type="text" placeholder="请输入颜色，如：红色、黑色等" />
+        </view>
+
+        <!-- 服装类产品表单 -->
+        <view v-if="productData.categoryId === 1" class="form-section">
+          <view class="section-title">服装尺码信息</view>
+          <view class="form-group">
+            <text class="label">通用尺码 *</text>
+            <view class="size-selector">
+              <view
+                v-for="size in ['XS', 'S', 'M', 'L', 'XL', 'XXL']"
+                :key="size"
+                :class="['size-btn', { active: consultForm.clothingSize === size }]"
+                @tap="consultForm.clothingSize = size"
+              >
+                <text>{{ size }}</text>
+              </view>
+            </view>
+          </view>
+          <view class="form-group">
+            <text class="label">身高 (cm)</text>
+            <input v-model="consultForm.height" type="number" placeholder="请输入身高，如170" />
+          </view>
+          <view class="form-group">
+            <text class="label">体重 (kg)</text>
+            <input v-model="consultForm.weight" type="number" placeholder="请输入体重，如65" />
+          </view>
+          <view class="form-group">
+            <text class="label">胸围 (cm)</text>
+            <input v-model="consultForm.chest" type="number" placeholder="请输入胸围" />
+          </view>
+          <view class="form-group">
+            <text class="label">腰围 (cm)</text>
+            <input v-model="consultForm.waist" type="number" placeholder="请输入腰围" />
+          </view>
+          <view class="form-group">
+            <text class="label">臀围 (cm)</text>
+            <input v-model="consultForm.hip" type="number" placeholder="请输入臀围" />
+          </view>
+        </view>
+
+        <!-- 鞋履类产品表单 -->
+        <view v-if="productData.categoryId === 3" class="form-section">
+          <view class="section-title">鞋码信息</view>
+          <view class="form-group">
+            <text class="label">鞋码 (欧码) *</text>
+            <input v-model="consultForm.shoeSize" type="text" placeholder="如：40, 41, 42等" />
+          </view>
+        </view>
+
+        <view class="form-group">
+          <text class="label">备注信息</text>
+          <textarea
+            v-model="consultForm.remarks"
+            placeholder="请输入您的定制需求或特殊要求"
+            maxlength="500"
+          ></textarea>
+          <text class="char-count">{{ (consultForm.remarks || '').length }}/500</text>
+        </view>
+
+        <!-- 提交按钮 -->
+        <view class="form-actions">
+          <view class="cancel-btn" @tap="closeConsultation">
+            <text>取消</text>
+          </view>
+          <view class="submit-btn" @tap="submitConsultation">
+            <text>提交咨询</text>
+          </view>
+        </view>
       </view>
     </view>
   </view>
@@ -69,6 +185,7 @@ import { getProductDetail } from '../../services/products'
 import { cartService } from '../../services/cart'
 import { authService } from '../../services/auth'
 import { api } from '../../services/api'
+import { submitConsultation } from '../../services/consultations'
 import PhoneAuthModal from '../../components/PhoneAuthModal.vue'
 
 export default {
@@ -90,7 +207,32 @@ export default {
         description: '加载中...'
       },
       showPhoneAuthModal: false,
-      pendingAction: null
+      pendingAction: null,
+      // 咨询表单相关
+      showConsultForm: false,
+      consultForm: {
+        name: '',
+        phone: '',
+        email: '',
+        color: '',
+        // 服装相关
+        clothingSize: '',
+        height: '',
+        weight: '',
+        chest: '',
+        waist: '',
+        hip: '',
+        // 鞋子相关
+        shoeSize: '',
+        // 珠宝相关
+        ringSize: '',
+        jewelrySize: '',
+        jewelryMaterial: '',
+        // 香水相关
+        perfumePreference: '',
+        // 通用
+        remarks: ''
+      }
     }
   },
   async onLoad(options) {
@@ -105,8 +247,17 @@ export default {
       console.log('getProductDetail返回的数据:', productDetail)
 
       if (productDetail) {
-        // 绑定产品数据
-        this.productImages = productDetail.images || []
+        // 绑定产品数据 - 合并coverImageUrl和images数组
+        let images = []
+        if (productDetail.coverImageUrl) {
+          images.push(productDetail.coverImageUrl)
+        }
+        if (productDetail.images && productDetail.images.length > 0) {
+          // 提取每个图片对象的imageUrl
+          const imageUrls = productDetail.images.map(img => img.imageUrl)
+          images.push(...imageUrls)
+        }
+        this.productImages = images
 
         // 处理价格数据：从price对象中提取currentPrice并转换单位（分→元）
         const priceData = productDetail.price
@@ -119,7 +270,9 @@ export default {
           price: currentPrice,
           originalPrice: originalPrice,
           description: productDetail.description,
-          productType: productDetail.productType  // 需要传递productType以便支付时检测VIP产品
+          productType: productDetail.productType,  // 需要传递productType以便支付时检测VIP产品
+          categoryId: productDetail.categoryId,  // 需要传递categoryId以便咨询表单显示对应的类别字段
+          categoryName: productDetail.categoryName || ''  // 需要传递categoryName以便提交咨询时使用
         }
 
         console.log('绑定到页面的productData:', this.productData)
@@ -472,6 +625,158 @@ export default {
       } catch (error) {
         console.error('查询支付状态异常:', error)
       }
+    },
+
+    /**
+     * 打开咨询表单
+     */
+    openConsultation() {
+      this.showConsultForm = true
+      // 重置表单
+      this.consultForm = {
+        name: '',
+        phone: '',
+        email: '',
+        color: '',
+        // 服装相关
+        clothingSize: '',
+        height: '',
+        weight: '',
+        chest: '',
+        waist: '',
+        hip: '',
+        // 鞋子相关
+        shoeSize: '',
+        // 珠宝相关
+        ringSize: '',
+        jewelrySize: '',
+        jewelryMaterial: '',
+        // 香水相关
+        perfumePreference: '',
+        // 通用
+        remarks: ''
+      }
+    },
+
+    /**
+     * 关闭咨询表单
+     */
+    closeConsultation() {
+      this.showConsultForm = false
+    },
+
+    /**
+     * 提交咨询
+     */
+    async submitConsultation() {
+      // 验证基础字段
+      if (!this.consultForm.name.trim()) {
+        uni.showToast({
+          title: '请输入姓名',
+          icon: 'none'
+        })
+        return
+      }
+
+      if (!this.consultForm.phone.trim()) {
+        uni.showToast({
+          title: '请输入电话',
+          icon: 'none'
+        })
+        return
+      }
+
+      // 验证电话格式
+      const phoneRegex = /^1[3-9]\d{9}$/
+      if (!phoneRegex.test(this.consultForm.phone)) {
+        uni.showToast({
+          title: '请输入有效的手机号码',
+          icon: 'none'
+        })
+        return
+      }
+
+      // 根据产品类别验证特定字段
+      if (this.productData.categoryId === 1) {
+        // 服装类 - 验证尺码选择
+        if (!this.consultForm.clothingSize) {
+          uni.showToast({
+            title: '请选择尺码',
+            icon: 'none'
+          })
+          return
+        }
+      } else if (this.productData.categoryId === 3) {
+        // 鞋履类
+        if (!this.consultForm.shoeSize.trim()) {
+          uni.showToast({
+            title: '请输入鞋码',
+            icon: 'none'
+          })
+          return
+        }
+      }
+
+      // 构建提交数据
+      const submitData = {
+        productId: this.productData.id,
+        productName: this.productData.name,
+        categoryId: this.productData.categoryId,
+        categoryName: this.productData.categoryName,
+        userName: this.consultForm.name.trim(),
+        userPhone: this.consultForm.phone.trim(),
+        userEmail: this.consultForm.email?.trim() || undefined,
+        color: this.consultForm.color?.trim() || undefined,
+        // 服装相关
+        clothingSize: this.consultForm.clothingSize || undefined,
+        height: this.consultForm.height?.trim() || undefined,
+        weight: this.consultForm.weight?.trim() || undefined,
+        chest: this.consultForm.chest?.trim() || undefined,
+        waist: this.consultForm.waist?.trim() || undefined,
+        hip: this.consultForm.hip?.trim() || undefined,
+        // 鞋履相关
+        shoeSize: this.consultForm.shoeSize?.trim() || undefined,
+        // 珠宝相关
+        ringSize: this.consultForm.ringSize?.trim() || undefined,
+        jewelrySize: this.consultForm.jewelrySize?.trim() || undefined,
+        jewelryMaterial: this.consultForm.jewelryMaterial?.trim() || undefined,
+        // 香水相关
+        perfumePreference: this.consultForm.perfumePreference?.trim() || undefined,
+        // 通用
+        remarks: this.consultForm.remarks?.trim() || undefined
+      }
+
+      try {
+        uni.showLoading({
+          title: '提交中...',
+          mask: true
+        })
+
+        console.log('[detail] 提交咨询数据:', submitData)
+
+        // 调用提交咨询API
+        await submitConsultation(submitData)
+
+        uni.hideLoading()
+
+        uni.showToast({
+          title: '咨询已提交，我们会尽快联系您',
+          icon: 'success',
+          duration: 2000
+        })
+
+        // 关闭表单
+        setTimeout(() => {
+          this.closeConsultation()
+        }, 1500)
+      } catch (error) {
+        uni.hideLoading()
+        console.error('[detail] 提交咨询失败:', error)
+        uni.showToast({
+          title: '提交失败，请重试',
+          icon: 'none'
+        })
+      }
     }
   }
 }
@@ -628,6 +933,236 @@ export default {
   .buy-now {
     background: #000000;
     color: #ffffff;
+  }
+
+  .consult-btn {
+    background: #000000;
+    color: #ffffff;
+  }
+}
+
+/* 咨询表单（浮窗） */
+.consultation-form {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border-radius: 24rpx 24rpx 0 0;
+  box-shadow: 0 -4rpx 24rpx rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease-out;
+
+  .form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24rpx 40rpx;
+    border-bottom: 1px solid #f0f0f0;
+    position: sticky;
+    top: 0;
+    background: #ffffff;
+
+    .form-title {
+      font-size: 32rpx;
+      font-weight: 600;
+      color: #000000;
+    }
+
+    .close-btn {
+      font-size: 40rpx;
+      color: #999999;
+      cursor: pointer;
+    }
+  }
+
+  .form-content {
+    padding: 24rpx 40rpx 80rpx;
+
+    .product-preview {
+      text-align: center;
+      margin-bottom: 32rpx;
+      padding: 20rpx;
+      background: #f9f9f9;
+      border-radius: 8rpx;
+
+      image {
+        width: 100%;
+        max-height: 240rpx;
+        object-fit: contain;
+        margin-bottom: 12rpx;
+      }
+
+      .preview-name {
+        display: block;
+        font-size: 24rpx;
+        color: #333333;
+        font-weight: 500;
+      }
+    }
+
+    .form-group {
+      margin-bottom: 32rpx;
+
+      .label {
+        display: block;
+        font-size: 28rpx;
+        color: #333333;
+        font-weight: 500;
+        margin-bottom: 16rpx;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        padding: 24rpx 20rpx;
+        font-size: 28rpx;
+        line-height: 1.5;
+        border: 2rpx solid #e0e0e0;
+        border-radius: 12rpx;
+        color: #333333;
+        background: #ffffff;
+        box-sizing: border-box;
+        min-height: 88rpx;
+
+        &::placeholder {
+          color: #cccccc;
+        }
+
+        &:focus {
+          border-color: #000000;
+          outline: none;
+        }
+      }
+
+      textarea {
+        min-height: 160rpx;
+        resize: none;
+        padding: 20rpx;
+      }
+
+      .char-count {
+        display: block;
+        text-align: right;
+        font-size: 22rpx;
+        color: #999999;
+        margin-top: 12rpx;
+      }
+    }
+
+    .form-section {
+      margin-bottom: 32rpx;
+      padding: 24rpx;
+      background: #f9f9f9;
+      border-radius: 12rpx;
+
+      .section-title {
+        font-size: 26rpx;
+        font-weight: 600;
+        color: #333333;
+        margin-bottom: 20rpx;
+        padding-bottom: 16rpx;
+        border-bottom: 2rpx solid #e0e0e0;
+      }
+
+      .form-group {
+        margin-bottom: 24rpx;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+    }
+
+    .size-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12rpx;
+
+      .size-btn {
+        padding: 16rpx 28rpx;
+        background: #ffffff;
+        border: 2rpx solid #e0e0e0;
+        border-radius: 12rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28rpx;
+        color: #333333;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 80rpx;
+
+        &:active {
+          opacity: 0.8;
+        }
+
+        &.active {
+          background: #000000;
+          color: #ffffff;
+          border-color: #000000;
+        }
+
+        text {
+          font-weight: 500;
+        }
+      }
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 16rpx;
+      margin-top: 32rpx;
+
+      .cancel-btn,
+      .submit-btn {
+        flex: 1;
+        padding: 20rpx;
+        border-radius: 8rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28rpx;
+        font-weight: 600;
+        cursor: pointer;
+
+        &:active {
+          opacity: 0.9;
+        }
+      }
+
+      .cancel-btn {
+        background: #f5f5f5;
+        color: #333333;
+      }
+
+      .submit-btn {
+        background: #000000;
+        color: #ffffff;
+      }
+    }
+  }
+}
+
+/* 遮罩层 */
+.mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 999;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
   }
 }
 </style>
