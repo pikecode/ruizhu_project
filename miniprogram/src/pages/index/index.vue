@@ -261,15 +261,7 @@
     <view class="footer-info-section">
       <view class="info-row">
         <image class="info-icon" src="/static/images/icp-icon.png" mode="aspectFit"></image>
-        <text class="info-text">沪ICP备16020595号</text>
-      </view>
-      <view class="info-row">
-        <image class="info-icon" src="/static/images/safe-icon.png" mode="aspectFit"></image>
-        <text class="info-text">沪公网安备 31010602002295号</text>
-      </view>
-      <view class="info-row">
-        <image class="info-icon" src="/static/images/license-icon.png" mode="aspectFit"></image>
-        <text class="info-text">电子营业执照</text>
+        <text class="info-text">粤ICP备2025469222号2X</text>
       </view>
     </view>
   </view>

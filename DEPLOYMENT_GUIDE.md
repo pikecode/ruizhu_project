@@ -1,786 +1,809 @@
-# Ruizhu E-Commerce Platform Deployment Guide
+# Ruizhu Project 部署指南
+
+本文档说明如何将本地代码更新部署到服务器。
 
 ## 目录
-1. [部署概述](#部署概述)
-2. [架构设计](#架构设计)
-3. [部署环境](#部署环境)
-4. [详细部署流程](#详细部署流程)
-5. [配置说明](#配置说明)
-6. [验证测试](#验证测试)
-7. [故障排查](#故障排查)
+
+- [环境准备](#环境准备)
+- [NestAPI 后端部署](#nestapi-后端部署)
+- [Admin 前端部署](#admin-前端部署)
+- [常见问题](#常见问题)
 
 ---
 
-## 部署概述
+## 环境准备
 
-### 项目结构
-Ruizhu 电商平台是一个前后端分离的应用，包含：
-- **Admin 前端**: React + Vite (管理后台)
-- **API 后端**: NestJS (REST API 服务)
-- **反向代理**: Nginx (流量分发和静态文件服务)
+### 1. 设置环境变量
 
-### 部署目标
-- Admin 前端：部署到 `https://yunjie.online/` (根域名)
-- API 后端：在服务器本地 `127.0.0.1:3000` 运行
-- API 访问：通过 `https://yunjie.online/api/` 代理转发
+在本地终端设置以下环境变量（或添加到 `~/.bashrc` / `~/.zshrc`）：
 
-### 部署架构
+```bash
+# 服务器配置
+export DEPLOY_HOST='123.207.14.67'        # 服务器IP地址
+export DEPLOY_USER='root'                 # SSH用户名（默认root）
+export DEPLOY_PASS='your-password'        # SSH密码
+
+# NestAPI 配置
+export NESTAPI_REMOTE_PATH='/opt/ruizhu-app/nestapi-dist'  # 后端部署路径
+export NESTAPI_PM2_NAME='ruizhu-backend'  # PM2应用名称
+export NESTAPI_PORT='8888'                # 后端端口
+
+# Admin 配置
+export ADMIN_REMOTE_PATH='/opt/ruizhu-app/admin'  # 前端部署路径
+export ADMIN_DOMAIN='yunjie.online'       # 前端域名
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Internet (HTTPS)                         │
-└────────────┬────────────────────────────────────────────────┘
-             │
-             ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Nginx (Reverse Proxy)                    │
-│  Listen: 443 (HTTPS)                                        │
-│  Domain: yunjie.online                                      │
-└────────────┬────────────────────────────────────────────────┘
-             │
-     ┌───────┴────────────────┐
-     │                        │
-     ▼                        ▼
-┌──────────────────┐  ┌──────────────────────┐
-│  Static Files    │  │  API Proxy           │
-│  /opt/ruizhu-app │  │  Location: /api/     │
-│  /admin/         │  │  Upstream: 127.0.0.1│
-│  (React SPA)     │  │           :3000      │
-└──────────────────┘  └──────────────────────┘
-                             │
-                             ▼
-                      ┌──────────────────┐
-                      │  NestAPI Backend │
-                      │  Port: 3000      │
-                      │  (Node.js)       │
-                      └──────────────────┘
+
+### 2. 安装依赖工具
+
+确保本地已安装以下工具：
+
+```bash
+# macOS
+brew install sshpass
+
+# Linux (Ubuntu/Debian)
+sudo apt-get install sshpass
+
+# 验证安装
+which sshpass
+which node
+which npm
 ```
 
 ---
 
-## 架构设计
+## NestAPI 后端部署
 
-### 设计理念
+### 快速部署（推荐）
 
-#### 1. **SPA 路由策略**
-- Admin 前端是单页应用 (Single Page Application)
-- 客户端路由在浏览器处理
-- Nginx 需要处理 SPA 路由 fallback：所有非静态资源请求返回 `index.html`
-- 实现方式：`error_page 404 =200 /index.html`
+当你在 NestAPI 项目中更新了代码，需要部署到服务器时，使用以下手动步骤确保部署成功：
 
-#### 2. **静态资源分离**
-- `index.html`: 不缓存，每次都重新请求 (包含最新应用代码)
-- 版本化资源 (assets/*.js, assets/*.css): 缓存 1 年
-- 版本化通过 Vite 构建时自动添加 hash
-
-#### 3. **API 代理分离**
-- `/api/` 路径转发到后端
-- 保持 HTTP header，支持 WebSocket upgrade
-- 设置代理 header，后端可获取客户端真实 IP
-
-#### 4. **HTTPS/SSL 安全**
-- 所有 HTTP 请求重定向到 HTTPS
-- 支持 HTTP/2 以提高性能
-- 强制使用 TLSv1.2 和 TLSv1.3
-
----
-
-## 部署环境
-
-### 服务器信息
-- **Provider**: 腾讯云
-- **IP**: 123.207.14.67
-- **OS**: OpenCloudOS (基于 CentOS)
-- **Web Server**: Nginx
-- **Runtime**: Node.js (NestAPI)
-- **Process Manager**: PM2
-
-### 部署路径
-```
-/opt/ruizhu-app/
-├── admin/                    # React Admin 前端
-│   ├── index.html           # SPA 入口
-│   ├── assets/              # 构建后的 JS/CSS
-│   └── vite.svg             # 静态资源
-├── nestapi-dist/            # NestAPI 后端编译后的代码
-│   ├── main.js              # 应用入口
-│   └── .env                 # 环境配置
-└── ecosystem.config.js      # PM2 配置
-
-/www/server/panel/vhost/nginx/
-└── ruizhu.conf              # Nginx 虚拟主机配置
-
-/www/server/nginx/conf/ssl/
-├── yunjie.online_bundle.crt # SSL 证书链
-└── yunjie.online.key        # SSL 私钥
-```
-
----
-
-## 详细部署流程
-
-### 阶段 1: 准备工作
-
-#### 1.1 获取 SSL 证书
-```bash
-# 证书路径
-/www/server/nginx/conf/ssl/yunjie.online_bundle.crt
-/www/server/nginx/conf/ssl/yunjie.online.key
-```
-
-#### 1.2 初始化部署目录
-```bash
-# SSH 登录服务器
-sshpass -p "Pp123456" ssh -o StrictHostKeyChecking=no root@123.207.14.67
-
-# 创建部署目录
-mkdir -p /opt/ruizhu-app/admin
-mkdir -p /opt/ruizhu-app/nestapi-dist
-
-# 查看目录结构
-ls -lh /opt/ruizhu-app/
-```
-
----
-
-### 阶段 2: Admin 前端部署
-
-**重要**: Admin 是静态文件部署，不需要重启或重建 NestAPI 后端。Admin 和 API 完全独立。
-
-#### 2.1 本地构建
-在本地开发环境执行：
+#### 步骤 1: 本地构建
 
 ```bash
-# 进入 admin 目录
-cd admin/
-
-# 创建生产环境配置文件
-cat > .env.production << 'EOF'
-# Production environment configuration
-VITE_API_URL=https://yunjie.online/api
-VITE_APP_NAME=Ruizhu Admin
-EOF
-
-# 验证 Vite 配置
-# vite.config.ts 中应该有：
-# - base: '/'
-# - resolve.alias: '@': path.resolve(__dirname, './src')
-
-# 构建应用
-npm run build
-
-# 构建输出
-# dist/
-# ├── index.html (540 bytes)
-# ├── assets/
-# │   ├── index-xxxxx.js
-# │   ├── index-xxxxx.css
-# │   └── ...
-# └── vite.svg
-```
-
-#### 2.2 上传到服务器
-```bash
-# 清空旧文件
-sshpass -p "Pp123456" ssh -o StrictHostKeyChecking=no root@123.207.14.67 \
-  "rm -rf /opt/ruizhu-app/admin/* && echo '✓ Cleared old files'"
-
-# 上传新文件
-scp -r dist/* root@123.207.14.67:/opt/ruizhu-app/admin/
-
-# 验证文件上传
-sshpass -p "Pp123456" ssh -o StrictHostKeyChecking=no root@123.207.14.67 \
-  "ls -lh /opt/ruizhu-app/admin/"
-```
-
-#### 2.3 验证构建输出
-```bash
-# 应该包含以下文件：
-# - index.html (不含 hash，便于更新)
-# - assets/index-XXXXX.js (含 hash，用于缓存)
-# - assets/index-XXXXX.css (含 hash，用于缓存)
-# - vite.svg
-```
-
-#### 2.4 重新加载 Nginx (仅此而已)
-```bash
-# 让 Nginx 读取新上传的静态文件
-nginx -s reload
-```
-
-**就这样！** 不需要重启后端服务。
-
----
-
-### 阶段 3: NestAPI 后端部署
-
-#### 3.1 本地构建
-```bash
-# 进入 nestapi 目录
-cd nestapi/
-
-# 安装依赖
-npm install
+# 进入 NestAPI 目录
+cd /Users/peak/work/pikecode/ruizhu_project/nestapi
 
 # 构建项目
 npm run build
 
-# 检查构建输出
+# 验证构建成功
 ls -lh dist/
-
-# 关键文件：
-# - main.js (应用入口)
-# - main.js.map (调试信息)
 ```
 
-#### 3.2 上传到服务器
-```bash
-# 清空旧文件
-sshpass -p "Pp123456" ssh -o StrictHostKeyChecking=no root@123.207.14.67 \
-  "rm -rf /opt/ruizhu-app/nestapi-dist/*"
-
-# 上传构建文件
-scp -r dist/* root@123.207.14.67:/opt/ruizhu-app/nestapi-dist/
-
-# 上传 .env 配置
-scp .env root@123.207.14.67:/opt/ruizhu-app/nestapi-dist/
-
-# 上传 node_modules (如果没有的话)
-# scp -r node_modules root@123.207.14.67:/opt/ruizhu-app/nestapi-dist/
-```
-
-#### 3.3 配置 PM2
-```bash
-# 检查/创建 PM2 配置
-cat > /opt/ruizhu-app/ecosystem.config.js << 'EOF'
-module.exports = {
-  apps: [
-    {
-      name: 'ruizhu-backend',
-      script: '/opt/ruizhu-app/nestapi-dist/main.js',
-      instances: 1,
-      exec_mode: 'fork',
-      env: {
-        NODE_ENV: 'production',
-        PORT: 3000
-      },
-      error_file: '/var/log/pm2/nestapi-error.log',
-      out_file: '/var/log/pm2/nestapi-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
-    }
-  ]
-};
-EOF
-
-# 通过 PM2 启动/重启
-pm2 start /opt/ruizhu-app/ecosystem.config.js
-pm2 save
-pm2 startup
-
-# 验证运行状态
-pm2 list
-pm2 logs ruizhu-backend --lines 20
-```
-
-#### 3.4 验证后端健康
-```bash
-# 测试本地 API 端点
-curl -s http://localhost:3000/api/products | jq '.code' # 应该返回 200
-curl -s http://localhost:3000/api/banners | jq '.code'  # 应该返回 200
-```
-
----
-
-### 阶段 4: Nginx 配置
-
-#### 4.1 定位 Nginx 配置文件
-
-**关键发现**：Nginx 配置文件位置在 `/www/server/panel/vhost/nginx/`，不是 `/etc/nginx/conf.d/`
+#### 步骤 2: 打包构建产物
 
 ```bash
-# 确认配置目录
-ls -lh /www/server/nginx/conf/nginx.conf
+# 创建发布目录
+mkdir -p deploy/releases
 
-# 主配置文件会 include 以下路径：
-include /www/server/panel/vhost/nginx/*.conf;
+# 打包 dist 目录
+cd /Users/peak/work/pikecode/ruizhu_project/nestapi
+RELEASE_NAME="nestapi-$(date +%Y%m%d-%H%M%S).tar.gz"
+tar -czf deploy/releases/$RELEASE_NAME dist/
+
+# 验证打包成功
+ls -lh deploy/releases/$RELEASE_NAME
 ```
 
-#### 4.2 创建 Nginx 虚拟主机配置
+#### 步骤 3: 上传到服务器
 
-编辑/创建文件：`/www/server/panel/vhost/nginx/ruizhu.conf`
-
-```nginx
-upstream ruizhu_backend {
-    server 127.0.0.1:3000 max_fails=3 fail_timeout=30s;
-    keepalive 64;
-}
-
-# HTTP 重定向到 HTTPS
-server {
-    listen 80;
-    listen [::]:80;
-    server_name 123.207.14.67 yunjie.online *.yunjie.online;
-
-    location / {
-        return 301 https://$server_name$request_uri;
-    }
-}
-
-# HTTPS 服务器配置
-server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
-
-    server_name 123.207.14.67 yunjie.online *.yunjie.online;
-
-    # SSL 证书配置
-    ssl_certificate /www/server/nginx/conf/ssl/yunjie.online_bundle.crt;
-    ssl_certificate_key /www/server/nginx/conf/ssl/yunjie.online.key;
-
-    # SSL 协议和密码套件优化
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers on;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 10m;
-
-    client_max_body_size 50M;
-    access_log /www/wwwlogs/ruizhu-access.log;
-    error_log /www/wwwlogs/ruizhu-error.log;
-
-    # 设置根目录为 Admin 前端
-    root /opt/ruizhu-app/admin;
-    index index.html index.htm;
-
-    # 缓存静态资源 (版本化文件)
-    location ~ \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
-
-    # 不缓存 index.html
-    location = /index.html {
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
-    }
-
-    # API 代理：转发到 NestAPI 后端
-    location /api/ {
-        proxy_pass http://ruizhu_backend;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $server_name;
-        proxy_set_header X-Forwarded-Port $server_port;
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-        proxy_buffering off;
-    }
-
-    # SPA 路由：404 返回 index.html (客户端处理路由)
-    error_page 404 =200 /index.html;
-
-    # 隐藏隐藏文件
-    location ~ /\. {
-        deny all;
-    }
-}
-```
-
-#### 4.3 验证 Nginx 配置
 ```bash
-# 验证语法
-nginx -t
-
-# 输出应该是：
-# nginx: the configuration file /www/server/nginx/conf/nginx.conf syntax is ok
-# nginx: configuration file /www/server/nginx/conf/nginx.conf test is successful
+# 上传构建包到服务器临时目录
+sshpass -p 'Pp123456' scp -o StrictHostKeyChecking=no \
+  deploy/releases/$RELEASE_NAME \
+  root@123.207.14.67:/tmp/
 ```
 
-#### 4.4 重载 Nginx
+#### 步骤 4: 服务器端部署
+
 ```bash
-# 方式 1：使用 nginx 命令
-nginx -s reload
+# SSH 登录服务器执行部署
+sshpass -p 'Pp123456' ssh -o StrictHostKeyChecking=no root@123.207.14.67 'bash -s' << 'EOF'
+set -e
 
-# 方式 2：使用 systemctl
-systemctl reload nginx
+echo "=== 停止 PM2 应用 ==="
+pm2 stop ruizhu-backend
 
-# 验证 Nginx 重启
-ps aux | grep nginx | grep -v grep
-```
+echo ""
+echo "=== 创建备份 ==="
+BACKUP_DIR="/opt/ruizhu-app/backups"
+mkdir -p "$BACKUP_DIR"
+BACKUP_NAME="nestapi-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
+cd /opt/ruizhu-app/nestapi-dist
+if [ -d "dist" ]; then
+  tar -czf "$BACKUP_DIR/$BACKUP_NAME" dist/
+  echo "✓ 备份创建: $BACKUP_DIR/$BACKUP_NAME"
+fi
 
----
+echo ""
+echo "=== 解压新版本 ==="
+cd /tmp
+RELEASE_FILE=$(ls -t nestapi-*.tar.gz | head -1)
+tar -xzf "$RELEASE_FILE"
 
-## 配置说明
+echo ""
+echo "=== 部署新文件 ==="
+cd /opt/ruizhu-app/nestapi-dist
+rm -rf dist/
+mv /tmp/dist ./
 
-### Admin 前端配置
-
-#### .env.production
-```bash
-# API 服务地址 (生产环境)
-VITE_API_URL=https://yunjie.online/api
-
-# 应用名称
-VITE_APP_NAME=Ruizhu Admin
-```
-
-#### vite.config.ts 关键配置
-```typescript
-export default defineConfig({
-  // 应用部署在根路径
-  base: '/',
-
-  // 路径别名
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-
-  // 开发服务器配置 (本地开发用)
-  server: {
-    port: 5174,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-        rewrite: (path) => path,
-      },
-    },
-  },
-})
-```
-
-### NestAPI 后端配置
-
-#### .env 环境变量
-```bash
-NODE_ENV=production
-PORT=3000
-
-# 数据库配置
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=ruizhu
-
-# 其他配置
-JWT_SECRET=your_secret_key
-API_PREFIX=/api
-```
-
-### Nginx 关键配置说明
-
-| 配置项 | 说明 | 例子 |
-|--------|------|------|
-| `root` | 静态文件根目录 | `/opt/ruizhu-app/admin` |
-| `index` | 默认文件 | `index.html index.htm` |
-| `error_page 404 =200` | 404 错误处理 (SPA 路由) | `/index.html` |
-| `expires 1y` | 缓存过期时间 | 资源文件 |
-| `proxy_pass` | 代理目标地址 | `http://ruizhu_backend` |
-| `proxy_set_header` | 代理请求头 | `X-Forwarded-For` 等 |
-
----
-
-## 验证测试
-
-### 测试清单
-
-#### 1. Admin 前端访问
-```bash
-# ✓ 返回 HTTP 200，Content-Type: text/html
-curl -I https://yunjie.online/
-
-# ✓ 返回 Cache-Control: no-cache 头
-curl -I https://yunjie.online/index.html
-
-# ✓ 返回 Cache-Control: public, immutable 头
-curl -I https://yunjie.online/assets/index-xxxxx.js
-```
-
-#### 2. API 代理测试
-```bash
-# ✓ 获取产品列表
-curl -s https://yunjie.online/api/products | jq '.code'
-# 输出: 200
-
-# ✓ 获取首页 Banner
-curl -s https://yunjie.online/api/banners | jq '.code'
-# 输出: 200
-```
-
-#### 3. HTTPS 重定向
-```bash
-# ✓ HTTP 请求重定向到 HTTPS
-curl -I http://yunjie.online/
-# HTTP/1.1 301 Moved Permanently
-# Location: https://yunjie.online/
-```
-
-#### 4. SPA 路由测试
-```bash
-# ✓ 非存在路径返回 index.html (SPA 路由)
-curl -s https://yunjie.online/login | head -1
-# 应该返回 <!doctype html>
-
-curl -s https://yunjie.online/products | head -1
-# 应该返回 <!doctype html>
-```
-
-#### 5. 后端健康检查
-```bash
-# ✓ 检查 NestAPI 运行状态
-pm2 list
-# 应该显示 ruizhu-backend 进程 online
-
-# ✓ 查看最近日志
-pm2 logs ruizhu-backend --lines 20
-# 应该看到应用启动日志，无 error
-```
-
----
-
-## 故障排查
-
-### 常见问题
-
-#### 问题 1: Admin 页面返回 404 或后端响应
-**症状**: 访问 `https://yunjie.online/` 返回 JSON 错误或 404
-**原因**: Nginx 配置错误或找不到 admin 文件
-
-**解决方案**:
-```bash
-# 1. 检查 admin 文件是否存在
-ls -lh /opt/ruizhu-app/admin/index.html
-
-# 2. 检查 Nginx 配置
-cat /www/server/panel/vhost/nginx/ruizhu.conf | grep root
-
-# 3. 检查 Nginx 错误日志
-tail -30 /www/wwwlogs/ruizhu-error.log
-
-# 4. 验证配置语法
-nginx -t
-
-# 5. 重新加载 Nginx
-nginx -s reload
-```
-
-#### 问题 2: API 返回 Connection Refused
-**症状**: `https://yunjie.online/api/products` 返回连接错误
-**原因**: NestAPI 后端未运行或端口不对
-
-**解决方案**:
-```bash
-# 1. 检查 NestAPI 进程
-pm2 list
-pm2 logs ruizhu-backend --lines 50
-
-# 2. 检查端口监听
-netstat -tlnp | grep 3000
-ss -tlnp | grep 3000
-
-# 3. 启动/重启 NestAPI
-pm2 start /opt/ruizhu-app/ecosystem.config.js
+echo ""
+echo "=== 重启 PM2 应用 ==="
 pm2 restart ruizhu-backend
 
-# 4. 本地测试 API
-curl -s http://localhost:3000/api/products | jq '.code'
-```
+echo ""
+echo "=== 等待应用启动 ==="
+sleep 10
 
-#### 问题 3: 静态资源 404
-**症状**: CSS/JS 文件加载失败，出现 404
-**原因**: 文件路径错误或文件未构建
+echo ""
+echo "=== 检查状态 ==="
+pm2 status
 
-**解决方案**:
-```bash
-# 1. 检查文件是否存在
-ls -lh /opt/ruizhu-app/admin/assets/
-
-# 2. 检查 index.html 中的资源路径
-cat /opt/ruizhu-app/admin/index.html | grep src=
-
-# 3. 重新构建上传
-npm run build
-scp -r dist/* root@123.207.14.67:/opt/ruizhu-app/admin/
-```
-
-#### 问题 4: HTTPS 证书错误
-**症状**: 浏览器显示证书错误或不安全
-**原因**: SSL 证书过期或配置错误
-
-**解决方案**:
-```bash
-# 1. 检查证书有效期
-openssl x509 -in /www/server/nginx/conf/ssl/yunjie.online_bundle.crt -text -noout | grep -A2 "Validity"
-
-# 2. 检查证书和密钥匹配
-openssl x509 -in /www/server/nginx/conf/ssl/yunjie.online_bundle.crt -noout -pubkey > /tmp/cert_pub.key
-openssl rsa -in /www/server/nginx/conf/ssl/yunjie.online.key -pubout > /tmp/key_pub.key
-diff /tmp/cert_pub.key /tmp/key_pub.key
-
-# 3. 验证 Nginx 配置中证书路径
-grep ssl_certificate /www/server/panel/vhost/nginx/ruizhu.conf
-```
-
-#### 问题 5: 缓存相关问题
-**症状**: 更新 Admin 代码后页面还是旧版本
-**原因**: 浏览器缓存 index.html
-
-**解决方案**:
-```bash
-# 1. 确保 index.html 不被缓存
-grep -A2 "location = /index.html" /www/server/panel/vhost/nginx/ruizhu.conf
-# 应该包含: add_header Cache-Control "no-cache, no-store, must-revalidate";
-
-# 2. 清除浏览器缓存
-# - Ctrl+Shift+Delete (或在开发者工具中清除缓存)
-# - 或使用 Ctrl+F5 强制刷新
-
-# 3. 检查版本化文件是否有 hash
-ls /opt/ruizhu-app/admin/assets/index-*.js
-# 应该显示类似: index-a1b2c3d4.js
-```
-
-### 日志位置
-
-| 日志文件 | 位置 | 用途 |
-|---------|------|------|
-| Nginx 访问日志 | `/www/wwwlogs/ruizhu-access.log` | 记录所有 HTTP 请求 |
-| Nginx 错误日志 | `/www/wwwlogs/ruizhu-error.log` | 记录 Nginx 错误 |
-| NestAPI 日志 | `pm2 logs ruizhu-backend` | 记录应用日志 |
-
-### 调试命令
-
-```bash
-# 查看 Nginx 编译配置
-nginx -V
-
-# 动态显示 Nginx 请求
-tail -f /www/wwwlogs/ruizhu-access.log | grep -v "assets"
-
-# 监控进程资源使用
-watch -n 1 'ps aux | grep -E "nginx|node" | grep -v grep'
-
-# 检查网络连接
-netstat -tlnp | grep -E "80|443|3000"
-
-# 测试后端响应时间
-curl -w "@/dev/stdin" -o /dev/null -s \
-  "https://yunjie.online/api/products" << 'EOF'
-    time_namelookup:  %{time_namelookup}\n
-       time_connect:  %{time_connect}\n
-    time_appconnect:  %{time_appconnect}\n
-   time_pretransfer:  %{time_pretransfer}\n
-      time_redirect:  %{time_redirect}\n
- time_starttransfer:  %{time_starttransfer}\n
-                    ----------\n
-         time_total:  %{time_total}\n
+echo ""
+echo "=== 健康检查 ==="
+curl -f http://localhost:3000/api && echo "" && echo "✓ 部署成功!" || echo "⚠ 健康检查失败"
 EOF
 ```
 
+### 自动部署脚本（可选）
+
+也可以使用自动部署脚本：
+
+```bash
+# 进入项目根目录
+cd /Users/peak/work/pikecode/ruizhu_project
+
+# 运行部署脚本
+./deploy/nestapi-deploy.sh
+```
+
+### 部署流程
+
+脚本会自动执行以下步骤：
+
+1. **验证部署配置** - 检查环境变量是否设置
+2. **本地构建** - 运行 `npm run build` 编译 TypeScript
+3. **本地打包** - 将构建产物打包为 `.tar.gz`
+4. **上传到服务器** - 通过 SCP 上传到服务器
+5. **服务器部署**：
+   - 停止 PM2 应用
+   - 创建备份
+   - 解压新版本
+   - 安装依赖 `npm ci --legacy-peer-deps`
+   - 重启 PM2 应用
+   - 健康检查
+6. **数据库迁移** - 运行 TypeORM 迁移（如果有）
+
+### 部署选项
+
+```bash
+# 跳过本地构建（仅重新打包和部署）
+./deploy/nestapi-deploy.sh --skip-build
+
+# 跳过打包（使用最新包部署）
+./deploy/nestapi-deploy.sh --skip-pack
+
+# 跳过数据库迁移
+./deploy/nestapi-deploy.sh --skip-migration
+
+# 测试运行（不实际部署）
+./deploy/nestapi-deploy.sh --dry-run
+```
+
+### 验证部署
+
+部署完成后，可以通过以下命令验证：
+
+```bash
+# 查看应用状态
+sshpass -p "$DEPLOY_PASS" ssh root@123.207.14.67 pm2 status
+
+# 查看应用日志
+sshpass -p "$DEPLOY_PASS" ssh root@123.207.14.67 pm2 logs ruizhu-backend
+
+# 测试API
+sshpass -p "$DEPLOY_PASS" ssh root@123.207.14.67 'curl http://localhost:8888/api'
+
+# 或从本地测试
+curl https://yunjie.online/api
+```
+
 ---
 
-## 快速参考
+## Admin 前端部署
 
-### 部署检查清单
+### 快速部署（推荐）
 
-```
-前端部署:
-  [ ] npm run build (本地构建)
-  [ ] .env.production 配置正确
-  [ ] 上传 dist/ 到 /opt/ruizhu-app/admin/
-  [ ] 验证 index.html 存在
-  [ ] 验证 assets/ 目录有构建文件
+当你在 Admin 项目中更新了代码，需要部署到服务器时，使用以下手动步骤：
 
-后端部署:
-  [ ] npm run build (本地构建)
-  [ ] .env 配置正确
-  [ ] 上传 dist/ 到 /opt/ruizhu-app/nestapi-dist/
-  [ ] node_modules 存在或可被安装
-  [ ] PM2 配置文件存在
+#### 步骤 1: 本地构建
 
-Nginx 配置:
-  [ ] /www/server/panel/vhost/nginx/ruizhu.conf 创建/更新
-  [ ] root 路径指向 /opt/ruizhu-app/admin
-  [ ] SSL 证书路径正确
-  [ ] upstream 配置指向 127.0.0.1:3000
-  [ ] error_page 404 配置存在
-  [ ] nginx -t 验证通过
-
-验证测试:
-  [ ] curl -I https://yunjie.online/ (返回 200)
-  [ ] curl https://yunjie.online/api/products (返回 JSON)
-  [ ] 浏览器访问 https://yunjie.online (加载完整)
-  [ ] pm2 logs ruizhu-backend (无错误)
-  [ ] 测试 SPA 路由 (如 /login, /products)
-```
-
-### 常用部署命令速查
-
-#### 部署 Admin 前端 (最常用)
 ```bash
-# 1. 本地构建
-cd admin && npm run build
+# 进入 Admin 目录
+cd /Users/peak/work/pikecode/ruizhu_project/admin
 
-# 2. 上传到服务器
-scp -r dist/* root@123.207.14.67:/opt/ruizhu-app/admin/
+# 构建项目
+npm run build
 
-# 3. 重新加载 Nginx (让新文件生效)
-ssh -o StrictHostKeyChecking=no root@123.207.14.67 "nginx -s reload"
-
-# 完成！不需要重启 NestAPI
+# 验证构建成功
+ls -lh dist/
+# 应该看到: index.html, assets/, vite.svg
 ```
 
-#### 部署 NestAPI 后端
+#### 步骤 2: 上传到服务器
+
 ```bash
-# 1. 本地构建
-cd nestapi && npm run build
+# 创建临时目录并上传
+sshpass -p 'Pp123456' ssh -o StrictHostKeyChecking=no root@123.207.14.67 'mkdir -p /tmp/admin-deploy'
 
-# 2. 上传到服务器
-scp -r dist/* root@123.207.14.67:/opt/ruizhu-app/nestapi-dist/
-scp .env root@123.207.14.67:/opt/ruizhu-app/nestapi-dist/
-
-# 3. 重启后端服务
-ssh -o StrictHostKeyChecking=no root@123.207.14.67 "pm2 restart ruizhu-backend"
+sshpass -p 'Pp123456' scp -r -o StrictHostKeyChecking=no \
+  dist/* \
+  root@123.207.14.67:/tmp/admin-deploy/
 ```
 
-#### 维护相关命令
+#### 步骤 3: 服务器端部署
+
 ```bash
-# 查看 NestAPI 日志
-pm2 logs ruizhu-backend --lines 50
+# SSH 登录服务器执行部署
+sshpass -p 'Pp123456' ssh -o StrictHostKeyChecking=no root@123.207.14.67 'bash -s' << 'EOF'
+set -e
 
-# 查看 Nginx 错误日志
-tail -30 /www/wwwlogs/ruizhu-error.log
+echo "=== 备份当前部署 ==="
+if [ -d "/opt/ruizhu-app/admin" ]; then
+  mv /opt/ruizhu-app/admin /opt/ruizhu-app/admin-backup-$(date +%Y%m%d-%H%M%S)
+  echo "✓ 备份完成"
+fi
 
-# 验证 Nginx 配置
+echo ""
+echo "=== 部署新文件 ==="
+mkdir -p /opt/ruizhu-app/admin
+mv /tmp/admin-deploy/* /opt/ruizhu-app/admin/
+echo "✓ 文件部署完成"
+
+echo ""
+echo "=== 验证部署 ==="
+ls -lh /opt/ruizhu-app/admin/
+
+echo ""
+echo "=== 重载 Nginx ==="
+nginx -s reload && echo "✓ Nginx 重载成功" || echo "⚠ Nginx 重载失败"
+
+echo ""
+echo "=== 测试访问 ==="
+sleep 2
+curl -I http://localhost/ | head -10
+EOF
+```
+
+#### 步骤 4: 验证部署
+
+```bash
+# 从本地测试公网访问
+curl -I https://yunjie.online/
+
+# 在浏览器中打开
+open https://yunjie.online/
+```
+
+### 自动部署脚本（可选）
+
+也可以使用自动部署脚本：
+
+```bash
+# 进入项目根目录
+cd /Users/peak/work/pikecode/ruizhu_project
+
+# 运行部署脚本
+./deploy/admin-deploy.sh prod
+```
+
+### 部署流程
+
+脚本会自动执行以下步骤：
+
+1. **验证部署配置** - 检查环境变量和依赖
+2. **检查目录** - 验证项目结构
+3. **清理旧构建** - 删除旧的 `dist` 目录
+4. **本地构建** - 运行 `npm install && npm run build`
+5. **验证构建** - 检查 `index.html` 和 `assets` 目录
+6. **上传到服务器** - 通过 SCP 上传到服务器
+7. **验证远程文件** - 确认文件已正确上传
+8. **重载 Nginx** - 重新加载 Nginx 配置
+9. **测试部署** - 测试 HTTPS 连接和 API 代理
+
+### 部署选项
+
+```bash
+# 完整部署（包括验证和 Nginx 重载）
+./deploy/admin-deploy.sh prod
+
+# 部署但跳过验证
+./deploy/admin-deploy.sh prod --no-verify
+
+# 部署但不重载 Nginx
+./deploy/admin-deploy.sh prod --no-reload
+```
+
+### 验证部署
+
+部署完成后，访问以下地址验证：
+
+```bash
+# 打开浏览器访问
+https://yunjie.online/
+
+# 或使用 curl 测试
+curl -I https://yunjie.online/
+```
+
+---
+
+## 常见问题
+
+### 1. 部署失败：sshpass 未找到
+
+**问题**：
+```
+-bash: sshpass: command not found
+```
+
+**解决方案**：
+```bash
+# macOS
+brew install sshpass
+
+# Linux
+sudo apt-get install sshpass
+```
+
+### 2. 部署失败：环境变量未设置
+
+**问题**：
+```
+[❌ ERROR] 服务器地址未设置
+```
+
+**解决方案**：
+```bash
+# 设置环境变量
+export DEPLOY_HOST='123.207.14.67'
+export DEPLOY_PASS='your-password'
+
+# 或将环境变量添加到 ~/.zshrc 或 ~/.bashrc
+echo 'export DEPLOY_HOST="123.207.14.67"' >> ~/.zshrc
+echo 'export DEPLOY_PASS="your-password"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### 3. NestAPI 构建失败
+
+**问题**：
+```
+npm run build 失败
+```
+
+**解决方案**：
+```bash
+# 进入 nestapi 目录
+cd nestapi
+
+# 清除 node_modules 和重新安装
+rm -rf node_modules package-lock.json
+npm install
+
+# 重新构建
+npm run build
+```
+
+### 4. Admin 构建失败
+
+**问题**：
+```
+npm run build 失败
+```
+
+**解决方案**：
+```bash
+# 进入 admin 目录
+cd admin
+
+# 清除 node_modules 和重新安装
+rm -rf node_modules package-lock.json
+npm install
+
+# 重新构建
+npm run build
+```
+
+### 5. PM2 应用未启动
+
+**问题**：
+```
+应用启动，但健康检查返回 HTTP 404
+```
+
+**解决方案**：
+```bash
+# SSH 登录服务器
+ssh root@123.207.14.67
+
+# 查看 PM2 日志
+pm2 logs ruizhu-backend --lines 100
+
+# 重启应用
+pm2 restart ruizhu-backend
+
+# 如果需要，删除并重新创建 PM2 应用
+pm2 delete ruizhu-backend
+pm2 start dist/main.js --name ruizhu-backend
+```
+
+### 6. Nginx 502 错误
+
+**问题**：
+访问 `https://yunjie.online/api` 返回 502
+
+**解决方案**：
+```bash
+# SSH 登录服务器
+ssh root@123.207.14.67
+
+# 检查 NestAPI 是否运行
+pm2 status
+curl http://localhost:8888/api
+
+# 检查 Nginx 配置
 nginx -t
 
-# 查看进程状态
-pm2 list
-ss -tlnp | grep -E "80|443|3000"
+# 查看 Nginx 错误日志
+tail -f /var/log/nginx/error.log
+
+# 重启 Nginx
+nginx -s reload
+```
+
+### 7. 前端页面白屏
+
+**问题**：
+访问 `https://yunjie.online/` 显示白屏
+
+**解决方案**：
+```bash
+# 检查浏览器控制台错误
+# F12 -> Console
+
+# SSH 登录服务器检查文件
+ssh root@123.207.14.67
+cd /opt/ruizhu-app/admin
+ls -la
+
+# 确认 index.html 和 assets 存在
+cat index.html
+
+# 检查 Nginx 日志
+tail -f /var/log/nginx/access.log
+tail -f /var/log/nginx/error.log
+```
+
+### 8. NestJS 依赖注入错误（SchedulerMetadataAccessor）
+
+**问题**：
+```
+UnknownDependenciesException: Nest can't resolve dependencies of the SchedulerMetadataAccessor (?)
+```
+
+**原因**：
+新安装的 node_modules 与 NestJS 版本不兼容
+
+**解决方案**：
+```bash
+# SSH 登录服务器
+ssh root@123.207.14.67
+
+# 停止应用
+cd /opt/ruizhu-app/nestapi-dist
+pm2 stop ruizhu-backend
+
+# 备份有问题的 node_modules
+mv node_modules node_modules.backup-$(date +%Y%m%d-%H%M%S)
+
+# 从旧的工作部署复制 node_modules
+cp -r /opt/ruizhu-app/node_modules /opt/ruizhu-app/nestapi-dist/
+
+# 重启应用
+pm2 restart ruizhu-backend
+
+# 检查状态
+pm2 logs ruizhu-backend --lines 20
+curl http://localhost:3000/api
+```
+
+### 9. PM2 应用找不到环境变量
+
+**问题**：
+```
+缺少必需的数据库环境变量: DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
+```
+
+**原因**：
+PM2 启动时没有加载 .env 文件
+
+**解决方案**：
+```bash
+# SSH 登录服务器
+ssh root@123.207.14.67
+
+# 创建 PM2 ecosystem 配置文件
+cd /opt/ruizhu-app
+cat > ecosystem.config.js << 'EOFCONFIG'
+module.exports = {
+  apps: [{
+    name: 'ruizhu-backend',
+    script: './dist/main.js',
+    cwd: '/opt/ruizhu-app/nestapi-dist',
+    instances: 1,
+    exec_mode: 'fork',
+    env: {
+      NODE_ENV: 'production'
+    },
+    env_file: '/opt/ruizhu-app/nestapi-dist/.env',
+    error_file: '/root/.pm2/logs/ruizhu-backend-error.log',
+    out_file: '/root/.pm2/logs/ruizhu-backend-out.log',
+    log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+  }]
+}
+EOFCONFIG
+
+# 使用 ecosystem 配置重启应用
+pm2 delete ruizhu-backend
+pm2 start ecosystem.config.js
+pm2 save
+
+# 验证
+pm2 status
+pm2 logs ruizhu-backend --lines 20
 ```
 
 ---
 
-## 总结
+## 服务器配置信息
 
-这个部署方案实现了：
+### PM2 配置
 
-1. **分离部署**: 前端静态文件和后端 API 独立部署和扩展
-2. **性能优化**: 静态资源 CDN 友好的缓存策略
-3. **高可用**: Nginx 反向代理支持后端多实例
-4. **安全性**: HTTPS/TLS, HTTP→HTTPS 重定向
-5. **可维护性**: 清晰的目录结构和配置文件位置
-6. **易调试**: 详细的日志和故障排查指南
+**当前 PM2 配置文件位置**: `/opt/ruizhu-app/ecosystem.config.js`
 
-部署完成后，所有来自 `https://yunjie.online` 的请求都会被 Nginx 正确路由：
-- 静态资源请求 → Admin 前端目录
-- `/api/` 请求 → NestAPI 后端代理
-- SPA 路由请求 → index.html (客户端处理)
+```javascript
+module.exports = {
+  apps: [{
+    name: 'ruizhu-backend',
+    script: './dist/main.js',
+    cwd: '/opt/ruizhu-app/nestapi-dist',
+    instances: 1,
+    exec_mode: 'fork',
+    env: {
+      NODE_ENV: 'production'
+    },
+    env_file: '/opt/ruizhu-app/nestapi-dist/.env',
+    error_file: '/root/.pm2/logs/ruizhu-backend-error.log',
+    out_file: '/root/.pm2/logs/ruizhu-backend-out.log',
+    log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+  }]
+}
+```
+
+**PM2 管理命令**:
+```bash
+# 启动应用
+pm2 start /opt/ruizhu-app/ecosystem.config.js
+
+# 重启应用
+pm2 restart ruizhu-backend
+
+# 停止应用
+pm2 stop ruizhu-backend
+
+# 查看状态
+pm2 status
+
+# 查看日志
+pm2 logs ruizhu-backend
+
+# 保存配置（开机自启）
+pm2 save
+```
+
+### Nginx 配置
+
+**配置文件位置**: `/etc/nginx/conf.d/yunjie.conf`
+
+主要配置：
+- **域名**: yunjie.online
+- **SSL**: 已启用 (Let's Encrypt)
+- **Frontend 路径**: `/opt/ruizhu-app/admin/`
+- **API 代理**: `/api/` → `http://127.0.0.1:3000`
+- **Backend 端口**: 3000
+
+```nginx
+# Frontend (SPA)
+location / {
+    root /opt/ruizhu-app/admin;
+    try_files $uri $uri/ /index.html;
+}
+
+# API Proxy
+location /api/ {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+}
+```
+
+### 环境变量
+
+**NestAPI 环境变量位置**: `/opt/ruizhu-app/nestapi-dist/.env`
+
+关键配置：
+- `PORT=3000`
+- `NODE_ENV=production`
+- 数据库：腾讯云 MySQL
+- 文件存储：腾讯云 COS
+
+---
+
+## 部署文件位置
+
+### NestAPI
+
+- **本地构建目录**: `nestapi/dist/`
+- **打包发布目录**: `nestapi/deploy/releases/`
+- **服务器部署目录**: `/opt/ruizhu-app/nestapi-dist/`
+- **服务器备份目录**: `/opt/ruizhu-app/backups/`
+- **PM2 配置文件**: `/opt/ruizhu-app/ecosystem.config.js`
+- **环境变量文件**: `/opt/ruizhu-app/nestapi-dist/.env`
+
+### Admin
+
+- **本地构建目录**: `admin/dist/`
+- **服务器部署目录**: `/opt/ruizhu-app/admin/`
+- **Nginx 配置**: `/etc/nginx/conf.d/yunjie.conf`
+
+---
+
+## 快速命令参考
+
+```bash
+# === 部署 ===
+# 部署后端
+./deploy/nestapi-deploy.sh
+
+# 部署前端
+./deploy/admin-deploy.sh prod
+
+# === 服务器管理 ===
+# SSH 登录
+ssh root@123.207.14.67
+
+# 查看 PM2 状态
+pm2 status
+
+# 查看后端日志
+pm2 logs ruizhu-backend
+
+# 重启后端
+pm2 restart ruizhu-backend
+
+# 重载 Nginx
+nginx -s reload
+
+# === 测试 ===
+# 测试后端 API
+curl https://yunjie.online/api
+
+# 测试前端
+curl -I https://yunjie.online/
+
+# === 回滚 ===
+# 查看备份
+ssh root@123.207.14.67 'ls -lh /opt/ruizhu-app/backups/'
+
+# 恢复备份（需要手动操作）
+# 1. SSH 登录服务器
+# 2. 解压备份文件到部署目录
+# 3. 重启 PM2 应用
+```
+
+---
+
+## 注意事项
+
+1. **部署前备份**：部署脚本会自动创建备份，但建议在重大更新前手动创建备份
+2. **测试环境**：建议先在测试环境验证，再部署到生产环境
+3. **数据库迁移**：如果有数据库更改，确保迁移文件已创建
+4. **环境变量**：确保服务器上的 `.env` 文件正确配置
+5. **权限问题**：确保部署用户有足够的权限操作部署目录
+
+---
+
+## 部署检查清单
+
+### NestAPI 后端部署检查
+
+- [ ] 本地构建成功 (`npm run build`)
+- [ ] 构建产物已打包 (`tar.gz`)
+- [ ] 上传到服务器成功
+- [ ] 服务器端创建备份
+- [ ] PM2 应用已停止
+- [ ] 新文件已部署到 `/opt/ruizhu-app/nestapi-dist/dist/`
+- [ ] PM2 应用已重启
+- [ ] PM2 状态显示 `online`
+- [ ] 本地健康检查通过 (`curl http://localhost:3000/api`)
+- [ ] 公网健康检查通过 (`curl https://yunjie.online/api/`)
+- [ ] PM2 日志无错误
+
+### Admin 前端部署检查
+
+- [ ] 本地构建成功 (`npm run build`)
+- [ ] 构建产物包含 `index.html` 和 `assets/`
+- [ ] 上传到服务器成功
+- [ ] 服务器端创建备份
+- [ ] 新文件已部署到 `/opt/ruizhu-app/admin/`
+- [ ] Nginx 重载成功
+- [ ] 本地访问测试通过 (`curl http://localhost/`)
+- [ ] 公网访问测试通过 (`curl https://yunjie.online/`)
+- [ ] 浏览器访问正常显示
+- [ ] 前端可以正常调用 API
+
+---
+
+## 部署后验证步骤
+
+### 1. 后端验证
+
+```bash
+# 检查 PM2 状态
+ssh root@123.207.14.67 pm2 status
+
+# 检查后端日志（确保无错误）
+ssh root@123.207.14.67 pm2 logs ruizhu-backend --lines 50
+
+# 测试本地 API
+ssh root@123.207.14.67 'curl http://localhost:3000/api'
+
+# 测试公网 API
+curl https://yunjie.online/api/
+```
+
+### 2. 前端验证
+
+```bash
+# 测试公网访问
+curl -I https://yunjie.online/
+
+# 浏览器访问
+open https://yunjie.online/
+
+# 检查前端文件
+ssh root@123.207.14.67 'ls -lh /opt/ruizhu-app/admin/'
+```
+
+### 3. 完整功能测试
+
+- [ ] 用户登录功能正常
+- [ ] 商品列表加载正常
+- [ ] 图片上传功能正常
+- [ ] 数据库操作正常
+- [ ] API 响应时间正常
+
+---
+
+## 支持
+
+如有问题，请查看：
+- 部署日志：`/tmp/npm-build.log`, `/tmp/scp-upload.log` 等
+- PM2 日志：`pm2 logs ruizhu-backend`
+- Nginx 日志：`/var/log/nginx/error.log`
+- 本部署文档：`/Users/peak/work/pikecode/ruizhu_project/DEPLOYMENT_GUIDE.md`
