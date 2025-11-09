@@ -83,7 +83,7 @@
         <view class="consent-item" @tap="requiredConsent = !requiredConsent">
           <view class="checkbox" :class="{ checked: requiredConsent }"></view>
           <text class="consent-text">
-            我希望在 Ruizhu 小程序上创建我的账户，并且知悉我的个人信息将用于提供如
+            我希望在 Yunjie 小程序上创建我的账户，并且知悉我的个人信息将用于提供如
             <text class="link" @tap.stop="openPolicy">隐私政策</text>
             中所述所要求的服务。
           </text>

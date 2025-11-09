@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <!-- 自定义顶部导航栏 -->
-    <CustomNavbar title="RUIZHU" />
+    <CustomNavbar title="YUNJIE" />
 
     <!-- 轮播图区域（包含动画和其他banner） -->
     <view class="banner-section">
@@ -50,7 +50,7 @@
       <swiper-item v-for="(slide, slideIndex) in productSlides" :key="slideIndex">
         <view class="products-section">
           <!-- 左侧大图展示 -->
-          <view class="featured-product">
+          <view class="featured-product" @tap="onProductTap(slide.featured)">
             <image
               class="featured-image"
               :src="slide.featured.image"
@@ -67,6 +67,7 @@
               class="product-card"
               v-for="(product, index) in slide.products"
               :key="index"
+              @tap="onProductTap(product)"
             >
               <image
                 class="product-image"
@@ -303,6 +304,24 @@ export default {
       this.currentSlide = e.detail.current
     },
 
+    /**
+     * 处理产品点击事件
+     * 跳转到产品详情页面
+     */
+    onProductTap(product) {
+      if (!product || !product.id) {
+        uni.showToast({ title: '产品信息加载失败', icon: 'none' })
+        return
+      }
+
+      uni.navigateTo({
+        url: `/pages/product/detail?id=${product.id}`,
+        fail: () => {
+          uni.showToast({ title: '页面跳转失败', icon: 'none' })
+        }
+      })
+    },
+
     onExploreMore() {
       uni.navigateTo({
         url: '/pages/consultation/consultation'
@@ -435,6 +454,12 @@ export default {
     display: flex;
     flex-direction: column;
     max-height: 100%;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+
+    &:active {
+      opacity: 0.8;
+    }
 
     .featured-image {
       width: 100%;
@@ -479,6 +504,12 @@ export default {
       display: flex;
       flex-direction: column;
       min-height: 0;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+
+      &:active {
+        opacity: 0.8;
+      }
 
       .product-image {
         width: 100%;

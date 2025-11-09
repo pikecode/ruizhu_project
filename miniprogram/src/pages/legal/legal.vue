@@ -27,23 +27,23 @@
           <view class="content-section">
             <text class="section-title">1. 我们如何收集个人信息</text>
             <text class="section-text">
-本公司向注册地位于中华人民共和国上海市的RUIZHU时装商业（上海）有限公司（下文称"RUIZHU上海"），在中华人民共和国境内运营网站 https://www.prada.com/cn 及 https://www.miumiu.com/cn (以下简称"网站")以及RUIZHU 电商平台上的商品交易和相关服务。对于RUIZHU和RUIZHU品牌选购，与此同时位于意大利米兰的RUIZHU集团的运营与股份公司，将拟法股份有限公司(即RUIZHU S.p.A.其与RUIZHU上海合称为"RUIZHU"或"RUIZHU")在此承诺保护您在访问网站时提供的个人信息，完全符合和安全性。消费者可在收集、使用和披露个人信息的方式。RUIZHU对您提供的个人信息具时数会采取行政用的隐私保护法规，以及与此同时应用的隐私保护法律所要求的方式进行处理。该等法律包括但不限于《中华人民共和国民法典》、《中华人民共和国个人信息保护法》和《中华人民共和国电子商务法》，且处理此公维和RUIZHU集团所用的通则和一般规则。
+本公司向注册地位于中华人民共和国上海市的YUNJIE时装商业（上海）有限公司（下文称"YUNJIE上海"），在中华人民共和国境内运营网站 https://www.prada.com/cn 及 https://www.miumiu.com/cn (以下简称"网站")以及YUNJIE 电商平台上的商品交易和相关服务。对于YUNJIE和YUNJIE品牌选购，与此同时位于意大利米兰的YUNJIE集团的运营与股份公司，将拟法股份有限公司(即YUNJIE S.p.A.其与YUNJIE上海合称为"YUNJIE"或"YUNJIE")在此承诺保护您在访问网站时提供的个人信息，完全符合和安全性。消费者可在收集、使用和披露个人信息的方式。YUNJIE对您提供的个人信息具时数会采取行政用的隐私保护法规，以及与此同时应用的隐私保护法律所要求的方式进行处理。该等法律包括但不限于《中华人民共和国民法典》、《中华人民共和国个人信息保护法》和《中华人民共和国电子商务法》，且处理此公维和YUNJIE集团所用的通则和一般规则。
 
-本公司隐私政策适用于我们可能通过以数字平台收集的个人信息，例如网站、RUIZHU信小程序、第三方电子商务平台(例如天猫和京东)的店铺、任何移动应用程序、云服务、嵌入通信平台的受控部件(下文称称"数字平台")，以及其他展示本隐私政策或提及本隐私政策第2处数据的个人信息。我们可能利用在这些平台所提供的信息来使用数据进行营销。参加我们的活动、您可通过以电话、电子邮件、发送的短信和/或来拜访我们的门店等方式与我们联系并提供的个人信息。
+本公司隐私政策适用于我们可能通过以数字平台收集的个人信息，例如网站、YUNJIE信小程序、第三方电子商务平台(例如天猫和京东)的店铺、任何移动应用程序、云服务、嵌入通信平台的受控部件(下文称称"数字平台")，以及其他展示本隐私政策或提及本隐私政策第2处数据的个人信息。我们可能利用在这些平台所提供的信息来使用数据进行营销。参加我们的活动、您可通过以电话、电子邮件、发送的短信和/或来拜访我们的门店等方式与我们联系并提供的个人信息。
             </text>
           </view>
 
           <view class="content-section">
             <text class="section-title">本隐私政策包括以下的内容</text>
             <view class="section-list">
-              <text class="list-item">（1）RUIZHU的收集与处理的个人信息类型</text>
+              <text class="list-item">（1）YUNJIE的收集与处理的个人信息类型</text>
               <text class="list-item">（2）本公司个人信息的保护</text>
-              <text class="list-item">（3）RUIZHU可能运用的收集与处理个人信息的方法</text>
+              <text class="list-item">（3）YUNJIE可能运用的收集与处理个人信息的方法</text>
               <text class="list-item">（4）个人信息提供的的选择权</text>
               <text class="list-item">（5）收集与处理个人信息的合的和法律基础</text>
-              <text class="list-item">（6）RUIZHU如何在全球范围内共、转让、公开披露您的个人信息</text>
+              <text class="list-item">（6）YUNJIE如何在全球范围内共、转让、公开披露您的个人信息</text>
               <text class="list-item">（7）您的个人信息在全球范围内的转移</text>
-              <text class="list-item">（8）RUIZHU如何保护您的个人信息</text>
+              <text class="list-item">（8）YUNJIE如何保护您的个人信息</text>
               <text class="list-item">（9）保存期限</text>
               <text class="list-item">（10）个人信息处理者和数据保护负责人的具体联系方式</text>
               <text class="list-item">（11）个人信息主体的权利</text>
@@ -52,7 +52,7 @@
           </view>
 
           <view class="content-section">
-            <text class="section-title">1. RUIZHU可收集与处理的个人信息类型：</text>
+            <text class="section-title">1. YUNJIE可收集与处理的个人信息类型：</text>
             <text class="section-text">
 "个人信息"指由电子方式或其他方式记录的，与已识别或可识别的自然人有关的任何种类的信息，或由独立与其他信息结合的反映对自然人活动的任何种类的信息。
             </text>

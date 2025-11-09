@@ -32,7 +32,7 @@
               mode="aspectFill"
             ></image>
             <view class="banner-text-overlay">
-              <text class="banner-brand">RUIZHU</text>
+              <text class="banner-brand">YUNJIE</text>
               <view class="banner-welcome">
               <view class="welcome-desc-row">
                 <text class="welcome-desc">{{ userGreeting }}先生，您好</text>

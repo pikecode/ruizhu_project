@@ -112,7 +112,7 @@
             </view>
           </view>
           <view class="checkbox-content">
-            <text class="checkbox-title">创建并维护我的 RUIZHU 帐户</text>
+            <text class="checkbox-title">创建并维护我的 YUNJIE 帐户</text>
             <text class="checkbox-body">
               *我知悉并同意按照
               <text class="link-text" @tap="goPrivacy">隐私政策</text>

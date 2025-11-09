@@ -1,8 +1,8 @@
 <template>
   <view class="login-container">
     <view class="login-header">
-      <text class="title">Ruizhu</text>
-      <text class="subtitle">瑞珠电商平台</text>
+      <text class="title">Yunjie</text>
+      <text class="subtitle">云捷电商平台</text>
     </view>
 
     <view class="login-form">

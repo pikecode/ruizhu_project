@@ -25,7 +25,7 @@
             <view class="checkbox" :class="{ checked: authorizations.registration }">
               <text v-if="authorizations.registration" class="checkbox-icon">✔</text>
             </view>
-            <text class="section-title">注册于RUIZHU集团顾客数据库</text>
+            <text class="section-title">注册于YUNJIE集团顾客数据库</text>
           </view>
         </view>
         <text class="section-text">
@@ -46,7 +46,7 @@
           </view>
         </view>
         <text class="option-desc">
-为进行与我对 RUIZHU 及RUIZHU集团的某他品牌、产品和服务的偏好实施个人和团体研究、调查、数据分析，以及市场研究，从而提供个性化服务。
+为进行与我对 YUNJIE 及YUNJIE集团的某他品牌、产品和服务的偏好实施个人和团体研究、调查、数据分析，以及市场研究，从而提供个性化服务。
         </text>
       </view>
 
@@ -61,7 +61,7 @@
           </view>
         </view>
         <text class="section-text">
-为接受联络和/或接受（通过电邮、电话、电子邮件或任何其他形式的电子通信或数码方式，包括社交网络平台和其他即时通讯应用）与RUIZHU及RUIZHU集团的其他品牌、产品和服务相关的资讯及推广，包括商业性质、时事通讯、广告、目录及活动邀请。
+为接受联络和/或接受（通过电邮、电话、电子邮件或任何其他形式的电子通信或数码方式，包括社交网络平台和其他即时通讯应用）与YUNJIE及YUNJIE集团的其他品牌、产品和服务相关的资讯及推广，包括商业性质、时事通讯、广告、目录及活动邀请。
         </text>
       </view>
 
@@ -76,7 +76,7 @@
           </view>
         </view>
         <text class="section-text">
-我也知晓并同意贵司将我的个人信息跨境转移给RUIZHU股份有限公司，即位于意大利的RUIZHU集团2号运营控股公司，从而加入RUIZHU集团顾客数据库，该信息将为所有 RUIZHU集团旗下商店 可识别/或共享，从而提供隐私政策中描述的全球客户服务。
+我也知晓并同意贵司将我的个人信息跨境转移给YUNJIE股份有限公司，即位于意大利的YUNJIE集团2号运营控股公司，从而加入YUNJIE集团顾客数据库，该信息将为所有 YUNJIE集团旗下商店 可识别/或共享，从而提供隐私政策中描述的全球客户服务。
         </text>
       </view>
     </view>

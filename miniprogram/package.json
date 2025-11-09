@@ -1,7 +1,7 @@
 {
-  "name": "ruizhu-miniprogram",
+  "name": "yunjie-miniprogram",
   "version": "1.0.0",
-  "description": "Ruizhu miniprogram built with uniapp",
+  "description": "Yunjie miniprogram built with uniapp",
   "main": "main.js",
   "scripts": {
     "dev:mp-weixin": "uni -p mp-weixin",

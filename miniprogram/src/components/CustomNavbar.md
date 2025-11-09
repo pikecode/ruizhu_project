@@ -14,7 +14,7 @@ CustomNavbar 是一个可复用的自定义顶部导航栏组件，支持品牌�
 
 ### 最简单的用法 - 仅显示标题
 ```vue
-<CustomNavbar title="RUIZHU" />
+<CustomNavbar title="YUNJIE" />
 ```
 
 ### 带自定义内容的用法
@@ -41,7 +41,7 @@ CustomNavbar 是一个可复用的自定义顶部导航栏组件，支持品牌�
 
 | 属性名 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
-| `title` | String | 'RUIZHU' | 品牌标题/LOGO 文本 |
+| `title` | String | 'YUNJIE' | 品牌标题/LOGO 文本 |
 | `showBorder` | Boolean | true | 是否显示下方边框 |
 | `enableBlur` | Boolean | true | 是否启用毛玻璃效果 |
 | `backgroundColor` | String | '#ffffff' | 背景颜色 |
@@ -94,7 +94,7 @@ CustomNavbar 是一个可复用的自定义顶部导航栏组件，支持品牌�
 ```vue
 <template>
   <view class="page">
-    <CustomNavbar title="RUIZHU" />
+    <CustomNavbar title="YUNJIE" />
     <!-- 页面内容 -->
   </view>
 </template>

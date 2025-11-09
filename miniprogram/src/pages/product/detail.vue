@@ -107,10 +107,17 @@ export default {
       if (productDetail) {
         // 绑定产品数据
         this.productImages = productDetail.images || []
+
+        // 处理价格数据：从price对象中提取currentPrice并转换单位（分→元）
+        const priceData = productDetail.price
+        const currentPrice = priceData?.currentPrice ? (priceData.currentPrice / 100).toFixed(2) : '0.00'
+        const originalPrice = priceData?.originalPrice ? (priceData.originalPrice / 100).toFixed(2) : '0.00'
+
         this.productData = {
           id: productDetail.id,
           name: productDetail.name,
-          price: productDetail.price,
+          price: currentPrice,
+          originalPrice: originalPrice,
           description: productDetail.description,
           productType: productDetail.productType  // 需要传递productType以便支付时检测VIP产品
         }

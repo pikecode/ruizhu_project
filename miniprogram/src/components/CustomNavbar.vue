@@ -22,7 +22,7 @@ export default {
     // 品牌名称/标题
     title: {
       type: String,
-      default: 'RUIZHU'
+      default: 'YUNJIE'
     },
     // 是否显示底部边框
     showBorder: {

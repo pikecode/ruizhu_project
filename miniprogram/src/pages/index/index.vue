@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <!-- 自定义顶部导航栏 -->
-    <CustomNavbar title="RUIZHU" />
+    <CustomNavbar title="YUNJIE" />
 
     <!-- 轮播图区域（统一结构：动画和banner都包含标题） -->
     <view class="banner-section">
@@ -320,7 +320,7 @@ export default {
     }
   },
   onLoad() {
-    console.log('Ruizhu 首页加载完成')
+    console.log('Yunjie 首页加载完成')
     // 加载轮播图数据
     this.loadBanners()
     // 加载货架商品数据
