@@ -159,7 +159,7 @@ export class AuthService {
 
       // ⚠️ 安全改进：从数据库获取存储的 sessionKey，而不是从客户端接收
       // 首先查找用户
-      const user = await this.usersService.findByOpenId(openId);
+      const user = (await this.usersService.findByOpenId(openId)) as any;
       if (!user || !user.sessionKey) {
         console.error('[phone-login] User not found or sessionKey not available', { openId: openId.substring(0, 10) + '...' });
         throw new BadRequestException('会话已过期，请重新登录微信');
@@ -189,32 +189,32 @@ export class AuthService {
       console.log('[phone-login] Phone number extracted:', phone);
 
       // 查找或创建用户
-      let user = await this.usersService.findByPhone(phone);
-      console.log('[phone-login] User lookup result:', { userId: user?.id, exists: !!user });
+      let phoneUser = await this.usersService.findByPhone(phone);
+      console.log('[phone-login] User lookup result:', { userId: phoneUser?.id, exists: !!phoneUser });
 
-      if (user) {
+      if (phoneUser) {
         // 更新现有用户的openId和授权状态
-        if (user.openId !== openId) {
-          user = await this.usersService.bindPhoneToOpenId(openId, phone);
-          console.log('[phone-login] Bound phone to OpenId:', { userId: user.id });
+        if (phoneUser.openId !== openId) {
+          phoneUser = await this.usersService.bindPhoneToOpenId(openId, phone);
+          console.log('[phone-login] Bound phone to OpenId:', { userId: phoneUser.id });
         }
       } else {
         // 创建新用户
-        user = await this.usersService.createOrUpdateByPhone(phone, openId, {
+        phoneUser = await this.usersService.createOrUpdateByPhone(phone, openId, {
           nickname: phoneData.name || `用户_${phone.slice(-4)}`,
         });
-        console.log('[phone-login] New user created:', { userId: user.id });
+        console.log('[phone-login] New user created:', { userId: phoneUser.id });
       }
 
       // 更新最后登录信息
       // 注意：这里需要客户端提供IP，或者在中间件中获取
       const ip = '0.0.0.0'; // 实际应该从请求中获取
-      await this.usersService.updateLastLogin(user.id, ip);
+      await this.usersService.updateLastLogin(phoneUser.id, ip);
       console.log('[phone-login] Last login updated');
 
       // 生成 JWT token
-      const payload = { phone: user.phone, sub: user.id, openId: user.openId };
-      const { password, ...userWithoutPassword } = user;
+      const payload = { phone: phoneUser.phone, sub: phoneUser.id, openId: phoneUser.openId };
+      const { password, ...userWithoutPassword } = phoneUser;
 
       const token = this.jwtService.sign(payload);
       console.log('[phone-login] JWT token generated successfully');

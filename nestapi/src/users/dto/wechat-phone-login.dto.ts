@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
 
 /**
  * 微信手机号登录 DTO
@@ -40,9 +40,7 @@ export class WechatPhoneLoginDto {
    * - 前端不应该接收或存储 sessionKey
    * - 这样可以防止 sessionKey 泄露
    */
-  @IsString()
-  @IsNotEmpty()
-  sessionKey?: string; // 现在是可选的，后端将使用数据库中存储的 sessionKey
+  sessionKey?: string; // 现在是完全可选的 - 不需要验证装饰器，后端将使用数据库中存储的 sessionKey
 }
 
 /**
