@@ -140,38 +140,58 @@ export class AuthService {
    * @param openId 微信openId
    * @param encryptedPhone 加密的手机号数据
    * @param iv 初始化向量
-   * @param sessionKey 会话密钥
+   * @param sessionKey 会话密钥（可选：如果数据库中不存在，可从请求中接收）
    * @returns JWT token 和用户信息
    */
   async wechatPhoneLogin(
     openId: string,
     encryptedPhone: string,
     iv: string,
-    sessionKey?: string, // ⚠️ 已弃用：不再从前端接收，改从数据库获取
+    sessionKey?: string, // 可选参数：作为数据库sessionKey的备用方案
   ) {
     try {
       console.log('[phone-login] Starting phone login process', {
         openId: openId.substring(0, 10) + '...',
         encryptedPhoneLength: encryptedPhone?.length,
         ivLength: iv?.length,
-        // sessionKey 不再记录，因为它不应该在网络上传输
+        hasRequestSessionKey: !!sessionKey,
       });
 
-      // ⚠️ 安全改进：从数据库获取存储的 sessionKey，而不是从客户端接收
-      // 首先查找用户
+      // 尝试从数据库获取存储的 sessionKey
       const user = (await this.usersService.findByOpenId(openId)) as any;
-      if (!user || !user.sessionKey) {
-        console.error('[phone-login] User not found or sessionKey not available', { openId: openId.substring(0, 10) + '...' });
-        throw new BadRequestException('会话已过期，请重新登录微信');
+
+      let dbSessionKey: string | null = user?.sessionKey || null;
+      console.log('[phone-login] Database sessionKey status:', {
+        found: !!dbSessionKey,
+        userId: user?.id
+      });
+
+      // 如果数据库中没有 sessionKey，尝试使用请求中提供的 sessionKey（后备方案）
+      let finalSessionKey: string;
+      if (dbSessionKey) {
+        // 优先使用数据库中的 sessionKey
+        finalSessionKey = dbSessionKey;
+        console.log('[phone-login] Using sessionKey from database');
+      } else if (sessionKey) {
+        // 后备方案：使用请求中提供的 sessionKey
+        finalSessionKey = sessionKey;
+        console.log('[phone-login] Using sessionKey from request body (fallback)');
+      } else {
+        // 两种方式都没有 sessionKey
+        console.error('[phone-login] No sessionKey available', {
+          openId: openId.substring(0, 10) + '...',
+          userExists: !!user,
+          hasRequestSessionKey: !!sessionKey,
+        });
+        throw new BadRequestException('会话已过期，请先调用微信登录接口获取授权');
       }
 
-      const dbSessionKey = user.sessionKey;
-      console.log('[phone-login] Retrieved sessionKey from database for user:', { userId: user.id });
+      console.log('[phone-login] Using sessionKey for decryption');
 
       // 解密手机号数据
       let phoneData;
       try {
-        phoneData = this.decryptWechatData(encryptedPhone, iv, dbSessionKey);
+        phoneData = this.decryptWechatData(encryptedPhone, iv, finalSessionKey);
         console.log('[phone-login] Decryption successful', { phoneNumber: phoneData?.phoneNumber });
       } catch (decryptError) {
         console.error('[phone-login] Decryption failed', {
@@ -291,6 +311,12 @@ export class AuthService {
    * 微信登录 - 使用授权码获取 openId 和 sessionKey
    * 小程序调用 uni.login() 后获取 code，前端通过此接口获取 openId 和 sessionKey
    *
+   * 完整流程：
+   * 1. 调用微信 jscode2session 接口获取 openId 和 sessionKey
+   * 2. 在数据库中创建或更新用户，存储 sessionKey
+   * 3. 返回 openId 和 sessionKey 给前端
+   * 4. 前端后续使用这些信息调用手机号登录接口
+   *
    * @param code 微信授权码（来自 uni.login()）
    * @returns { openId, sessionKey }
    */
@@ -329,9 +355,32 @@ export class AuthService {
         throw new BadRequestException('微信返回数据不完整');
       }
 
+      const openId = data.openid;
+      const sessionKey = data.session_key;
+
+      // 关键步骤：将 sessionKey 存储到数据库
+      // 这确保后续手机号登录时可以从数据库获取 sessionKey 进行解密
+      console.log('[wechatLoginWithCode] Storing sessionKey for openId:', openId);
+
+      try {
+        // 查找或创建用户，并存储 sessionKey
+        await this.usersService.createOrUpdateByPhone(
+          null, // 暂无手机号
+          openId,
+          {
+            sessionKey, // 存储 sessionKey 到数据库
+          }
+        );
+        console.log('[wechatLoginWithCode] SessionKey stored successfully');
+      } catch (dbError) {
+        console.error('[wechatLoginWithCode] Failed to store sessionKey:', dbError);
+        // 即使存储失败也继续返回，不阻止前端流程
+        console.warn('[wechatLoginWithCode] Continuing despite database storage error');
+      }
+
       return {
-        openId: data.openid,
-        sessionKey: data.session_key,
+        openId,
+        sessionKey,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {

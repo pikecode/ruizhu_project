@@ -237,6 +237,15 @@ export default {
   },
   async onLoad(options) {
     try {
+      // ✅ 重要：在页面加载时就调用wechatLogin()确保sessionKey存储到数据库
+      // 这样用户点击加入购物车/立即购买时，手机号授权才能正常解密
+      try {
+        await authService.wechatLogin()
+        console.log('✅ [detail] sessionKey 已初始化并存储到数据库')
+      } catch (error) {
+        console.warn('⚠️ [detail] wechatLogin 失败，但不影响页面加载:', error)
+      }
+
       // 从URL参数获取产品ID
       const productId = options?.id || 1
       console.log('商品详情页加载，商品ID:', productId)

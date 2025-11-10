@@ -199,17 +199,11 @@ export const authService = {
    */
   async wechatLogin(forceRefresh: boolean = false): Promise<{ openId: string }> {
     return new Promise((resolve, reject) => {
-      // 首先尝试获取存储的 openId
-      const storedOpenId = uni.getStorageSync('openId')
+      // ⚠️ 重要改动：不再检查缓存的 openId
+      // 原因：即使有缓存的 openId，也需要调用后端API确保 sessionKey 被存储到数据库
+      // sessionKey 会过期，每次应用启动时都应该重新获取并存储最新的 sessionKey
 
-      // 如果存在缓存且不需要强制刷新，直接返回缓存
-      if (storedOpenId && !forceRefresh) {
-        console.log('✅ 使用缓存的 openId:', storedOpenId)
-        resolve({ openId: storedOpenId })
-        return
-      }
-
-      // 如果没有存储或需要强制刷新，调用微信登录
+      // 调用微信登录获取最新的 code
       uni.login({
         provider: 'weixin',
         success: (loginRes: any) => {
@@ -219,7 +213,7 @@ export const authService = {
             api
               .post<{
                 openId: string
-              }>('/auth/wechat/login-code', {
+              }>('/auth/wechat/login-with-code', {
                 code: loginRes.code
               })
               .then((response) => {
@@ -270,11 +264,19 @@ export const authService = {
     try {
       console.log('📱 开始微信手机号授权流程...')
 
-      // 获取 openId（不再需要获取 sessionKey）
-      const loginInfo = await this.wechatLogin(true) // forceRefresh = true
-      const openId = loginInfo.openId
+      // 获取已存储的 openId（⚠️ 关键：不能刷新 sessionKey！）
+      // 重要说明：
+      // 1. encryptedData 是用当前的 sessionKey 加密的
+      // 2. 如果此时调用 wechatLogin(true) 刷新，会生成新的 sessionKey
+      // 3. 用新的 sessionKey 解密旧的 encryptedData 必然失败
+      // 4. 正确做法：使用已存储的 openId，后端用已存储的 sessionKey 解密
+      const openId = uni.getStorageSync('openId')
 
-      console.log('✓ 已获取 openId')
+      if (!openId) {
+        throw new Error('请先完成微信登录')
+      }
+
+      console.log('✓ 已获取 openId:', openId.substring(0, 10) + '...')
       console.log('📤 发送加密手机号数据给后端进行解密...')
 
       // 调用后端接口进行手机号登录/注册

@@ -42,6 +42,14 @@ export class User {
   openId: string | null;
 
   /**
+   * 微信会话密钥 - 用于解密用户数据
+   * 从微信 jscode2session 接口获取
+   * 用于解密手机号等敏感信息
+   */
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'session_key' })
+  sessionKey: string | null;
+
+  /**
    * 用户名 - 传统用户名密码登录
    * 可选，主要用于后期扩展或管理员账户
    */
