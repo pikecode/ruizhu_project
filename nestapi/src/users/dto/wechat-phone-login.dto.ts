@@ -30,13 +30,19 @@ export class WechatPhoneLoginDto {
   iv: string;
 
   /**
-   * 会话密钥 (sessionKey)
-   * 在用户登录小程序后从微信服务器获取
-   * 需要在小程序端保存并传给后端
+   * 会话密钥 (sessionKey) - 已弃用（安全原因）
+   * 不再从前端接收 sessionKey
+   * 后端将使用存储在数据库中的 sessionKey 进行解密
+   *
+   * ⚠️ 安全提示：
+   * - sessionKey 应该只在后端存储
+   * - 不应该在网络上传输
+   * - 前端不应该接收或存储 sessionKey
+   * - 这样可以防止 sessionKey 泄露
    */
   @IsString()
   @IsNotEmpty()
-  sessionKey: string;
+  sessionKey?: string; // 现在是可选的，后端将使用数据库中存储的 sessionKey
 }
 
 /**

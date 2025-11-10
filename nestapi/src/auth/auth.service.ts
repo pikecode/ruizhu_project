@@ -147,20 +147,31 @@ export class AuthService {
     openId: string,
     encryptedPhone: string,
     iv: string,
-    sessionKey: string,
+    sessionKey?: string, // ⚠️ 已弃用：不再从前端接收，改从数据库获取
   ) {
     try {
       console.log('[phone-login] Starting phone login process', {
         openId: openId.substring(0, 10) + '...',
         encryptedPhoneLength: encryptedPhone?.length,
         ivLength: iv?.length,
-        sessionKeyLength: sessionKey?.length,
+        // sessionKey 不再记录，因为它不应该在网络上传输
       });
+
+      // ⚠️ 安全改进：从数据库获取存储的 sessionKey，而不是从客户端接收
+      // 首先查找用户
+      const user = await this.usersService.findByOpenId(openId);
+      if (!user || !user.sessionKey) {
+        console.error('[phone-login] User not found or sessionKey not available', { openId: openId.substring(0, 10) + '...' });
+        throw new BadRequestException('会话已过期，请重新登录微信');
+      }
+
+      const dbSessionKey = user.sessionKey;
+      console.log('[phone-login] Retrieved sessionKey from database for user:', { userId: user.id });
 
       // 解密手机号数据
       let phoneData;
       try {
-        phoneData = this.decryptWechatData(encryptedPhone, iv, sessionKey);
+        phoneData = this.decryptWechatData(encryptedPhone, iv, dbSessionKey);
         console.log('[phone-login] Decryption successful', { phoneNumber: phoneData?.phoneNumber });
       } catch (decryptError) {
         console.error('[phone-login] Decryption failed', {

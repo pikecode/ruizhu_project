@@ -41,12 +41,17 @@ export class AuthController {
    * 微信手机号授权登录
    * 小程序用户通过手机号授权进行登录或注册
    *
+   * ⚠️ 安全改进（v2.0）：
+   * - 不再从前端接收 sessionKey
+   * - 后端使用存储在数据库中的 sessionKey 进行解密
+   * - 这样可以防止 sessionKey 在网络上传输
+   *
    * 请求体:
    * {
    *   "openId": "用户的微信openId",
    *   "encryptedPhone": "加密的手机号数据 (base64)",
    *   "iv": "初始化向量 (base64)",
-   *   "sessionKey": "微信会话密钥 (base64)"
+   *   "sessionKey": "已弃用，不再需要发送"
    * }
    *
    * 响应:
@@ -58,6 +63,7 @@ export class AuthController {
   @Post('wechat/phone-login')
   @HttpCode(HttpStatus.OK)
   async wechatPhoneLogin(@Body() dto: WechatPhoneLoginDto) {
+    // 注意：sessionKey 现在是可选的，后端将使用数据库中存储的 sessionKey
     return this.authService.wechatPhoneLogin(dto.openId, dto.encryptedPhone, dto.iv, dto.sessionKey);
   }
 

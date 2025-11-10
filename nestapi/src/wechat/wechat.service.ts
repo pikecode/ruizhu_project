@@ -56,6 +56,9 @@ export class WechatService {
       username: user.username,
     });
 
+    // ⚠️ 安全提示：不要返回 sessionKey 给客户端
+    // sessionKey 应该只在后端保存，用于解密用户敏感信息（如手机号）
+    // 前端不应该接收或存储 sessionKey
     return {
       access_token,
       user: {
@@ -65,7 +68,7 @@ export class WechatService {
         avatar: user.avatar,
         phone: user.phone,
       },
-      sessionKey,
+      // sessionKey 已在后端数据库中保存，不返回给客户端
     };
   }
 
