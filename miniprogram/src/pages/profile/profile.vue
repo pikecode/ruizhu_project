@@ -345,6 +345,11 @@ export default {
         uni.navigateTo({
           url: `/pages/orders/orders?status=${action.status}`
         })
+      } else {
+        // 如果没有待执行的操作，说明是直接点击登陆按钮
+        // 保持在当前页面，页面会自动刷新显示已登陆状态
+        console.log('📱 [Profile] 用户已成功登陆，页面将刷新')
+        this.loadRecommendedProducts()
       }
     },
     /**
@@ -409,10 +414,8 @@ export default {
         // 已登陆 - 执行退出登录
         this.handleLogout()
       } else {
-        // 未登陆 - 跳转到登陆页
-        uni.navigateTo({
-          url: '/pages/auth/login'
-        })
+        // 未登陆 - 显示手机号授权登陆弹窗
+        this.showPhoneAuthModal = true
       }
     },
 
