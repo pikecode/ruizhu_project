@@ -1,5 +1,13 @@
 <template>
   <view class="page">
+    <!-- 手机号授权弹窗 -->
+    <phone-auth-modal
+      :visible="showPhoneAuthModal"
+      :on-success="handlePhoneAuthSuccess"
+      :on-cancel="handlePhoneAuthCancel"
+      @close="showPhoneAuthModal = false"
+    ></phone-auth-modal>
+
     <!-- 自定义顶部导航栏 -->
     <CustomNavbar title="YUNJIE" />
 
@@ -270,18 +278,25 @@
 <script>
 import GridSection from '@/components/GridSection.vue'
 import CustomNavbar from '@/components/CustomNavbar.vue'
+import PhoneAuthModal from '@/components/PhoneAuthModal.vue'
 import { bannerService } from '@/services/banner'
 import { collectionService } from '@/services/collection'
 import { newsService } from '@/services/news'
 import { memberBenefitsService } from '@/services/member-benefits'
+import { authService } from '@/services/auth'
 
 export default {
   components: {
     GridSection,
-    CustomNavbar
+    CustomNavbar,
+    PhoneAuthModal
   },
   data() {
     return {
+      authService, // 暴露 authService 给模板使用
+      showPhoneAuthModal: false,
+      pendingAction: null,
+
       indicatorColor: 'rgba(255, 255, 255, 0.5)',
       indicatorActiveColor: '#ffffff',
       currentBannerIndex: 0,
@@ -516,13 +531,52 @@ export default {
       })
     },
     onJoinNow() {
-      // 跳转至入会资料完善页
+      // 检查是否已登陆
+      if (!authService.isLoggedIn()) {
+        console.log('ℹ️ [Index] 未登陆用户点击即刻入会')
+        // 设置待执行操作为入会
+        this.pendingAction = { type: 'join' }
+        // 显示手机号授权弹窗
+        this.showPhoneAuthModal = true
+        return
+      }
+
+      // 已登陆时直接跳转至入会资料完善页
       uni.navigateTo({
         url: '/pages/membership/join',
         fail: () => {
           uni.showToast({ title: '页面开发中', icon: 'none' })
         }
       })
+    },
+    /**
+     * 手机号授权成功回调
+     */
+    handlePhoneAuthSuccess() {
+      console.log('📱 [Index] 手机号授权成功')
+
+      // 执行待执行的操作
+      const action = this.pendingAction
+      this.pendingAction = null
+
+      if (action?.type === 'join') {
+        // 跳转至入会资料完善页
+        uni.navigateTo({
+          url: '/pages/membership/join',
+          fail: () => {
+            uni.showToast({ title: '页面开发中', icon: 'none' })
+          }
+        })
+      } else {
+        console.log('📱 [Index] 用户已成功登陆')
+      }
+    },
+    /**
+     * 手机号授权取消回调
+     */
+    handlePhoneAuthCancel() {
+      console.log('📱 [Index] 用户取消了手机号授权')
+      this.pendingAction = null
     },
     onShelfProductTap(p) {
       // 如果商品售罄,跳转到咨询页面
