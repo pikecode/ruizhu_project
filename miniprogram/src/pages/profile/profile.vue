@@ -440,12 +440,9 @@ export default {
                 duration: 1000
               })
 
-              // Redirect to login page after logout
-              setTimeout(() => {
-                uni.redirectTo({
-                  url: '/pages/auth/login'
-                })
-              }, 1000)
+              // 清除推荐商品数据（已退出登陆）
+              this.recommendProducts = []
+              console.log('🚪 [Profile] 已退出登录，推荐商品已清除，按钮应自动更新为"点击登陆"')
             } catch (error) {
               console.error('Logout failed:', error)
               uni.showToast({
