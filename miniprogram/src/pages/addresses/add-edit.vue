@@ -56,8 +56,14 @@
         <!-- 地区选择 -->
         <view class="form-group form-group-third">
           <label class="form-label">地区<text class="required">*</text></label>
-          <view class="form-select">
-            <text class="select-value">{{ form.district || form.city || '同城市' }}</text>
+          <picker v-if="currentDistricts.length > 0" mode="selector" :range="currentDistricts" @change="onDistrictChange">
+            <view class="form-select">
+              <text class="select-value">{{ form.district || '请选择' }}</text>
+              <text class="select-arrow">▼</text>
+            </view>
+          </picker>
+          <view v-else class="form-select disabled">
+            <text class="select-value">请先选择城市</text>
             <text class="select-arrow">▼</text>
           </view>
         </view>
@@ -144,7 +150,33 @@ export default {
         '宁夏回族自治区': ['银川市', '石嘴山市', '吴忠市', '固原市', '中卫市'],
         '新疆维吾尔自治区': ['乌鲁木齐市', '克拉玛依市', '吐鲁番市', '哈密市', '昌吉回族自治州', '博尔塔拉蒙古自治州', '巴音郭楞蒙古自治州']
       },
-      currentCities: []
+      // 地区数据映射 - 城市 -> 地区列表
+      districts: {
+        // 北京市
+        '朝阳区': ['朝阳社区1', '朝阳社区2', '朝阳社区3'],
+        '东城区': ['东城社区1', '东城社区2', '东城社区3'],
+        '西城区': ['西城社区1', '西城社区2', '西城社区3'],
+        '丰台区': ['丰台社区1', '丰台社区2', '丰台社区3'],
+        '石景山区': ['石景山社区1', '石景山社区2', '石景山社区3'],
+        '海淀区': ['海淀社区1', '海淀社区2', '海淀社区3'],
+        '门头沟区': ['门头沟社区1', '门头沟社区2', '门头沟社区3'],
+        '房山区': ['房山社区1', '房山社区2', '房山社区3'],
+        '通州区': ['通州社区1', '通州社区2', '通州社区3'],
+        '昌平区': ['昌平社区1', '昌平社区2', '昌平社区3'],
+        // 天津市
+        '河东区': ['河东社区1', '河东社区2', '河东社区3'],
+        '河西区': ['河西社区1', '河西社区2', '河西社区3'],
+        '南开区': ['南开社区1', '南开社区2', '南开社区3'],
+        '河北区': ['河北社区1', '河北社区2', '河北社区3'],
+        '红桥区': ['红桥社区1', '红桥社区2', '红桥社区3'],
+        '东丽区': ['东丽社区1', '东丽社区2', '东丽社区3'],
+        '西青区': ['西青社区1', '西青社区2', '西青社区3'],
+        '津南区': ['津南社区1', '津南社区2', '津南社区3'],
+        '北辰区': ['北辰社区1', '北辰社区2', '北辰社区3'],
+        '武清区': ['武清社区1', '武清社区2', '武清社区3']
+      },
+      currentCities: [],
+      currentDistricts: []
     }
   },
   onLoad(options) {
@@ -184,7 +216,14 @@ export default {
             this.currentCities = []
           }
 
-          console.log('加载的地址:', this.form, '当前城市:', this.currentCities, 'isDefault:', this.form.isDefault)
+          // 初始化当前地区列表
+          if (this.form.city && this.districts[this.form.city]) {
+            this.currentDistricts = this.districts[this.form.city]
+          } else {
+            this.currentDistricts = []
+          }
+
+          console.log('加载的地址:', this.form, '当前城市:', this.currentCities, '当前地区:', this.currentDistricts)
         } else {
           console.warn('加载地址失败')
         }
@@ -217,10 +256,22 @@ export default {
     onCityChange(e) {
       const selectedIndex = e.detail.value
       this.form.city = this.currentCities[selectedIndex]
-      // 地区默认使用城市值
-      this.form.district = this.form.city
+      this.form.district = ''
 
-      console.log('选中城市:', this.form.city)
+      // 更新当前地区列表
+      this.currentDistricts = this.districts[this.form.city] || []
+
+      console.log('选中城市:', this.form.city, '可用地区:', this.currentDistricts)
+    },
+
+    /**
+     * 地区选择变化
+     */
+    onDistrictChange(e) {
+      const selectedIndex = e.detail.value
+      this.form.district = this.currentDistricts[selectedIndex]
+
+      console.log('选中地区:', this.form.district)
     },
     /**
      * 保存地址到服务器
@@ -414,6 +465,19 @@ export default {
       font-size: 16rpx;
       color: #cccccc;
       margin-left: 12rpx;
+    }
+
+    &.disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+
+      .select-value {
+        color: #999999;
+      }
+
+      .select-arrow {
+        color: #dddddd;
+      }
     }
   }
 
