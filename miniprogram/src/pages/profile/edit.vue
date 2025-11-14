@@ -1,5 +1,13 @@
 <template>
   <view class="edit-profile-page">
+    <!-- 手机号授权弹窗 -->
+    <phone-auth-modal
+      :visible="showPhoneAuthModal"
+      :on-success="handlePhoneAuthSuccess"
+      :on-cancel="handlePhoneAuthCancel"
+      @close="showPhoneAuthModal = false"
+    ></phone-auth-modal>
+
     <scroll-view class="form-container" scroll-y="true">
       <view class="form-card">
         <text class="section-title">基本信息</text>
@@ -156,8 +164,12 @@
 <script>
 import { api } from '../../services/api'
 import { authService } from '../../services/auth'
+import PhoneAuthModal from '../../components/PhoneAuthModal.vue'
 
 export default {
+  components: {
+    PhoneAuthModal
+  },
   data() {
     return {
       formData: {
@@ -180,7 +192,8 @@ export default {
       provinces: ['浙江省', '北京市', '上海市', '广东省', '江苏省'],
       cities: ['杭州', '宁波', '温州', '嘉兴'],
       districts: ['西湖区', '上城区', '下城区', '江干区'],
-      isSaving: false
+      isSaving: false,
+      showPhoneAuthModal: false
     }
   },
   onLoad() {
@@ -251,6 +264,24 @@ export default {
       })
     },
     /**
+     * 手机号授权成功回调
+     */
+    handlePhoneAuthSuccess() {
+      console.log('📱 [EditProfile] 手机号授权成功，保存用户信息')
+      this.showPhoneAuthModal = false
+      // 授权成功后立即保存信息
+      this.performSave()
+    },
+
+    /**
+     * 手机号授权取消回调
+     */
+    handlePhoneAuthCancel() {
+      console.log('📱 [EditProfile] 用户取消了手机号授权')
+      this.showPhoneAuthModal = false
+    },
+
+    /**
      * 保存用户信息到数据库
      */
     async handleSave() {
@@ -265,13 +296,19 @@ export default {
 
       // 检查用户是否已登陆
       if (!authService.isLoggedIn()) {
-        uni.showToast({
-          title: '请先登陆',
-          icon: 'none'
-        })
+        console.log('🔐 [EditProfile] 用户未登陆，显示授权弹窗')
+        this.showPhoneAuthModal = true
         return
       }
 
+      // 已登陆，直接保存
+      this.performSave()
+    },
+
+    /**
+     * 执行保存操作
+     */
+    async performSave() {
       this.isSaving = true
 
       try {
