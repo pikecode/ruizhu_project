@@ -1,5 +1,13 @@
 <template>
   <view class="profile-page">
+    <!-- 手机号授权弹窗 -->
+    <phone-auth-modal
+      :visible="showPhoneAuthModal"
+      :on-success="handlePhoneAuthSuccess"
+      :on-cancel="handlePhoneAuthCancel"
+      @close="showPhoneAuthModal = false"
+    ></phone-auth-modal>
+
     <!-- 轮播图区域（包含动画和其他banner） -->
     <view class="banner-section">
       <swiper
@@ -114,6 +122,7 @@
 
 <script>
 import RecommendSection from '../../components/RecommendSection.vue'
+import PhoneAuthModal from '../../components/PhoneAuthModal.vue'
 import { authService } from '../../services/auth'
 import { collectionService } from '../../services/collection'
 import wishlistService from '../../services/wishlist'
@@ -121,12 +130,15 @@ import { bannerService } from '../../services/banner'
 
 export default {
   components: {
-    RecommendSection
+    RecommendSection,
+    PhoneAuthModal
   },
   data() {
     return {
       appVersion: '1.0.0',
       userGreeting: '张**',
+      showPhoneAuthModal: false,
+      pendingAction: null,
       indicatorColor: 'rgba(255, 255, 255, 0.5)',
       indicatorActiveColor: '#ffffff',
       currentBannerIndex: 0,
@@ -270,14 +282,53 @@ export default {
       this.currentBannerIndex = e.detail.current
     },
     onOrderStatusTap(status) {
+      // 检查是否已登陆
+      if (!authService.isLoggedIn()) {
+        this.pendingAction = { type: 'statusTab', status: status.id }
+        this.showPhoneAuthModal = true
+        return
+      }
       uni.navigateTo({
         url: `/pages/orders/orders?status=${status.id}`
       })
     },
     goToOrders(type) {
+      // 检查是否已登陆
+      if (!authService.isLoggedIn()) {
+        this.pendingAction = { type: 'allOrders', status: type }
+        this.showPhoneAuthModal = true
+        return
+      }
       uni.navigateTo({
         url: `/pages/orders/orders?status=${type}`
       })
+    },
+    /**
+     * 手机号授权成功回调
+     */
+    handlePhoneAuthSuccess() {
+      console.log('📱 [Profile] 手机号授权成功')
+
+      // 执行待执行的操作
+      const action = this.pendingAction
+      this.pendingAction = null
+
+      if (action?.type === 'statusTab') {
+        uni.navigateTo({
+          url: `/pages/orders/orders?status=${action.status}`
+        })
+      } else if (action?.type === 'allOrders') {
+        uni.navigateTo({
+          url: `/pages/orders/orders?status=${action.status}`
+        })
+      }
+    },
+    /**
+     * 手机号授权取消回调
+     */
+    handlePhoneAuthCancel() {
+      console.log('📱 [Profile] 用户取消了手机号授权')
+      this.pendingAction = null
     },
     onQuickAccessTap(type) {
       if (type === 'wishlist') {
