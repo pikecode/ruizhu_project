@@ -145,8 +145,8 @@
       </view>
 
       <view class="button-group">
-        <view class="save-btn" @tap="handleSave">
-          <text>保存信息</text>
+        <view class="save-btn" :class="{ disabled: isSaving }" @tap="handleSave">
+          <text>{{ isSaving ? '正在保存...' : '保存信息' }}</text>
         </view>
       </view>
     </scroll-view>
@@ -154,6 +154,9 @@
 </template>
 
 <script>
+import { api } from '../../services/api'
+import { authService } from '../../services/auth'
+
 export default {
   data() {
     return {
@@ -176,13 +179,41 @@ export default {
       dayRange: Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')),
       provinces: ['浙江省', '北京市', '上海市', '广东省', '江苏省'],
       cities: ['杭州', '宁波', '温州', '嘉兴'],
-      districts: ['西湖区', '上城区', '下城区', '江干区']
+      districts: ['西湖区', '上城区', '下城区', '江干区'],
+      isSaving: false
     }
   },
   onLoad() {
-    console.log('编辑个人信息页面加载完成')
+    console.log('📝 [EditProfile] 编辑个人信息页面加载完成')
+    this.loadUserProfile()
   },
   methods: {
+    /**
+     * 从服务器加载用户信息
+     */
+    async loadUserProfile() {
+      try {
+        console.log('📡 [EditProfile] 开始加载用户资料...')
+        const userStr = uni.getStorageSync('user')
+        if (userStr) {
+          const user = typeof userStr === 'string' ? JSON.parse(userStr) : userStr
+          console.log('👤 [EditProfile] 本地存储的用户信息:', user)
+
+          // 填充表单数据
+          if (user.nickname) {
+            // 尝试从昵称中提取姓和名
+            const parts = user.nickname.split('')
+            if (parts.length > 0) this.formData.lastName = parts[0]
+            if (parts.length > 1) this.formData.firstName = parts.slice(1).join('')
+          }
+          if (user.province) this.formData.province = user.province
+          if (user.city) this.formData.city = user.city
+          if (user.phone) this.formData.phone = user.phone
+        }
+      } catch (error) {
+        console.error('❌ [EditProfile] 加载用户资料失败:', error)
+      }
+    },
     goBack() {
       uni.navigateBack()
     },
@@ -219,7 +250,11 @@ export default {
         url: '/pages/legal/legal'
       })
     },
-    handleSave() {
+    /**
+     * 保存用户信息到数据库
+     */
+    async handleSave() {
+      // 验证必填项
       if (!this.formData.agree1) {
         uni.showToast({
           title: '请同意第一项条款',
@@ -227,13 +262,76 @@ export default {
         })
         return
       }
-      uni.showToast({
-        title: '信息已保存',
-        icon: 'none'
-      })
-      setTimeout(() => {
-        uni.navigateBack()
-      }, 1500)
+
+      // 检查用户是否已登陆
+      if (!authService.isLoggedIn()) {
+        uni.showToast({
+          title: '请先登陆',
+          icon: 'none'
+        })
+        return
+      }
+
+      this.isSaving = true
+
+      try {
+        // 获取当前用户ID
+        const userStr = uni.getStorageSync('user')
+        const user = typeof userStr === 'string' ? JSON.parse(userStr) : userStr
+        if (!user || !user.id) {
+          throw new Error('无法获取用户ID')
+        }
+
+        // 构建昵称（姓+名）
+        const nickname = this.formData.lastName + this.formData.firstName
+
+        // 构建更新数据对象
+        const updateData = {
+          nickname: nickname,
+          province: this.formData.province,
+          city: this.formData.city
+        }
+
+        console.log('📤 [EditProfile] 正在保存用户信息到数据库...')
+        console.log('📋 [EditProfile] 更新数据:', updateData)
+        console.log('👤 [EditProfile] 用户ID:', user.id)
+
+        // 调用 API 更新用户信息
+        const response = await api.patch(`/users/${user.id}`, updateData)
+        console.log('✅ [EditProfile] 用户信息保存成功:', response)
+
+        // 更新本地存储的用户信息
+        const updatedUser = {
+          ...user,
+          nickname: nickname,
+          province: this.formData.province,
+          city: this.formData.city
+        }
+        uni.setStorageSync('user', updatedUser)
+        console.log('💾 [EditProfile] 已更新本地存储的用户信息')
+
+        // 显示成功提示
+        uni.showToast({
+          title: '信息已保存',
+          icon: 'success',
+          duration: 1500
+        })
+
+        // 返回上一页
+        setTimeout(() => {
+          uni.navigateBack()
+        }, 1500)
+      } catch (error) {
+        console.error('❌ [EditProfile] 保存失败:', error)
+        const errorMsg = error?.message || error?.toString() || '保存失败，请重试'
+        uni.showToast({
+          title: errorMsg,
+          icon: 'none',
+          duration: 2000
+        })
+      } finally {
+        this.isSaving = false
+      }
     }
   }
 }
@@ -479,9 +577,19 @@ export default {
     align-items: center;
     justify-content: center;
     box-shadow: 0 20rpx 40rpx rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
 
     &:active {
       opacity: 0.85;
+    }
+
+    &.disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+
+      &:active {
+        opacity: 0.6;
+      }
     }
   }
 }
