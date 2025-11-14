@@ -468,8 +468,9 @@ export default {
         console.error('Failed to save product:', e)
       }
 
+      // 传递产品ID作为URL参数
       uni.navigateTo({
-        url: '/pages/product/detail'
+        url: `/pages/product/detail?id=${item.id}`
       })
     },
     onFavoriteChange({ index, isFavorite }) {

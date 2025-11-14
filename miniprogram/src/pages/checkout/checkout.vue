@@ -111,6 +111,10 @@ export default {
     this.loadCartItems()
     this.loadUserDiscount()
   },
+  onShow() {
+    // 页面每次显示时，检查是否有从地址页面返回的地址数据
+    this.checkAddressSelectionResult()
+  },
   methods: {
     loadCartItems() {
       try {
@@ -160,79 +164,23 @@ export default {
     },
     navigateToAddresses() {
       console.log('🏪 [Checkout] 准备打开地址选择页面...')
+
       uni.navigateTo({
         url: '/pages/addresses/addresses',
         success: (res) => {
-          console.log('🏪 [Checkout] 地址页面已打开，准备监听 eventChannel')
-          // res.eventChannel 是通往被打开页面的通信通道
-          const eventChannel = res.eventChannel
-          console.log('🏪 [Checkout] eventChannel 是否存在:', !!eventChannel)
+          console.log('🏪 [Checkout] 地址页面已打开')
 
-          if (!eventChannel) {
-            console.error('🏪 [Checkout] eventChannel 为空，无法接收地址数据')
-            uni.showToast({
-              title: 'eventChannel 初始化失败',
-              icon: 'none'
+          // 如果eventChannel可用，尝试使用它
+          if (res && res.eventChannel) {
+            console.log('🏪 [Checkout] ✓ eventChannel 可用')
+            const eventChannel = res.eventChannel
+            eventChannel.on('selectAddress', (data) => {
+              console.log('🏪 [Checkout] 💚 通过eventChannel收到地址数据:', JSON.stringify(data))
+              this.handleAddressSelected(data)
             })
-            return
+          } else {
+            console.warn('🏪 [Checkout] ⚠️ eventChannel不可用，将在onShow中检查localStorage')
           }
-
-          // 保存 eventChannel 引用
-          this.eventChannel = eventChannel
-
-          // 在新打开的页面设置事件监听
-          // 使用箭头函数保证 this 正确指向当前组件
-          eventChannel.on('selectAddress', (data) => {
-            console.log('🏪 [Checkout] 💚 收到地址数据事件:', JSON.stringify(data))
-
-            if (!data) {
-              console.error('🏪 [Checkout] ❌ 接收到的地址数据为 null/undefined')
-              uni.showToast({
-                title: '地址数据为空',
-                icon: 'none'
-              })
-              return
-            }
-
-            if (!data.id) {
-              console.error('🏪 [Checkout] ❌ 地址数据缺少 id 字段:', data)
-              uni.showToast({
-                title: '地址数据无效，缺少ID',
-                icon: 'none'
-              })
-              return
-            }
-
-            console.log('🏪 [Checkout] ✅ 地址数据验证通过')
-
-            this.selectedAddress = {
-              id: data.id,
-              name: data.name || data.receiverName,
-              phone: data.phone || data.receiverPhone,
-              province: data.province,
-              city: data.city,
-              district: data.district,
-              detail: data.detail || data.addressDetail
-            }
-            console.log('🏪 [Checkout] ✅ selectedAddress 已更新:', JSON.stringify(this.selectedAddress))
-
-            // 显示成功提示
-            uni.showToast({
-              title: '地址已选择',
-              icon: 'success',
-              duration: 1500
-            })
-          })
-
-          // 监听打开事件（页面已打开）
-          eventChannel.on('open', () => {
-            console.log('🏪 [Checkout] ℹ️ 地址页面已打开')
-          })
-
-          // 监听错误事件
-          eventChannel.on('error', (err) => {
-            console.error('🏪 [Checkout] ❌ 地址选择页面出错:', err)
-          })
         },
         fail: (err) => {
           console.error('🏪 [Checkout] ❌ 打开地址页面失败:', err)
@@ -241,6 +189,52 @@ export default {
             icon: 'none'
           })
         }
+      })
+    },
+
+    // 在页面show时检查地址选择结果
+    checkAddressSelectionResult() {
+      console.log('🏪 [Checkout] 检查地址选择结果...')
+      const selectedData = uni.getStorageSync('_selectedAddressData')
+
+      if (selectedData) {
+        console.log('🏪 [Checkout] 🎉 从localStorage获得地址数据:', JSON.stringify(selectedData))
+        this.handleAddressSelected(selectedData)
+      }
+    },
+
+    handleAddressSelected(data) {
+      console.log('🏪 [Checkout] 处理选中的地址')
+
+      if (!data || !data.id) {
+        console.error('🏪 [Checkout] ❌ 地址数据无效:', data)
+        uni.showToast({
+          title: '地址数据无效',
+          icon: 'none'
+        })
+        return
+      }
+
+      this.selectedAddress = {
+        id: data.id,
+        name: data.name || data.receiverName,
+        phone: data.phone || data.receiverPhone,
+        province: data.province,
+        city: data.city,
+        district: data.district,
+        detail: data.detail || data.addressDetail
+      }
+
+      console.log('🏪 [Checkout] ✅ 地址已更新:', JSON.stringify(this.selectedAddress))
+
+      // 清除临时数据
+      uni.removeStorageSync('_selectedAddressData')
+
+      // 显示成功提示
+      uni.showToast({
+        title: '地址已选择',
+        icon: 'success',
+        duration: 1500
       })
     },
     async confirmOrder() {

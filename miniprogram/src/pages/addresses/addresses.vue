@@ -174,62 +174,58 @@ export default {
       }
       console.log('📍 [Addresses] ✅ 构造的地址数据:', JSON.stringify(addressData))
 
-      // 获取 eventChannel（来自调用方）
-      // 使用原生wx API而不是Vue的$getOpenerEventChannel()方法
+      // 方案1：尝试使用 eventChannel（优先方案）
+      let eventChannelSuccess = false
       let eventChannel = null
       try {
-        // 尝试使用 uni-app 的 API
+        // 优先尝试 uni-app API
         if (typeof uni !== 'undefined' && uni.getOpenerEventChannel) {
           eventChannel = uni.getOpenerEventChannel()
         }
-        // 如果uni没有，尝试使用原生wx API
+        // 如果uni没有，尝试原生wx API
         else if (typeof wx !== 'undefined' && wx.getOpenerEventChannel) {
           eventChannel = wx.getOpenerEventChannel()
         }
+
+        // 如果获取到eventChannel，尝试发送数据
+        if (eventChannel) {
+          console.log('📍 [Addresses] 🚀 通过eventChannel发送数据')
+          eventChannel.emit('selectAddress', addressData)
+          console.log('📍 [Addresses] ✅ eventChannel发送成功')
+          eventChannelSuccess = true
+        }
       } catch (err) {
-        console.warn('📍 [Addresses] ⚠️ 获取eventChannel异常:', err)
-      }
-      console.log('📍 [Addresses] eventChannel 是否存在:', !!eventChannel)
-
-      if (!eventChannel) {
-        console.error('📍 [Addresses] ❌ eventChannel 不存在，无法返回数据给调用方')
-        uni.showToast({
-          title: '无法返回地址数据',
-          icon: 'none'
-        })
-        // 2秒后仍然返回（降级处理）
-        setTimeout(() => {
-          uni.navigateBack()
-        }, 500)
-        return
+        console.warn('📍 [Addresses] ⚠️ eventChannel发送失败:', err)
       }
 
-      console.log('📍 [Addresses] 🚀 准备通过 eventChannel 发送地址数据')
-
-      try {
-        // 发送数据到调用方
-        eventChannel.emit('selectAddress', addressData)
-        console.log('📍 [Addresses] ✅ 地址数据发送成功')
-
-        // 显示成功提示
-        uni.showToast({
-          title: '地址已发送',
-          icon: 'success',
-          duration: 1000
-        })
-
-        // 延迟返回，确保事件传递完成
-        setTimeout(() => {
-          console.log('📍 [Addresses] 📤 返回到上一页面')
-          uni.navigateBack()
-        }, 300)
-      } catch (err) {
-        console.error('📍 [Addresses] ❌ 发送数据失败:', err)
-        uni.showToast({
-          title: '地址发送失败',
-          icon: 'none'
-        })
+      // 方案2：使用localStorage（降级方案）
+      if (!eventChannelSuccess) {
+        console.warn('📍 [Addresses] ⚠️ eventChannel不可用，使用localStorage传递数据')
+        try {
+          uni.setStorageSync('_selectedAddressData', addressData)
+          console.log('📍 [Addresses] ✅ 地址数据已保存到localStorage')
+        } catch (err) {
+          console.error('📍 [Addresses] ❌ localStorage保存失败:', err)
+          uni.showToast({
+            title: '地址选择失败',
+            icon: 'none'
+          })
+          return
+        }
       }
+
+      // 显示成功提示
+      uni.showToast({
+        title: '地址已选择',
+        icon: 'success',
+        duration: 1000
+      })
+
+      // 延迟返回，确保数据传递完成
+      setTimeout(() => {
+        console.log('📍 [Addresses] 📤 返回到上一页面')
+        uni.navigateBack()
+      }, 300)
     },
 
     /**
