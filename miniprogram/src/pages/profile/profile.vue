@@ -118,6 +118,7 @@
       :columns="2"
       @product-tap="onProductTap"
       @favorite-change="onFavoriteChange"
+      @favorite-need-auth="onFavoriteNeedAuth"
     />
   </view>
 </template>
@@ -399,6 +400,10 @@ export default {
         uni.navigateTo({
           url: '/pages/legal/authorization'
         })
+      } else if (action?.type === 'favorite') {
+        // 收藏操作：重新加载推荐商品后，自动收藏
+        // 由于 loadRecommendedProducts 已在上面调用，收藏状态会自动更新
+        console.log('💖 [Profile] 用户登陆成功，推荐商品已重新加载并更新收藏状态')
       } else {
         // 如果没有待执行的操作，说明是直接点击登陆按钮
         // 保持在当前页面，页面已经刷新显示已登陆状态
@@ -474,6 +479,16 @@ export default {
         icon: 'none',
         duration: 1000
       })
+    },
+    /**
+     * 处理推荐商品收藏时需要授权的情况
+     */
+    onFavoriteNeedAuth({ index, item }) {
+      console.log('❤️ [Profile] 未登陆用户试图收藏商品:', item.name)
+      // 设置待执行操作为收藏，登陆后触发收藏
+      this.pendingAction = { type: 'favorite', index: index }
+      // 显示手机号授权弹窗
+      this.showPhoneAuthModal = true
     },
     onEditProfile() {
       uni.navigateTo({

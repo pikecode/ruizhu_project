@@ -33,6 +33,7 @@
 
 <script>
 import wishlistService from '../services/wishlist'
+import { authService } from '../services/auth'
 
 export default {
   name: 'RecommendSection',
@@ -89,11 +90,23 @@ export default {
 
     /**
      * 切换收藏状态
-     * 同时更新本地状态和远程API
+     * 如果未登陆，触发需要授权的事件
+     * 如果已登陆，同时更新本地状态和远程API
      */
     async toggleFavorite(index) {
       const item = this.items[index]
       const productId = item.id
+
+      // 检查登陆状态
+      if (!authService.isLoggedIn()) {
+        console.log('ℹ️ [RecommendSection] 用户未登陆，触发需要授权事件')
+        // 触发需要授权的事件，让父组件处理
+        this.$emit('favorite-need-auth', {
+          index: index,
+          item: item
+        })
+        return
+      }
 
       // 防止重复点击
       if (this.loadingFavorite[productId]) {
@@ -117,13 +130,13 @@ export default {
           isFavorite: item.isFavorite
         })
 
-        console.log(`Product ${productId} favorite toggled to ${item.isFavorite}`)
+        console.log(`✅ [RecommendSection] 产品 ${productId} 收藏状态已更新: ${item.isFavorite}`)
       } catch (error) {
         // API调用失败，回滚UI状态
         const item = this.items[index]
         item.isFavorite = !item.isFavorite
 
-        console.error('Failed to toggle favorite:', error)
+        console.error('❌ [RecommendSection] 切换收藏状态失败:', error)
         uni.showToast({
           title: '操作失败，请重试',
           icon: 'error',
