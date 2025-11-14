@@ -148,29 +148,46 @@ export default {
 
       console.log('📍 [Addresses] 选择地址:', address)
 
-      // 通过 eventChannel 返回选中的地址
-      const eventChannel = this.getOpenerEventChannel?.()
-      console.log('📍 [Addresses] eventChannel 是否存在:', !!eventChannel)
+      // 构造返回数据
+      const addressData = {
+        id: address.id,
+        name: address.name,
+        phone: address.phone,
+        province: address.province,
+        city: address.city,
+        district: address.district,
+        detail: address.detail,
+        receiverName: address.name,
+        receiverPhone: address.phone,
+        addressDetail: address.detail
+      }
+      console.log('📍 [Addresses] 准备发送地址数据:', addressData)
+
+      // 获取 eventChannel（来自调用方）
+      const eventChannel = this.$getOpenerEventChannel()
+      console.log('📍 [Addresses] eventChannel:', !!eventChannel)
 
       if (eventChannel) {
-        const addressData = {
-          id: address.id,
-          name: address.name,
-          phone: address.phone,
-          province: address.province,
-          city: address.city,
-          district: address.district,
-          detail: address.detail,
-          receiverName: address.name,
-          receiverPhone: address.phone,
-          addressDetail: address.detail
+        console.log('📍 [Addresses] 通过 eventChannel 发送数据')
+        try {
+          eventChannel.emit('selectAddress', addressData)
+          console.log('📍 [Addresses] 数据发送成功')
+        } catch (err) {
+          console.error('📍 [Addresses] 发送数据失败:', err)
         }
-        console.log('📍 [Addresses] 发送地址数据:', addressData)
-        eventChannel.emit('selectAddress', addressData)
+      } else {
+        console.warn('📍 [Addresses] eventChannel 不存在，无法返回数据')
+        // 降级方案：直接返回（不通知调用方）
+        uni.showToast({
+          title: '无法返回地址数据',
+          icon: 'none'
+        })
       }
 
       // 返回到上一页面
-      uni.navigateBack()
+      setTimeout(() => {
+        uni.navigateBack()
+      }, 100)
     },
 
     /**

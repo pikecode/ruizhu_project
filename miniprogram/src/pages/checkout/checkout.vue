@@ -158,13 +158,28 @@ export default {
       }
     },
     navigateToAddresses() {
+      console.log('🏪 [Checkout] 准备打开地址选择页面...')
       uni.navigateTo({
         url: '/pages/addresses/addresses',
         success: (res) => {
-          console.log('🏪 [Checkout] 成功打开地址页面')
-          // 监听来自 addresses 页面的地址选择事件
-          res.eventChannel.on('selectAddress', (data) => {
-            console.log('🏪 [Checkout] 收到选中的地址:', data)
+          console.log('🏪 [Checkout] 地址页面已打开，准备监听 eventChannel')
+          // res.eventChannel 是通往被打开页面的通信通道
+          const eventChannel = res.eventChannel
+          console.log('🏪 [Checkout] eventChannel:', !!eventChannel)
+
+          // 在新打开的页面设置事件监听
+          eventChannel.on('selectAddress', (data) => {
+            console.log('🏪 [Checkout] 收到选中的地址事件，数据:', data)
+
+            if (!data || !data.id) {
+              console.error('🏪 [Checkout] 接收到的地址数据无效:', data)
+              uni.showToast({
+                title: '地址数据无效',
+                icon: 'none'
+              })
+              return
+            }
+
             this.selectedAddress = {
               id: data.id,
               name: data.name || data.receiverName,
@@ -174,7 +189,12 @@ export default {
               district: data.district,
               detail: data.detail || data.addressDetail
             }
-            console.log('🏪 [Checkout] selectedAddress 已更新:', this.selectedAddress)
+            console.log('🏪 [Checkout] selectedAddress 已更新:', JSON.stringify(this.selectedAddress))
+          })
+
+          // 监听发送错误事件
+          eventChannel.on('error', (err) => {
+            console.error('🏪 [Checkout] 地址选择页面出错:', err)
           })
         },
         fail: (err) => {
