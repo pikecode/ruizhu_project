@@ -322,30 +322,56 @@ export default {
         // 构建昵称（姓+名）
         const nickname = this.formData.lastName + this.formData.firstName
 
-        // 构建更新数据对象
+        // 转换性别：先生 -> male, 女士 -> female
+        const genderMap = {
+          '先生': 'male',
+          '女士': 'female'
+        }
+        const gender = genderMap[this.formData.salutation] || 'unknown'
+
+        // 构建出生日期：YYYY-MM-DD
+        const birthday = `${this.formData.year}-${this.formData.month}-${this.formData.day}`
+
+        // 构建更新数据对象 - 保存所有用户编辑的信息
         const updateData = {
           nickname: nickname,
+          gender: gender,
           province: this.formData.province,
-          city: this.formData.city
+          city: this.formData.city,
+          isProfileAuthorized: this.formData.agree1 ? 1 : 0
+        }
+
+        // 添加新字段到数据中，用于数据库存储（如果数据库支持）
+        // 注：district 和 birthday 需要在后端DTO和数据库中添加支持
+        const fullUpdateData = {
+          ...updateData,
+          // 将district和birthday作为扩展字段发送，后端可以选择存储
+          district: this.formData.district,
+          birthday: birthday
         }
 
         console.log('📤 [EditProfile] 正在保存用户信息到数据库...')
-        console.log('📋 [EditProfile] 更新数据:', updateData)
+        console.log('📋 [EditProfile] 更新数据:', fullUpdateData)
         console.log('👤 [EditProfile] 用户ID:', user.id)
 
         // 调用 API 更新用户信息
-        const response = await api.patch(`/users/${user.id}`, updateData)
+        const response = await api.patch(`/users/${user.id}`, fullUpdateData)
         console.log('✅ [EditProfile] 用户信息保存成功:', response)
 
         // 更新本地存储的用户信息
         const updatedUser = {
           ...user,
           nickname: nickname,
+          gender: gender,
           province: this.formData.province,
-          city: this.formData.city
+          city: this.formData.city,
+          isProfileAuthorized: this.formData.agree1 ? 1 : 0,
+          // 存储额外信息
+          district: this.formData.district,
+          birthday: birthday
         }
         uni.setStorageSync('user', updatedUser)
-        console.log('💾 [EditProfile] 已更新本地存储的用户信息')
+        console.log('💾 [EditProfile] 已更新本地存储的用户信息:', updatedUser)
 
         // 显示成功提示
         uni.showToast({

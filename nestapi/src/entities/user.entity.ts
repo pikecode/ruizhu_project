@@ -98,6 +98,18 @@ export class User {
   country: string | null;
 
   /**
+   * 区/县 - 细分的地区信息
+   */
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  district: string | null;
+
+  /**
+   * 生日 - 用户出生日期 (YYYY-MM-DD 格式)
+   */
+  @Column({ type: 'date', nullable: true })
+  birthday: Date | null;
+
+  /**
    * 是否已授权手机号
    * true: 通过微信手机号授权解密成功
    * false: 未授权或仅有openId
