@@ -156,7 +156,8 @@ export default {
       orderStatuses: [
         { id: 'pending', label: '待支付', icon: '/static/icons/order-pending-payment.svg' },
         { id: 'paid', label: '已支付', icon: '/static/icons/order-pending-shipment.svg' },
-        { id: 'shipped', label: '已发货', icon: '/static/icons/order-shipped.svg' }
+        { id: 'shipped', label: '已发货', icon: '/static/icons/order-shipped.svg' },
+        { id: 'cancelled', label: '已取消', icon: '/static/icons/order-cancelled.svg' }
       ],
       recommendProducts: []
     }

@@ -88,13 +88,13 @@
       </view>
       <text class="empty-title">
         {{
-          activeTab === 'all'
-            ? '还没有订单'
-            : activeTab === 'pending'
+          activeTab === 'pending'
             ? '没有待支付订单'
             : activeTab === 'paid'
             ? '没有已支付订单'
-            : '没有已发货订单'
+            : activeTab === 'shipped'
+            ? '没有已发货订单'
+            : '没有已取消订单'
         }}
       </text>
       <text class="empty-description">去选购喜欢的商品吧</text>
@@ -113,12 +113,12 @@ import ordersService from '../../services/orders'
 export default {
   data() {
     return {
-      activeTab: 'all',
+      activeTab: 'pending',
       orderTabs: [
-        { label: '全部', value: 'all', count: 0 },
         { label: '待支付', value: 'pending', count: 0 },
         { label: '已支付', value: 'paid', count: 0 },
-        { label: '已发货', value: 'shipped', count: 0 }
+        { label: '已发货', value: 'shipped', count: 0 },
+        { label: '已取消', value: 'cancelled', count: 0 }
       ],
       orders: [],
       isLoading: false,
@@ -129,13 +129,14 @@ export default {
   },
   computed: {
     filteredOrders() {
-      if (this.activeTab === 'all') {
-        return this.orders
-      }
       return this.orders.filter((order) => order.status === this.activeTab)
     }
   },
-  onLoad() {
+  onLoad(options) {
+    // 检查 URL 参数中是否指定了 status（从 profile 页面跳转过来）
+    if (options?.status) {
+      this.activeTab = options.status
+    }
     this.loadOrders()
   },
   onShow() {
@@ -228,88 +229,23 @@ export default {
     },
 
     /**
-     * 切换标签页并加载对应数据
+     * 切换标签页
      */
-    async selectTab(value) {
+    selectTab(value) {
       if (this.activeTab === value) return
-
       this.activeTab = value
-      this.page = 1
-      this.orders = []
-
-      if (value === 'all') {
-        await this.loadOrders()
-      } else {
-        await this.loadOrdersByStatus(value)
-      }
-    },
-
-    /**
-     * 根据状态加载订单
-     */
-    async loadOrdersByStatus(status) {
-      try {
-        this.isLoading = true
-        console.log(`加载${status}状态订单...`)
-
-        const response = await ordersService.getOrdersByStatus(status, this.page, this.pageSize)
-
-        if (response && response.items) {
-          console.log(`获取${status}状态订单成功:`, response)
-
-          // 转换数据结构
-          this.orders = response.items.map(order => ({
-            id: order.id,
-            orderId: order.orderNumber,
-            items: order.items.map(item => ({
-              id: item.id,
-              name: item.product.name,
-              image: item.product.coverImageUrl || 'https://via.placeholder.com/400x400?text=No+Image',
-              quantity: item.quantity,
-              price: (item.unitPrice / 100).toFixed(2),
-              color: '默认'
-            })),
-            total: (order.totalAmount / 100).toFixed(2),
-            subtotal: (order.subtotalAmount / 100).toFixed(2),
-            expressPrice: (order.shippingAmount / 100).toFixed(2),
-            discount: (order.discountAmount / 100).toFixed(2),
-            status: order.status,
-            statusText: this.getStatusText(order.status),
-            trackingNumber: order.trackingNumber || null, // 快递单号
-            createdAt: order.createdAt
-          }))
-
-          this.hasMore = response.page < response.totalPages
-        } else {
-          this.orders = []
-        }
-
-        this.updateTabCounts()
-      } catch (error) {
-        console.error(`Failed to load ${status} orders:`, error)
-        uni.showToast({
-          title: '加载订单失败',
-          icon: 'none',
-          duration: 2000
-        })
-      } finally {
-        this.isLoading = false
-      }
     },
     updateTabCounts() {
       const counts = {
-        all: this.orders.length,
         pending: this.orders.filter((o) => o.status === 'pending').length,
         paid: this.orders.filter((o) => o.status === 'paid').length,
-        shipped: this.orders.filter((o) => o.status === 'shipped').length
+        shipped: this.orders.filter((o) => o.status === 'shipped').length,
+        cancelled: this.orders.filter((o) => o.status === 'cancelled').length
       }
 
       this.orderTabs.forEach((tab) => {
         tab.count = counts[tab.value]
       })
-    },
-    selectTab(value) {
-      this.activeTab = value
     },
     formatTime(dateString) {
       const date = new Date(dateString)
