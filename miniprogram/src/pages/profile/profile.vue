@@ -104,9 +104,12 @@
 
     <!-- 账户操作 -->
     <view class="account-actions-section">
-      <button class="logout-button" @tap="handleLogout">
-        <text class="logout-icon">🚪</text>
-        <text class="logout-text">退出登录</text>
+      <button
+        :class="['account-button', authService.isLoggedIn() ? 'logout-mode' : 'login-mode']"
+        @tap="handleAccountAction"
+      >
+        <text class="account-icon">{{ authService.isLoggedIn() ? '🚪' : '🔓' }}</text>
+        <text class="account-text">{{ authService.isLoggedIn() ? '退出登录' : '点击登陆' }}</text>
       </button>
     </view>
 
@@ -377,6 +380,24 @@ export default {
         url: '/pages/profile/edit'
       })
     },
+    /**
+     * 处理账户操作（登陆或退出登录）
+     */
+    handleAccountAction() {
+      if (authService.isLoggedIn()) {
+        // 已登陆 - 执行退出登录
+        this.handleLogout()
+      } else {
+        // 未登陆 - 跳转到登陆页
+        uni.navigateTo({
+          url: '/pages/auth/login'
+        })
+      }
+    },
+
+    /**
+     * 退出登录
+     */
     async handleLogout() {
       // Show confirmation dialog
       uni.showModal({
@@ -686,37 +707,58 @@ export default {
   margin-top: 60rpx;
   margin-bottom: 40rpx;
 
-  .logout-button {
+  .account-button {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 12rpx;
     width: 100%;
-    padding: 28rpx 24rpx;
-    background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
-    border: none;
+    padding: 24rpx 0;
     border-radius: 8rpx;
     cursor: pointer;
-    box-shadow: 0 4rpx 12rpx rgba(255, 107, 107, 0.2);
     transition: all 0.3s ease;
 
-    &:active {
-      transform: scale(0.98);
-      box-shadow: 0 2rpx 6rpx rgba(255, 107, 107, 0.15);
-    }
-
-    .logout-icon {
+    .account-icon {
       display: block;
-      font-size: 32rpx;
+      font-size: 28rpx;
       line-height: 1;
     }
 
-    .logout-text {
+    .account-text {
       display: block;
-      font-size: 28rpx;
-      color: #ffffff;
+      font-size: 26rpx;
       font-weight: 500;
       letter-spacing: 1rpx;
+    }
+
+    /* 登陆模式 - 已登陆，显示退出登录 */
+    &.logout-mode {
+      background: #ffffff;
+      border: 2px solid #f0f0f0;
+
+      .account-text {
+        color: #666666;
+      }
+
+      &:active {
+        background: #f9f9f9;
+        border-color: #e0e0e0;
+      }
+    }
+
+    /* 登陆模式 - 未登陆，显示登陆 */
+    &.login-mode {
+      background: #000000;
+      border: 2px solid #000000;
+
+      .account-text {
+        color: #ffffff;
+      }
+
+      &:active {
+        background: #333333;
+        border-color: #333333;
+      }
     }
   }
 }
