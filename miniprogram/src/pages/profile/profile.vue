@@ -261,6 +261,12 @@ export default {
      */
     async loadRecommendedProductsFavoriteStatus() {
       try {
+        // 只有已登陆的用户才能加载收藏状态
+        if (!authService.isLoggedIn()) {
+          console.log('ℹ️ [Profile] 未登陆，跳过加载收藏状态')
+          return
+        }
+
         const productIds = this.recommendProducts.map(p => p.id)
         console.log('🔍 [Profile] 检查收藏状态 - 产品IDs:', productIds)
         if (productIds.length === 0) return
