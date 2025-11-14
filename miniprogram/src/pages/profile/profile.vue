@@ -387,6 +387,18 @@ export default {
         uni.navigateTo({
           url: `/pages/orders/orders?status=${action.status}`
         })
+      } else if (action?.type === 'wishlist') {
+        uni.navigateTo({
+          url: '/pages/wishlist/wishlist'
+        })
+      } else if (action?.type === 'addresses') {
+        uni.navigateTo({
+          url: '/pages/addresses/addresses'
+        })
+      } else if (action?.type === 'authorization') {
+        uni.navigateTo({
+          url: '/pages/legal/authorization'
+        })
       } else {
         // 如果没有待执行的操作，说明是直接点击登陆按钮
         // 保持在当前页面，页面已经刷新显示已登陆状态
@@ -401,6 +413,19 @@ export default {
       this.pendingAction = null
     },
     onQuickAccessTap(type) {
+      // 检查是否已登陆
+      if (!authService.isLoggedIn()) {
+        // 未登陆时根据类型设置待执行操作
+        if (type === 'wishlist') {
+          this.pendingAction = { type: 'wishlist' }
+        } else if (type === 'addresses') {
+          this.pendingAction = { type: 'addresses' }
+        }
+        this.showPhoneAuthModal = true
+        return
+      }
+
+      // 已登陆时直接导航
       if (type === 'wishlist') {
         uni.navigateTo({
           url: '/pages/wishlist/wishlist'
@@ -412,6 +437,14 @@ export default {
       }
     },
     onLegalTap(type) {
+      // 检查是否已登陆（个人信息授权需要登陆）
+      if (type === 'privacy' && !authService.isLoggedIn()) {
+        this.pendingAction = { type: 'authorization' }
+        this.showPhoneAuthModal = true
+        return
+      }
+
+      // 法律条款不需要登陆，直接导航
       if (type === 'terms') {
         uni.navigateTo({
           url: '/pages/legal/legal'
