@@ -497,28 +497,12 @@ export default {
      */
     async proceedBuyNow() {
       try {
-        // 先检查库存 - 通过尝试添加到购物车来验证库存
-        // 这样可以提前检测库存问题，而不需要修改API
-        try {
-          await cartService.addToCart(this.productData.id, this.quantity)
-          // 添加成功后不需要保留在购物车中，只是用于验证
-          // 实际上后续流程中我们会直接生成购买订单
-        } catch (validationError) {
-          // 库存验证失败，显示对话框并返回
-          const errorMsg = validationError.message || ''
-          const errorType = (validationError as any).errorType || ''
-          if (errorType === 'INSUFFICIENT_STOCK' || errorMsg.includes('库存不足')) {
-            this.handleInsufficientStock(errorMsg)
-            return
-          }
-          throw validationError // 其他错误继续抛出
-        }
-
         uni.showLoading({
           title: '正在跳转...'
         })
 
         // 直接生成订单对象，仅包含当前商品
+        // 库存检查将在后端结算时进行
         const buyNowOrder = {
           items: [
             {
@@ -547,36 +531,10 @@ export default {
       } catch (error) {
         uni.hideLoading()
         console.error('Failed to proceed with purchase:', error)
-
-        // 获取错误信息和错误类型
-        let errorMsg = ''
-        let errorType = ''
-        if (error instanceof Error) {
-          errorMsg = error.message || ''
-          errorType = (error as any).errorType || ''
-        } else if (typeof error === 'string') {
-          errorMsg = error
-        } else {
-          errorMsg = JSON.stringify(error)
-        }
-
-        console.log('🛒 [BuyNow] 错误消息:', errorMsg)
-        console.log('🛒 [BuyNow] 错误类型:', errorType)
-
-        // 根据错误类型或消息文本判断
-        if (errorMsg.includes('登录过期') || errorMsg.includes('401')) {
-          // 显示手机号授权弹窗
-          this.pendingAction = 'buyNow'
-          this.showPhoneAuthModal = true
-        } else if (errorType === 'INSUFFICIENT_STOCK' || errorMsg.includes('库存不足')) {
-          // 显示库存不足对话框
-          this.handleInsufficientStock(errorMsg)
-        } else {
-          uni.showToast({
-            title: errorMsg || '操作失败，请重试',
-            icon: 'none'
-          })
-        }
+        uni.showToast({
+          title: '操作失败，请重试',
+          icon: 'none'
+        })
       }
     },
 
