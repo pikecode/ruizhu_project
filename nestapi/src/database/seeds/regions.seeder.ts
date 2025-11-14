@@ -20,9 +20,10 @@ export const seedRegions = async (dataSource: DataSource) => {
     const existingProvinces = await provinceRepository.count();
     if (existingProvinces > 0) {
       console.log('⏳ 清除现有地区数据...');
-      await districtRepository.delete({});
-      await cityRepository.delete({});
-      await provinceRepository.delete({});
+      // 使用 query builder 清除所有数据（避免 TypeORM 的 delete({}) 空条件问题）
+      await districtRepository.createQueryBuilder().delete().from('districts').execute();
+      await cityRepository.createQueryBuilder().delete().from('cities').execute();
+      await provinceRepository.createQueryBuilder().delete().from('provinces').execute();
       console.log('✓ 已清除旧数据');
     }
 
