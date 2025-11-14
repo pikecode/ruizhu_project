@@ -415,6 +415,9 @@ export default {
           // 显示手机号授权弹窗
           this.pendingAction = 'addToCart'
           this.showPhoneAuthModal = true
+        } else if (errorMsg.includes('库存不足')) {
+          // 处理库存不足的智能提示
+          this.handleInsufficientStock(errorMsg)
         } else {
           uni.showToast({
             title: errorMsg || '添加失败，请重试',
@@ -422,6 +425,38 @@ export default {
           })
         }
       }
+    },
+
+    /**
+     * 处理库存不足情况的智能提示
+     */
+    handleInsufficientStock(errorMsg) {
+      console.log('📦 [Stock] 库存不足提示:', errorMsg)
+
+      // 显示对话框，让用户选择是否前往购物车调整
+      uni.showModal({
+        title: '库存提示',
+        content: errorMsg,
+        confirmText: '查看购物车',
+        cancelText: '继续购物',
+        success: (res) => {
+          if (res.confirm) {
+            // 用户选择查看购物车
+            console.log('📦 [Stock] 用户选择查看购物车')
+            uni.switchTab({
+              url: '/pages/cart/cart'
+            })
+          } else {
+            // 用户选择继续购物，保持在当前页面
+            console.log('📦 [Stock] 用户选择继续购物')
+            uni.showToast({
+              title: '您可以调整数量后重试',
+              icon: 'none',
+              duration: 1500
+            })
+          }
+        }
+      })
     },
     buyNow() {
       // 检查用户是否已授权
@@ -439,6 +474,22 @@ export default {
      */
     async proceedBuyNow() {
       try {
+        // 先检查库存 - 通过尝试添加到购物车来验证库存
+        // 这样可以提前检测库存问题，而不需要修改API
+        try {
+          await cartService.addToCart(this.productData.id, this.quantity)
+          // 添加成功后不需要保留在购物车中，只是用于验证
+          // 实际上后续流程中我们会直接生成购买订单
+        } catch (validationError) {
+          // 库存验证失败，显示对话框并返回
+          const errorMsg = validationError.message || ''
+          if (errorMsg.includes('库存不足')) {
+            this.handleInsufficientStock(errorMsg)
+            return
+          }
+          throw validationError // 其他错误继续抛出
+        }
+
         uni.showLoading({
           title: '正在跳转...'
         })
