@@ -99,8 +99,9 @@ export const request = async <T = any>(
           console.error('❌ [API] 错误类型:', errorType)
           // 抛出错误，携带完整的错误信息和类型供前端使用
           const error = new Error(res.data?.message || `业务验证失败(${res.statusCode})`)
-          ;(error as any).errorType = errorType
-          ;(error as any).statusCode = res.statusCode
+          const apiError = error as any
+          apiError.errorType = errorType
+          apiError.statusCode = res.statusCode
           reject(error)
         } else {
           console.error('❌ [API] 请求失败 - 状态码:', res.statusCode)

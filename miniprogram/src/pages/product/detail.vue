@@ -186,6 +186,7 @@ import { cartService } from '../../services/cart'
 import { authService } from '../../services/auth'
 import { api } from '../../services/api'
 import { submitConsultation } from '../../services/consultations'
+import { extractErrorType, isInsufficientStockError, isAuthError } from '../../types/error'
 import PhoneAuthModal from '../../components/PhoneAuthModal.vue'
 
 export default {
@@ -411,10 +412,8 @@ export default {
 
         // 获取错误信息和错误类型
         let errorMsg = ''
-        let errorType = ''
         if (error instanceof Error) {
           errorMsg = error.message || ''
-          errorType = (error as any).errorType || ''
         } else if (typeof error === 'string') {
           errorMsg = error
         } else {
@@ -422,16 +421,22 @@ export default {
         }
 
         console.log('🛒 [AddToCart] 错误消息:', errorMsg)
-        console.log('🛒 [AddToCart] 错误类型:', errorType)
+        console.log('🛒 [AddToCart] 错误类型:', extractErrorType(error))
 
         // 根据错误类型或消息文本判断
-        if (errorMsg.includes('登录过期') || errorMsg.includes('401')) {
+        if (isAuthError(errorMsg)) {
           // 显示手机号授权弹窗
           this.pendingAction = 'addToCart'
           this.showPhoneAuthModal = true
-        } else if (errorType === 'INSUFFICIENT_STOCK' || errorMsg.includes('库存不足')) {
-          // 处理库存不足的智能提示
-          this.handleInsufficientStock(errorMsg)
+        } else if (isInsufficientStockError(error, errorMsg)) {
+          // 库存不足错误处理
+          // 如果是新商品加入时库存不足，显示错误提示
+          // 如果是购物车中已有商品，后端已静默处理，不增加数量，前端也不显示错误
+          uni.showToast({
+            title: '库存不足，未能添加',
+            icon: 'none',
+            duration: 1500
+          })
         } else {
           uni.showToast({
             title: errorMsg || '添加失败，请重试',

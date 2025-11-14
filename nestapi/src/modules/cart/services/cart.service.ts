@@ -36,7 +36,8 @@ export class CartService {
 
   /**
    * Add item to user's shopping cart
-   * If item already exists, update quantity
+   * 乐观更新策略：先加入购物车，如果库存不足则恢复原数量
+   * 这样可以避免因购物车中已有商品而拒绝新增，提升用户体验
    * Returns formatted cart item with product details
    */
   async addToCart(userId: number, createDto: CreateCartItemDto): Promise<CartItemResponseDto> {
@@ -57,82 +58,92 @@ export class CartService {
       relations: ['product'],
     });
 
-    // 库存验证：检查产品是否有足够的库存
-    if (cartItem && cartItem.product) {
-      const totalQuantity = cartItem.quantity + createDto.quantity;
+    // 验证产品是否存在和已售罄
+    const product = await this.productRepository.findOne({
+      where: { id: createDto.productId },
+    });
 
-      if (cartItem.product.stockQuantity < totalQuantity) {
-        throw new HttpException(
-          {
-            code: 422,
-            message: `库存不足。当前购物车中有 ${cartItem.quantity} 件，想再加 ${createDto.quantity} 件，总共需要 ${totalQuantity} 件，但库存仅有 ${cartItem.product.stockQuantity} 件`,
-            errorType: 'INSUFFICIENT_STOCK',
-          },
-          HttpStatus.UNPROCESSABLE_ENTITY,
-        );
-      }
-
-      if (cartItem.product.stockStatus === 'soldOut') {
-        throw new BadRequestException('产品已售罄，无法加入购物车');
-      }
-    } else if (!cartItem) {
-      // 新增商品时检查库存
-      const product = await this.productRepository.findOne({
-        where: { id: createDto.productId },
-      });
-
-      if (!product) {
-        throw new NotFoundException(`Product ID ${createDto.productId} not found`);
-      }
-
-      if (product.stockQuantity < createDto.quantity) {
-        throw new HttpException(
-          {
-            code: 422,
-            message: `库存不足，仅剩 ${product.stockQuantity} 件，无法加入 ${createDto.quantity} 件`,
-            errorType: 'INSUFFICIENT_STOCK',
-          },
-          HttpStatus.UNPROCESSABLE_ENTITY,
-        );
-      }
-
-      if (product.stockStatus === 'soldOut') {
-        throw new BadRequestException('产品已售罄，无法加入购物车');
-      }
+    if (!product) {
+      throw new NotFoundException(`Product ID ${createDto.productId} not found`);
     }
 
-    if (cartItem) {
-      // Update quantity if item already exists
-      cartItem.quantity += createDto.quantity;
-      if (createDto.selectedAttributes) {
-        cartItem.selectedAttributes = createDto.selectedAttributes;
-      }
-      if (createDto.priceSnapshot) {
-        cartItem.priceSnapshot = createDto.priceSnapshot;
-      }
-      cartItem = await this.cartItemRepository.save(cartItem);
-    } else {
-      // Create new cart item
-      cartItem = this.cartItemRepository.create({
-        userId,
-        productId: createDto.productId,
-        quantity: createDto.quantity,
-        selectedAttributes: createDto.selectedAttributes,
-        priceSnapshot: createDto.priceSnapshot,
-      });
-      cartItem = await this.cartItemRepository.save(cartItem);
-
-      // Reload with product relation
-      const reloadedItem = await this.cartItemRepository.findOne({
-        where: { id: cartItem.id },
-        relations: ['product'],
-      });
-      if (reloadedItem) {
-        cartItem = reloadedItem;
-      }
+    if (product.stockStatus === 'soldOut') {
+      throw new BadRequestException('产品已售罄，无法加入购物车');
     }
 
-    return this.formatCartItemResponse(cartItem);
+    // 保存原始数量用于回滚
+    const originalQuantity = cartItem ? cartItem.quantity : 0;
+
+    try {
+      if (cartItem) {
+        // 更新购物车项
+        const newQuantity = cartItem.quantity + createDto.quantity;
+        cartItem.quantity = newQuantity;
+        if (createDto.selectedAttributes) {
+          cartItem.selectedAttributes = createDto.selectedAttributes;
+        }
+        if (createDto.priceSnapshot) {
+          cartItem.priceSnapshot = createDto.priceSnapshot;
+        }
+        cartItem = await this.cartItemRepository.save(cartItem);
+      } else {
+        // 创建新的购物车项
+        cartItem = this.cartItemRepository.create({
+          userId,
+          productId: createDto.productId,
+          quantity: createDto.quantity,
+          selectedAttributes: createDto.selectedAttributes,
+          priceSnapshot: createDto.priceSnapshot,
+        });
+        cartItem = await this.cartItemRepository.save(cartItem);
+
+        // 重新加载关联产品信息
+        const reloadedItem = await this.cartItemRepository.findOne({
+          where: { id: cartItem.id },
+          relations: ['product'],
+        });
+        if (reloadedItem) {
+          cartItem = reloadedItem;
+        }
+      }
+
+      // 验证库存：如果库存不足则回滚数量
+      if (cartItem.product && cartItem.product.stockQuantity < cartItem.quantity) {
+        // 恢复原始数量
+        cartItem.quantity = originalQuantity;
+        await this.cartItemRepository.save(cartItem);
+
+        // 如果是新增商品且库存不足，删除购物车项
+        if (originalQuantity === 0) {
+          await this.cartItemRepository.delete({ id: cartItem.id });
+          throw new HttpException(
+            {
+              code: 422,
+              message: `库存不足，仅剩 ${cartItem.product.stockQuantity} 件，无法加入 ${createDto.quantity} 件`,
+              errorType: 'INSUFFICIENT_STOCK',
+            },
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          );
+        }
+
+        // 如果是现有商品，静默失败（不增加数量）
+        // 这样用户点击加入购物车多次也不会出现错误提示，购物车数量会保持不变
+        return this.formatCartItemResponse(cartItem);
+      }
+
+      return this.formatCartItemResponse(cartItem);
+    } catch (error) {
+      // 发生错误时恢复原始数量
+      if (cartItem && cartItem.id) {
+        cartItem.quantity = originalQuantity;
+        if (originalQuantity > 0) {
+          await this.cartItemRepository.save(cartItem);
+        } else {
+          await this.cartItemRepository.delete({ id: cartItem.id });
+        }
+      }
+      throw error;
+    }
   }
 
   /**
