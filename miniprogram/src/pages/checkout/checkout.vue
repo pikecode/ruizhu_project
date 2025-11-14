@@ -74,7 +74,8 @@ export default {
     return {
       cartItems: [],
       selectedAddress: null,
-      userDiscount: 1.0 // 用户VIP折扣倍数，默认1.0（无折扣）
+      userDiscount: 1.0, // 用户VIP折扣倍数，默认1.0（无折扣）
+      eventChannel: null // 存储 eventChannel 引用，便于管理监听
     }
   },
   computed: {
@@ -165,20 +166,44 @@ export default {
           console.log('🏪 [Checkout] 地址页面已打开，准备监听 eventChannel')
           // res.eventChannel 是通往被打开页面的通信通道
           const eventChannel = res.eventChannel
-          console.log('🏪 [Checkout] eventChannel:', !!eventChannel)
+          console.log('🏪 [Checkout] eventChannel 是否存在:', !!eventChannel)
+
+          if (!eventChannel) {
+            console.error('🏪 [Checkout] eventChannel 为空，无法接收地址数据')
+            uni.showToast({
+              title: 'eventChannel 初始化失败',
+              icon: 'none'
+            })
+            return
+          }
+
+          // 保存 eventChannel 引用
+          this.eventChannel = eventChannel
 
           // 在新打开的页面设置事件监听
+          // 使用箭头函数保证 this 正确指向当前组件
           eventChannel.on('selectAddress', (data) => {
-            console.log('🏪 [Checkout] 收到选中的地址事件，数据:', data)
+            console.log('🏪 [Checkout] 💚 收到地址数据事件:', JSON.stringify(data))
 
-            if (!data || !data.id) {
-              console.error('🏪 [Checkout] 接收到的地址数据无效:', data)
+            if (!data) {
+              console.error('🏪 [Checkout] ❌ 接收到的地址数据为 null/undefined')
               uni.showToast({
-                title: '地址数据无效',
+                title: '地址数据为空',
                 icon: 'none'
               })
               return
             }
+
+            if (!data.id) {
+              console.error('🏪 [Checkout] ❌ 地址数据缺少 id 字段:', data)
+              uni.showToast({
+                title: '地址数据无效，缺少ID',
+                icon: 'none'
+              })
+              return
+            }
+
+            console.log('🏪 [Checkout] ✅ 地址数据验证通过')
 
             this.selectedAddress = {
               id: data.id,
@@ -189,16 +214,28 @@ export default {
               district: data.district,
               detail: data.detail || data.addressDetail
             }
-            console.log('🏪 [Checkout] selectedAddress 已更新:', JSON.stringify(this.selectedAddress))
+            console.log('🏪 [Checkout] ✅ selectedAddress 已更新:', JSON.stringify(this.selectedAddress))
+
+            // 显示成功提示
+            uni.showToast({
+              title: '地址已选择',
+              icon: 'success',
+              duration: 1500
+            })
           })
 
-          // 监听发送错误事件
+          // 监听打开事件（页面已打开）
+          eventChannel.on('open', () => {
+            console.log('🏪 [Checkout] ℹ️ 地址页面已打开')
+          })
+
+          // 监听错误事件
           eventChannel.on('error', (err) => {
-            console.error('🏪 [Checkout] 地址选择页面出错:', err)
+            console.error('🏪 [Checkout] ❌ 地址选择页面出错:', err)
           })
         },
         fail: (err) => {
-          console.error('🏪 [Checkout] 打开地址页面失败:', err)
+          console.error('🏪 [Checkout] ❌ 打开地址页面失败:', err)
           uni.showToast({
             title: '打开地址页面失败',
             icon: 'none'

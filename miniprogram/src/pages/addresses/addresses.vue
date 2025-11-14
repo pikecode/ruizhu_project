@@ -146,48 +146,77 @@ export default {
     selectAddress(index) {
       const address = this.addresses[index]
 
-      console.log('📍 [Addresses] 选择地址:', address)
+      console.log('📍 [Addresses] 📌 用户选择了地址:', JSON.stringify(address))
 
-      // 构造返回数据
+      // 验证地址数据完整性
+      if (!address || !address.id) {
+        console.error('📍 [Addresses] ❌ 地址数据无效，缺少必要字段')
+        uni.showToast({
+          title: '地址数据无效',
+          icon: 'none'
+        })
+        return
+      }
+
+      // 构造返回数据（确保包含所有必要字段）
       const addressData = {
         id: address.id,
-        name: address.name,
-        phone: address.phone,
-        province: address.province,
-        city: address.city,
-        district: address.district,
-        detail: address.detail,
-        receiverName: address.name,
-        receiverPhone: address.phone,
-        addressDetail: address.detail
+        name: address.name || '',
+        phone: address.phone || '',
+        province: address.province || '',
+        city: address.city || '',
+        district: address.district || '',
+        detail: address.detail || '',
+        // 备用字段名，用于兼容不同的字段命名
+        receiverName: address.name || '',
+        receiverPhone: address.phone || '',
+        addressDetail: address.detail || ''
       }
-      console.log('📍 [Addresses] 准备发送地址数据:', addressData)
+      console.log('📍 [Addresses] ✅ 构造的地址数据:', JSON.stringify(addressData))
 
       // 获取 eventChannel（来自调用方）
       const eventChannel = this.$getOpenerEventChannel()
-      console.log('📍 [Addresses] eventChannel:', !!eventChannel)
+      console.log('📍 [Addresses] eventChannel 是否存在:', !!eventChannel)
 
-      if (eventChannel) {
-        console.log('📍 [Addresses] 通过 eventChannel 发送数据')
-        try {
-          eventChannel.emit('selectAddress', addressData)
-          console.log('📍 [Addresses] 数据发送成功')
-        } catch (err) {
-          console.error('📍 [Addresses] 发送数据失败:', err)
-        }
-      } else {
-        console.warn('📍 [Addresses] eventChannel 不存在，无法返回数据')
-        // 降级方案：直接返回（不通知调用方）
+      if (!eventChannel) {
+        console.error('📍 [Addresses] ❌ eventChannel 不存在，无法返回数据给调用方')
         uni.showToast({
           title: '无法返回地址数据',
           icon: 'none'
         })
+        // 2秒后仍然返回（降级处理）
+        setTimeout(() => {
+          uni.navigateBack()
+        }, 500)
+        return
       }
 
-      // 返回到上一页面
-      setTimeout(() => {
-        uni.navigateBack()
-      }, 100)
+      console.log('📍 [Addresses] 🚀 准备通过 eventChannel 发送地址数据')
+
+      try {
+        // 发送数据到调用方
+        eventChannel.emit('selectAddress', addressData)
+        console.log('📍 [Addresses] ✅ 地址数据发送成功')
+
+        // 显示成功提示
+        uni.showToast({
+          title: '地址已发送',
+          icon: 'success',
+          duration: 1000
+        })
+
+        // 延迟返回，确保事件传递完成
+        setTimeout(() => {
+          console.log('📍 [Addresses] 📤 返回到上一页面')
+          uni.navigateBack()
+        }, 300)
+      } catch (err) {
+        console.error('📍 [Addresses] ❌ 发送数据失败:', err)
+        uni.showToast({
+          title: '地址发送失败',
+          icon: 'none'
+        })
+      }
     },
 
     /**
