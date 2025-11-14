@@ -298,7 +298,7 @@ export default {
       if (!authService.isLoggedIn()) {
         console.log('🔐 [EditProfile] 用户未登陆，显示授权弹窗')
         this.showPhoneAuthModal = true
-        return
+        return  // 不显示任何 toast，直接打开授权弹窗
       }
 
       // 已登陆，直接保存
