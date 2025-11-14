@@ -138,6 +138,7 @@ export default {
   },
   data() {
     return {
+      authService, // 暴露 authService 给模板使用
       appVersion: '1.0.0',
       userGreeting: '张**',
       showPhoneAuthModal: false,
