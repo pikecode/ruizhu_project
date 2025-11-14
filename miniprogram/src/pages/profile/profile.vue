@@ -753,18 +753,20 @@ export default {
       letter-spacing: 1rpx;
     }
 
-    /* 登陆模式 - 已登陆，显示退出登录 */
+    /* 退出登录模式 - 已登陆，显示退出登录 */
     &.logout-mode {
       background: #ffffff;
-      border: 2px solid #f0f0f0;
+      border: 2px solid #d0d0d0;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
 
       .account-text {
-        color: #666666;
+        color: #333333;
       }
 
       &:active {
-        background: #f9f9f9;
-        border-color: #e0e0e0;
+        background: #f5f5f5;
+        border-color: #b0b0b0;
+        box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.12);
       }
     }
 
@@ -772,7 +774,7 @@ export default {
     &.login-mode {
       background: #000000;
       border: 2px solid #000000;
-      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.15);
 
       .account-text {
         color: #ffffff;
@@ -781,7 +783,7 @@ export default {
       &:active {
         background: #1a1a1a;
         border-color: #1a1a1a;
-        box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.15);
+        box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.2);
       }
     }
   }
