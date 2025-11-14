@@ -447,30 +447,39 @@ export default {
     handleInsufficientStock(errorMsg) {
       console.log('📦 [Stock] 库存不足提示:', errorMsg)
 
-      // 显示对话框，让用户选择是否前往购物车调整
-      uni.showModal({
-        title: '库存提示',
-        content: errorMsg,
-        confirmText: '查看购物车',
-        cancelText: '继续购物',
-        success: (res) => {
-          if (res.confirm) {
-            // 用户选择查看购物车
-            console.log('📦 [Stock] 用户选择查看购物车')
-            uni.switchTab({
-              url: '/pages/cart/cart'
-            })
-          } else {
-            // 用户选择继续购物，保持在当前页面
-            console.log('📦 [Stock] 用户选择继续购物')
-            uni.showToast({
-              title: '您可以调整数量后重试',
-              icon: 'none',
-              duration: 1500
-            })
-          }
-        }
+      // 首先显示 Toast 提示
+      uni.showToast({
+        title: '库存不足',
+        icon: 'none',
+        duration: 1500
       })
+
+      // 延迟后显示模态框让用户选择
+      setTimeout(() => {
+        uni.showModal({
+          title: '库存提示',
+          content: errorMsg || '您选择的数量超过可用库存，请调整数量或查看购物车',
+          confirmText: '查看购物车',
+          cancelText: '继续购物',
+          success: (res) => {
+            if (res.confirm) {
+              // 用户选择查看购物车
+              console.log('📦 [Stock] 用户选择查看购物车')
+              uni.switchTab({
+                url: '/pages/cart/cart'
+              })
+            } else {
+              // 用户选择继续购物，保持在当前页面
+              console.log('📦 [Stock] 用户选择继续购物')
+              uni.showToast({
+                title: '您可以调整数量后重试',
+                icon: 'none',
+                duration: 1500
+              })
+            }
+          }
+        })
+      }, 500)
     },
     buyNow() {
       // 检查用户是否已授权
