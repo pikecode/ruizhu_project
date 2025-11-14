@@ -41,9 +41,9 @@
             ></image>
             <view class="banner-text-overlay">
               <text class="banner-brand">YUNJIE</text>
-              <view class="banner-welcome">
+              <view class="banner-welcome" v-if="userNickname">
               <view class="welcome-desc-row">
-                <text class="welcome-desc">{{ userGreeting }}先生，您好</text>
+                <text class="welcome-desc">{{ userNickname }}{{ genderText }}，您好</text>
                 <view class="welcome-actions">
                   <view class="action-icon edit" @tap="onEditProfile">
                     <text>✎</text>
@@ -139,22 +139,15 @@ export default {
     return {
       authService, // 暴露 authService 给模板使用
       appVersion: '1.0.0',
-      userGreeting: '张**',
+      userGreeting: '',
       showPhoneAuthModal: false,
       pendingAction: null,
+      userNickname: '',
+      genderText: '',
       indicatorColor: 'rgba(255, 255, 255, 0.5)',
       indicatorActiveColor: '#ffffff',
       currentBannerIndex: 0,
       banners: [
-        {
-          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80'
-        },
-        {
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80'
-        },
-        {
-          image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800&q=80'
-        }
       ],
       orderStatuses: [
         { id: 'pending', label: '待支付', icon: '/static/icons/order-pending-payment.svg' },
@@ -166,15 +159,59 @@ export default {
     }
   },
   onLoad() {
+    this.loadUserInfo()
     this.loadProfileBanners()
     this.loadRecommendedProducts()
   },
   onShow() {
-    // 每次显示页面时重新加载推荐商品和轮播图
+    // 每次显示页面时重新加载用户信息、推荐商品和轮播图
+    this.loadUserInfo()
     this.loadProfileBanners()
     this.loadRecommendedProducts()
   },
   methods: {
+    /**
+     * 加载用户信息（从localStorage）
+     * 更新显示用户昵称和性别的数据
+     */
+    loadUserInfo() {
+      try {
+        const userStr = uni.getStorageSync('user')
+        if (userStr) {
+          const user = typeof userStr === 'string' ? JSON.parse(userStr) : userStr
+
+          // 只有当有昵称时才设置，否则保持空字符串以隐藏问候语
+          if (user.nickname) {
+            this.userNickname = user.nickname
+
+            // 将性别枚举值转换为中文文本
+            const genderMap = {
+              'male': '先生',
+              'female': '女士',
+              'unknown': '先生'
+            }
+            this.genderText = genderMap[user.gender] || '先生'
+
+            console.log(`👤 [Profile] 已加载用户信息: ${this.userNickname}${this.genderText}`)
+          } else {
+            // 没有昵称时清空数据，隐藏问候语
+            this.userNickname = ''
+            this.genderText = ''
+            console.log('ℹ️ [Profile] 用户未设置昵称，隐藏问候语')
+          }
+        } else {
+          // 未登陆时清空数据
+          this.userNickname = ''
+          this.genderText = ''
+          console.log('ℹ️ [Profile] 未找到用户信息，隐藏问候语')
+        }
+      } catch (error) {
+        console.error('❌ [Profile] 加载用户信息失败:', error)
+        // 加载失败时清空数据，隐藏问候语
+        this.userNickname = ''
+        this.genderText = ''
+      }
+    },
     /**
      * 加载个人页面的轮播图数据（从admin维护的profile-banners）
      */
@@ -333,6 +370,11 @@ export default {
     handlePhoneAuthSuccess() {
       console.log('📱 [Profile] 手机号授权成功')
 
+      // 刷新页面信息：重新加载用户信息、轮播图和推荐商品
+      this.loadUserInfo()
+      this.loadProfileBanners()
+      this.loadRecommendedProducts()
+
       // 执行待执行的操作
       const action = this.pendingAction
       this.pendingAction = null
@@ -347,9 +389,8 @@ export default {
         })
       } else {
         // 如果没有待执行的操作，说明是直接点击登陆按钮
-        // 保持在当前页面，页面会自动刷新显示已登陆状态
-        console.log('📱 [Profile] 用户已成功登陆，页面将刷新')
-        this.loadRecommendedProducts()
+        // 保持在当前页面，页面已经刷新显示已登陆状态
+        console.log('📱 [Profile] 用户已成功登陆，页面信息已刷新')
       }
     },
     /**
@@ -440,9 +481,11 @@ export default {
                 duration: 1000
               })
 
-              // 清除推荐商品数据（已退出登陆）
+              // 刷新页面信息：清空用户信息和推荐商品数据
+              this.loadUserInfo()
+              this.loadProfileBanners()
               this.recommendProducts = []
-              console.log('🚪 [Profile] 已退出登录，推荐商品已清除，按钮应自动更新为"点击登陆"')
+              console.log('🚪 [Profile] 已退出登录，页面信息已刷新，按钮应自动更新为"点击登陆"')
             } catch (error) {
               console.error('Logout failed:', error)
               uni.showToast({
