@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsInt, Min } from 'class-validator';
+import { IsEnum, IsOptional, IsInt, Min, IsString, MaxLength } from 'class-validator';
 
 export class UpdateOrderDto {
   @IsOptional()
@@ -12,4 +12,9 @@ export class UpdateOrderDto {
   @IsInt()
   @Min(0)
   refundAmount?: number; // Refund amount in cents
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  trackingNumber?: string; // 快递单号
 }

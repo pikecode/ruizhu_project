@@ -52,6 +52,13 @@
           </view>
         </view>
 
+        <!-- 快递单号 -->
+        <view v-if="order.status === 'paid' || order.status === 'shipped' || order.status === 'delivered'" class="tracking-info">
+          <text class="tracking-label">快递单号：</text>
+          <text v-if="order.trackingNumber" class="tracking-number">{{ order.trackingNumber }}</text>
+          <text v-else class="tracking-empty">待更新</text>
+        </view>
+
         <!-- 订单底部 -->
         <view class="order-footer">
           <view class="order-total">
@@ -178,6 +185,7 @@ export default {
                 discount: (order.discountAmount / 100).toFixed(2),
                 status: order.status,
                 statusText: this.getStatusText(order.status),
+                trackingNumber: order.trackingNumber || null, // 快递单号
                 createdAt: order.createdAt
               }
             })
@@ -271,6 +279,7 @@ export default {
             discount: (order.discountAmount / 100).toFixed(2),
             status: order.status,
             statusText: this.getStatusText(order.status),
+            trackingNumber: order.trackingNumber || null, // 快递单号
             createdAt: order.createdAt
           }))
 
@@ -527,6 +536,38 @@ export default {
     font-size: 22rpx;
     color: #999999;
     text-align: center;
+  }
+}
+
+/* 快递单号信息 */
+.tracking-info {
+  padding: 12rpx 20rpx;
+  background: #f9f9f9;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  border-bottom: 1px solid #f0f0f0;
+
+  .tracking-label {
+    display: block;
+    font-size: 24rpx;
+    color: #666666;
+    font-weight: 500;
+  }
+
+  .tracking-number {
+    display: block;
+    font-size: 24rpx;
+    color: #000000;
+    font-weight: 600;
+    flex: 1;
+  }
+
+  .tracking-empty {
+    display: block;
+    font-size: 24rpx;
+    color: #999999;
+    flex: 1;
   }
 }
 

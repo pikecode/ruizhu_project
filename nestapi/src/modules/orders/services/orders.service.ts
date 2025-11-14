@@ -826,6 +826,10 @@ export class OrdersService {
       order.notes = updateDto.remark;
     }
 
+    if (updateDto.trackingNumber !== undefined) {
+      order.trackingNumber = updateDto.trackingNumber;
+    }
+
     return await this.orderRepository.save(order);
   }
 
