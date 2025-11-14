@@ -175,7 +175,20 @@ export default {
       console.log('📍 [Addresses] ✅ 构造的地址数据:', JSON.stringify(addressData))
 
       // 获取 eventChannel（来自调用方）
-      const eventChannel = this.$getOpenerEventChannel()
+      // 使用原生wx API而不是Vue的$getOpenerEventChannel()方法
+      let eventChannel = null
+      try {
+        // 尝试使用 uni-app 的 API
+        if (typeof uni !== 'undefined' && uni.getOpenerEventChannel) {
+          eventChannel = uni.getOpenerEventChannel()
+        }
+        // 如果uni没有，尝试使用原生wx API
+        else if (typeof wx !== 'undefined' && wx.getOpenerEventChannel) {
+          eventChannel = wx.getOpenerEventChannel()
+        }
+      } catch (err) {
+        console.warn('📍 [Addresses] ⚠️ 获取eventChannel异常:', err)
+      }
       console.log('📍 [Addresses] eventChannel 是否存在:', !!eventChannel)
 
       if (!eventChannel) {
