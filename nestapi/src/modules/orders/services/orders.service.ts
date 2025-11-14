@@ -828,6 +828,11 @@ export class OrdersService {
 
     if (updateDto.trackingNumber !== undefined) {
       order.trackingNumber = updateDto.trackingNumber;
+      // 自动将订单状态更新为"已发货"
+      if (order.status === 'paid') {
+        order.status = 'shipped';
+        order.shippedAt = new Date();
+      }
     }
 
     return await this.orderRepository.save(order);

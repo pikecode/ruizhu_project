@@ -64,8 +64,11 @@ export default function OrdersPage() {
 
     try {
       setLoading(true)
-      await ordersService.updateOrder(editingOrder.id, { trackingNumber })
-      message.success('快递单号更新成功')
+      await ordersService.updateOrder(editingOrder.id, {
+        trackingNumber,
+        status: 'shipped'  // 自动更新订单状态为已发货
+      })
+      message.success('快递单号已更新，订单状态已变为已发货')
       setTrackingModalVisible(false)
       setEditingOrder(null)
       setTrackingNumber('')
@@ -214,7 +217,7 @@ export default function OrdersPage() {
           {/* 提示信息 */}
           <div style={{ marginBottom: 16, padding: '12px', backgroundColor: '#f0f2f5', borderRadius: '4px' }}>
             <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
-              💡 快递单号只能在订单状态为"已支付"时填写
+              💡 快递单号只能在订单状态为"已支付"时填写，填写后订单状态自动更新为"已发货"
             </p>
           </div>
 
