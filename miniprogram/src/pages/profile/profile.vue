@@ -772,14 +772,16 @@ export default {
     &.login-mode {
       background: #000000;
       border: 2px solid #000000;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
 
       .account-text {
         color: #ffffff;
       }
 
       &:active {
-        background: #333333;
-        border-color: #333333;
+        background: #1a1a1a;
+        border-color: #1a1a1a;
+        box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.15);
       }
     }
   }
