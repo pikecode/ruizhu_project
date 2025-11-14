@@ -409,10 +409,12 @@ export default {
         uni.hideLoading()
         console.error('Failed to add to cart:', error)
 
-        // 获取错误信息 - 支持多种错误格式
+        // 获取错误信息和错误类型
         let errorMsg = ''
+        let errorType = ''
         if (error instanceof Error) {
           errorMsg = error.message || ''
+          errorType = (error as any).errorType || ''
         } else if (typeof error === 'string') {
           errorMsg = error
         } else {
@@ -420,13 +422,14 @@ export default {
         }
 
         console.log('🛒 [AddToCart] 错误消息:', errorMsg)
+        console.log('🛒 [AddToCart] 错误类型:', errorType)
 
-        // 检查是否是登录过期错误
+        // 根据错误类型判断，而不是解析消息文本
         if (errorMsg.includes('登录过期') || errorMsg.includes('401')) {
           // 显示手机号授权弹窗
           this.pendingAction = 'addToCart'
           this.showPhoneAuthModal = true
-        } else if (errorMsg.includes('库存不足')) {
+        } else if (errorType === 'INSUFFICIENT_STOCK') {
           // 处理库存不足的智能提示
           this.handleInsufficientStock(errorMsg)
         } else {
@@ -494,7 +497,8 @@ export default {
         } catch (validationError) {
           // 库存验证失败，显示对话框并返回
           const errorMsg = validationError.message || ''
-          if (errorMsg.includes('库存不足')) {
+          const errorType = (validationError as any).errorType || ''
+          if (errorType === 'INSUFFICIENT_STOCK') {
             this.handleInsufficientStock(errorMsg)
             return
           }
@@ -535,10 +539,12 @@ export default {
         uni.hideLoading()
         console.error('Failed to proceed with purchase:', error)
 
-        // 获取错误信息 - 支持多种错误格式
+        // 获取错误信息和错误类型
         let errorMsg = ''
+        let errorType = ''
         if (error instanceof Error) {
           errorMsg = error.message || ''
+          errorType = (error as any).errorType || ''
         } else if (typeof error === 'string') {
           errorMsg = error
         } else {
@@ -546,13 +552,14 @@ export default {
         }
 
         console.log('🛒 [BuyNow] 错误消息:', errorMsg)
+        console.log('🛒 [BuyNow] 错误类型:', errorType)
 
-        // 检查是否是登录过期错误
+        // 根据错误类型判断，而不是解析消息文本
         if (errorMsg.includes('登录过期') || errorMsg.includes('401')) {
           // 显示手机号授权弹窗
           this.pendingAction = 'buyNow'
           this.showPhoneAuthModal = true
-        } else if (errorMsg.includes('库存不足')) {
+        } else if (errorType === 'INSUFFICIENT_STOCK') {
           // 显示库存不足对话框
           this.handleInsufficientStock(errorMsg)
         } else {

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CartItem } from '../entities/cart-item.entity';
@@ -62,8 +62,13 @@ export class CartService {
       const totalQuantity = cartItem.quantity + createDto.quantity;
 
       if (cartItem.product.stockQuantity < totalQuantity) {
-        throw new BadRequestException(
-          `库存不足。当前购物车中有 ${cartItem.quantity} 件，想再加 ${createDto.quantity} 件，总共需要 ${totalQuantity} 件，但库存仅有 ${cartItem.product.stockQuantity} 件`,
+        throw new HttpException(
+          {
+            code: 422,
+            message: `库存不足。当前购物车中有 ${cartItem.quantity} 件，想再加 ${createDto.quantity} 件，总共需要 ${totalQuantity} 件，但库存仅有 ${cartItem.product.stockQuantity} 件`,
+            errorType: 'INSUFFICIENT_STOCK',
+          },
+          HttpStatus.UNPROCESSABLE_ENTITY,
         );
       }
 
@@ -81,8 +86,13 @@ export class CartService {
       }
 
       if (product.stockQuantity < createDto.quantity) {
-        throw new BadRequestException(
-          `库存不足，仅剩 ${product.stockQuantity} 件，无法加入 ${createDto.quantity} 件`,
+        throw new HttpException(
+          {
+            code: 422,
+            message: `库存不足，仅剩 ${product.stockQuantity} 件，无法加入 ${createDto.quantity} 件`,
+            errorType: 'INSUFFICIENT_STOCK',
+          },
+          HttpStatus.UNPROCESSABLE_ENTITY,
         );
       }
 
@@ -153,8 +163,13 @@ export class CartService {
 
       // 库存验证：更新数量时检查库存
       if (cartItem.product && cartItem.product.stockQuantity < updateDto.quantity) {
-        throw new BadRequestException(
-          `库存不足，仅剩 ${cartItem.product.stockQuantity} 件，无法更新为 ${updateDto.quantity} 件`,
+        throw new HttpException(
+          {
+            code: 422,
+            message: `库存不足，仅剩 ${cartItem.product.stockQuantity} 件，无法更新为 ${updateDto.quantity} 件`,
+            errorType: 'INSUFFICIENT_STOCK',
+          },
+          HttpStatus.UNPROCESSABLE_ENTITY,
         );
       }
 
