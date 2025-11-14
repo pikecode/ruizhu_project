@@ -39,6 +39,9 @@ import { Membership } from '../modules/memberships/entities/membership.entity';
 import { MemberBenefit } from '../entities/member-benefit.entity';
 import { Wishlist } from '../entities/wishlist.entity';
 import { Consultation } from '../entities/consultation.entity';
+import { Province } from '../entities/province.entity';
+import { City } from '../entities/city.entity';
+import { District } from '../entities/district.entity';
 
 /**
  * 获取 TypeORM 数据库配置
@@ -124,6 +127,9 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => {
       MemberBenefit,
       Wishlist,
       Consultation,
+      Province,
+      City,
+      District,
     ],
 
     // 禁用自动同步，手动管理数据库迁移
