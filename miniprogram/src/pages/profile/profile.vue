@@ -232,9 +232,16 @@ export default {
      */
     async loadRecommendedProducts() {
       try {
+        console.log('📦 [Profile] 开始加载推荐商品...')
         const collectionData = await collectionService.getCollectionBySlug('guess-you-like')
 
-        if (collectionData && collectionData.products) {
+        console.log('📦 [Profile] API 返回的 collectionData:', collectionData)
+        console.log('📦 [Profile] collectionData.products:', collectionData?.products)
+        console.log('📦 [Profile] products 数量:', collectionData?.products?.length)
+
+        if (collectionData && collectionData.products && collectionData.products.length > 0) {
+          console.log('📦 [Profile] 开始映射 products，共', collectionData.products.length, '个')
+
           this.recommendProducts = collectionData.products.map(product => ({
             id: product.id,
             name: product.name,
@@ -249,11 +256,19 @@ export default {
             isSold: product.stockStatus === 'outOfStock' || product.stockStatus === 'soldOut' || product.isOutOfStock === 1 || product.stockQuantity === 0
           }))
 
+          console.log('✅ [Profile] 映射完成，推荐商品数量:', this.recommendProducts.length)
+          console.log('✅ [Profile] 第一个推荐商品:', this.recommendProducts[0])
+
           // 加载推荐商品的收藏状态
           await this.loadRecommendedProductsFavoriteStatus()
+        } else {
+          console.warn('⚠️ [Profile] collectionData 为空或没有 products:', collectionData)
+          this.recommendProducts = []
         }
       } catch (error) {
-        console.error('Failed to load recommended products:', error)
+        console.error('❌ [Profile] 加载推荐商品失败:', error)
+        console.error('❌ [Profile] 错误堆栈:', error.stack)
+        this.recommendProducts = []
       }
     },
 
