@@ -409,8 +409,19 @@ export default {
         uni.hideLoading()
         console.error('Failed to add to cart:', error)
 
+        // 获取错误信息 - 支持多种错误格式
+        let errorMsg = ''
+        if (error instanceof Error) {
+          errorMsg = error.message || ''
+        } else if (typeof error === 'string') {
+          errorMsg = error
+        } else {
+          errorMsg = JSON.stringify(error)
+        }
+
+        console.log('🛒 [AddToCart] 错误消息:', errorMsg)
+
         // 检查是否是登录过期错误
-        const errorMsg = error.message || ''
         if (errorMsg.includes('登录过期') || errorMsg.includes('401')) {
           // 显示手机号授权弹窗
           this.pendingAction = 'addToCart'
@@ -524,12 +535,26 @@ export default {
         uni.hideLoading()
         console.error('Failed to proceed with purchase:', error)
 
+        // 获取错误信息 - 支持多种错误格式
+        let errorMsg = ''
+        if (error instanceof Error) {
+          errorMsg = error.message || ''
+        } else if (typeof error === 'string') {
+          errorMsg = error
+        } else {
+          errorMsg = JSON.stringify(error)
+        }
+
+        console.log('🛒 [BuyNow] 错误消息:', errorMsg)
+
         // 检查是否是登录过期错误
-        const errorMsg = error.message || ''
         if (errorMsg.includes('登录过期') || errorMsg.includes('401')) {
           // 显示手机号授权弹窗
           this.pendingAction = 'buyNow'
           this.showPhoneAuthModal = true
+        } else if (errorMsg.includes('库存不足')) {
+          // 显示库存不足对话框
+          this.handleInsufficientStock(errorMsg)
         } else {
           uni.showToast({
             title: errorMsg || '操作失败，请重试',
