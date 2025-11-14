@@ -90,11 +90,16 @@ export const request = async <T = any>(
         } else if (res.statusCode === 422) {
           // 业务验证失败 (如库存不足)
           console.error('❌ [API] 422 业务验证失败')
-          console.error('❌ [API] 错误类型:', res.data?.errorType)
           console.error('❌ [API] 响应数据:', res.data)
+          // 提取错误类型 - 可能在 res.data 或 res.data.response 中
+          let errorType = res.data?.errorType
+          if (!errorType && res.data?.response) {
+            errorType = res.data.response.errorType
+          }
+          console.error('❌ [API] 错误类型:', errorType)
           // 抛出错误，携带完整的错误信息和类型供前端使用
           const error = new Error(res.data?.message || `业务验证失败(${res.statusCode})`)
-          ;(error as any).errorType = res.data?.errorType
+          ;(error as any).errorType = errorType
           ;(error as any).statusCode = res.statusCode
           reject(error)
         } else {
