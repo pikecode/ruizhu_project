@@ -481,11 +481,11 @@ export default {
                 duration: 1000
               })
 
-              // 刷新页面信息：清空用户信息和推荐商品数据
+              // 刷新页面信息：清空用户信息并重新加载推荐商品（移除收藏状态）
               this.loadUserInfo()
               this.loadProfileBanners()
-              this.recommendProducts = []
-              console.log('🚪 [Profile] 已退出登录，页面信息已刷新，按钮应自动更新为"点击登陆"')
+              this.loadRecommendedProducts()
+              console.log('🚪 [Profile] 已退出登录，页面信息已刷新，推荐商品已重新加载')
             } catch (error) {
               console.error('Logout failed:', error)
               uni.showToast({
