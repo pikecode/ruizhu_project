@@ -16,11 +16,14 @@ export const seedRegions = async (dataSource: DataSource) => {
   console.log('🌍 开始初始化地区数据...');
 
   try {
-    // 检查是否已有数据
+    // 清除现有数据并重新初始化
     const existingProvinces = await provinceRepository.count();
     if (existingProvinces > 0) {
-      console.log('✓ 地区数据已存在，跳过初始化');
-      return;
+      console.log('⏳ 清除现有地区数据...');
+      await districtRepository.delete({});
+      await cityRepository.delete({});
+      await provinceRepository.delete({});
+      console.log('✓ 已清除旧数据');
     }
 
     let provinceIndex = 0;
