@@ -108,7 +108,6 @@
         :class="['account-button', authService.isLoggedIn() ? 'logout-mode' : 'login-mode']"
         @tap="handleAccountAction"
       >
-        <text class="account-icon">{{ authService.isLoggedIn() ? '🚪' : '🔓' }}</text>
         <text class="account-text">{{ authService.isLoggedIn() ? '退出登录' : '点击登陆' }}</text>
       </button>
     </view>
@@ -733,22 +732,15 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12rpx;
     width: 100%;
-    padding: 24rpx 0;
+    padding: 18rpx 0;
     border-radius: 8rpx;
     cursor: pointer;
     transition: all 0.3s ease;
 
-    .account-icon {
-      display: block;
-      font-size: 28rpx;
-      line-height: 1;
-    }
-
     .account-text {
       display: block;
-      font-size: 26rpx;
+      font-size: 28rpx;
       font-weight: 500;
       letter-spacing: 1rpx;
     }
@@ -772,18 +764,18 @@ export default {
 
     /* 登陆模式 - 未登陆，显示登陆 */
     &.login-mode {
-      background: #000000;
-      border: 2px solid #000000;
-      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.15);
+      background: #ffffff;
+      border: 2px solid #d0d0d0;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
 
       .account-text {
-        color: #ffffff;
+        color: #333333;
       }
 
       &:active {
-        background: #1a1a1a;
-        border-color: #1a1a1a;
-        box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.2);
+        background: #f5f5f5;
+        border-color: #b0b0b0;
+        box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.12);
       }
     }
   }
