@@ -424,12 +424,12 @@ export default {
         console.log('🛒 [AddToCart] 错误消息:', errorMsg)
         console.log('🛒 [AddToCart] 错误类型:', errorType)
 
-        // 根据错误类型判断，而不是解析消息文本
+        // 根据错误类型或消息文本判断
         if (errorMsg.includes('登录过期') || errorMsg.includes('401')) {
           // 显示手机号授权弹窗
           this.pendingAction = 'addToCart'
           this.showPhoneAuthModal = true
-        } else if (errorType === 'INSUFFICIENT_STOCK') {
+        } else if (errorType === 'INSUFFICIENT_STOCK' || errorMsg.includes('库存不足')) {
           // 处理库存不足的智能提示
           this.handleInsufficientStock(errorMsg)
         } else {
@@ -498,7 +498,7 @@ export default {
           // 库存验证失败，显示对话框并返回
           const errorMsg = validationError.message || ''
           const errorType = (validationError as any).errorType || ''
-          if (errorType === 'INSUFFICIENT_STOCK') {
+          if (errorType === 'INSUFFICIENT_STOCK' || errorMsg.includes('库存不足')) {
             this.handleInsufficientStock(errorMsg)
             return
           }
@@ -554,12 +554,12 @@ export default {
         console.log('🛒 [BuyNow] 错误消息:', errorMsg)
         console.log('🛒 [BuyNow] 错误类型:', errorType)
 
-        // 根据错误类型判断，而不是解析消息文本
+        // 根据错误类型或消息文本判断
         if (errorMsg.includes('登录过期') || errorMsg.includes('401')) {
           // 显示手机号授权弹窗
           this.pendingAction = 'buyNow'
           this.showPhoneAuthModal = true
-        } else if (errorType === 'INSUFFICIENT_STOCK') {
+        } else if (errorType === 'INSUFFICIENT_STOCK' || errorMsg.includes('库存不足')) {
           // 显示库存不足对话框
           this.handleInsufficientStock(errorMsg)
         } else {
