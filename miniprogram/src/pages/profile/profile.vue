@@ -154,10 +154,9 @@ export default {
         }
       ],
       orderStatuses: [
-        { id: 'pending-payment', label: '待支付', icon: '/static/icons/order-pending-payment.svg' },
-        { id: 'pending-shipment', label: '待发货', icon: '/static/icons/order-pending-shipment.svg' },
-        { id: 'shipped', label: '已发货', icon: '/static/icons/order-shipped.svg' },
-        { id: 'aftersales', label: '售后', icon: '/static/icons/order-aftersales.svg' }
+        { id: 'pending', label: '待支付', icon: '/static/icons/order-pending-payment.svg' },
+        { id: 'paid', label: '已支付', icon: '/static/icons/order-pending-shipment.svg' },
+        { id: 'shipped', label: '已发货', icon: '/static/icons/order-shipped.svg' }
       ],
       recommendProducts: []
     }

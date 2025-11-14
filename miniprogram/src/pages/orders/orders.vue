@@ -92,9 +92,9 @@
             ? '还没有订单'
             : activeTab === 'pending'
             ? '没有待支付订单'
-            : activeTab === 'completed'
-            ? '没有已完成订单'
-            : '没有已取消订单'
+            : activeTab === 'paid'
+            ? '没有已支付订单'
+            : '没有已发货订单'
         }}
       </text>
       <text class="empty-description">去选购喜欢的商品吧</text>
@@ -117,8 +117,8 @@ export default {
       orderTabs: [
         { label: '全部', value: 'all', count: 0 },
         { label: '待支付', value: 'pending', count: 0 },
-        { label: '已完成', value: 'completed', count: 0 },
-        { label: '已取消', value: 'cancelled', count: 0 }
+        { label: '已支付', value: 'paid', count: 0 },
+        { label: '已发货', value: 'shipped', count: 0 }
       ],
       orders: [],
       isLoading: false,
@@ -131,10 +131,6 @@ export default {
     filteredOrders() {
       if (this.activeTab === 'all') {
         return this.orders
-      }
-      // 已完成标签包括 'completed' 和 'paid' 状态
-      if (this.activeTab === 'completed') {
-        return this.orders.filter((order) => order.status === 'completed' || order.status === 'paid')
       }
       return this.orders.filter((order) => order.status === this.activeTab)
     }
@@ -304,8 +300,8 @@ export default {
       const counts = {
         all: this.orders.length,
         pending: this.orders.filter((o) => o.status === 'pending').length,
-        completed: this.orders.filter((o) => o.status === 'completed' || o.status === 'paid').length,
-        cancelled: this.orders.filter((o) => o.status === 'cancelled').length
+        paid: this.orders.filter((o) => o.status === 'paid').length,
+        shipped: this.orders.filter((o) => o.status === 'shipped').length
       }
 
       this.orderTabs.forEach((tab) => {
@@ -470,9 +466,14 @@ export default {
       color: #ff7a00;
     }
 
-    &.completed {
+    &.paid {
       background: #e8f5e9;
       color: #00b26a;
+    }
+
+    &.shipped {
+      background: #e3f2fd;
+      color: #1976d2;
     }
 
     &.cancelled {
