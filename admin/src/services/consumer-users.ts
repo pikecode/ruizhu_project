@@ -22,6 +22,18 @@ export interface ConsumerUser {
   discount: number
   createdAt: string
   updatedAt: string
+  // 会员信息（来自 memberships 表）
+  membership?: {
+    salutation: string
+    lastName: string
+    firstName: string
+    mobile: string
+    email?: string
+    birthDate?: string
+    province?: string
+    city?: string
+    district?: string
+  }
 }
 
 export interface ConsumerUserResponse {

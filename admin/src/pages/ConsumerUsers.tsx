@@ -97,61 +97,68 @@ export default function ConsumerUsersPage() {
       width: 80,
     },
     {
-      title: '昵称',
-      dataIndex: 'nickname',
-      key: 'nickname',
+      title: '姓名',
+      key: 'name',
       width: 150,
-      render: (text: string) => text || '-',
-    },
-    {
-      title: '手机号',
-      dataIndex: 'phone',
-      key: 'phone',
-      width: 150,
-      render: (text: string) => text || '-',
-    },
-    {
-      title: '邮箱',
-      dataIndex: 'email',
-      key: 'email',
-      width: 150,
-      render: (text: string) => text || '-',
-    },
-    {
-      title: '微信',
-      dataIndex: 'openId',
-      key: 'openId',
-      width: 180,
-      render: (text: string) => (text ? text.substring(0, 20) + '...' : '-'),
-    },
-    {
-      title: '注册来源',
-      dataIndex: 'registrationSource',
-      key: 'registrationSource',
-      width: 120,
-      render: (source: string) => {
-        const sourceMap: Record<string, { label: string; color: string }> = {
-          wechat_mini_program: { label: '微信小程序', color: 'green' },
-          web: { label: 'Web', color: 'blue' },
-          admin: { label: '管理员创建', color: 'orange' },
+      render: (_: any, record: ConsumerUser) => {
+        // 优先使用会员信息中的姓名
+        if (record.membership) {
+          const { salutation, lastName, firstName } = record.membership
+          return (
+            <div>
+              <div style={{ fontWeight: 500 }}>{lastName}{firstName}</div>
+              <div style={{ fontSize: '12px', color: '#999' }}>{salutation}</div>
+            </div>
+          )
         }
-        const config = sourceMap[source] || { label: source, color: 'default' }
-        return <Tag color={config.color}>{config.label}</Tag>
+        // 回退到 nickname
+        return record.nickname || '-'
       },
     },
     {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (status: string) => {
-        const statusMap: Record<string, { label: string; color: string }> = {
-          active: { label: '活跃', color: 'green' },
-          banned: { label: '禁用', color: 'red' },
-          deleted: { label: '已删除', color: 'default' },
+      title: '手机号',
+      key: 'phone',
+      width: 150,
+      render: (_: any, record: ConsumerUser) => {
+        // 优先使用会员信息中的手机号
+        const phone = record.membership?.mobile || record.phone
+        return phone || '-'
+      },
+    },
+    {
+      title: '邮箱',
+      key: 'email',
+      width: 180,
+      render: (_: any, record: ConsumerUser) => {
+        // 优先使用会员信息中的邮箱
+        const email = record.membership?.email || record.email
+        return email || '-'
+      },
+    },
+    {
+      title: '出生日期',
+      key: 'birthDate',
+      width: 120,
+      render: (_: any, record: ConsumerUser) => {
+        if (record.membership?.birthDate) {
+          return new Date(record.membership.birthDate).toLocaleDateString()
         }
-        const config = statusMap[status] || { label: status, color: 'default' }
-        return <Tag color={config.color}>{config.label}</Tag>
+        return '-'
+      },
+    },
+    {
+      title: '地区',
+      key: 'region',
+      width: 180,
+      render: (_: any, record: ConsumerUser) => {
+        if (record.membership) {
+          const { province, city, district } = record.membership
+          const parts = [province, city, district].filter(Boolean)
+          return parts.length > 0 ? parts.join(' ') : '-'
+        }
+        // 回退到用户表的地区信息
+        const parts = [record.province, record.city].filter(Boolean)
+        return parts.length > 0 ? parts.join(' ') : '-'
       },
     },
     {
@@ -239,7 +246,7 @@ export default function ConsumerUsersPage() {
                 setPagination({ ...pagination, current: page, pageSize })
               },
             }}
-            scroll={{ x: 1800 }}
+            scroll={{ x: 1600 }}
           />
         </Card>
       </div>

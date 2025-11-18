@@ -1,7 +1,8 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { User } from '../entities/user.entity';
+import { Membership } from '../modules/memberships/entities/membership.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -10,6 +11,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private dataSource: DataSource,
   ) {}
 
   /**
@@ -36,14 +38,54 @@ export class UsersService {
   }
 
   /**
-   * 获取所有用户
+   * 获取所有用户（包含会员信息）
    */
-  async findAll(): Promise<Omit<User, 'password'>[]> {
+  async findAll(): Promise<any[]> {
     const users = await this.usersRepository.find({
       where: { status: 'active' },
     });
+
+    // 获取所有用户的会员信息
+    const membershipRepo = this.dataSource.getRepository(Membership);
+    const userIds = users.map(u => u.id);
+
+    const memberships = userIds.length > 0
+      ? await membershipRepo
+          .createQueryBuilder('m')
+          .where('m.userId IN (:...userIds)', { userIds })
+          .getMany()
+      : [];
+
+    // 创建 userId -> membership 的映射
+    const membershipMap = new Map<number, Membership>();
+    memberships.forEach(m => membershipMap.set(m.userId, m));
+
+    // 合并用户和会员信息
     return users.map(user => {
       const { password, ...result } = user;
+      const membership = membershipMap.get(user.id);
+
+      // 如果有会员信息，使用会员信息中的姓名作为昵称
+      if (membership) {
+        return {
+          ...result,
+          // 使用会员信息中的姓名
+          nickname: membership.lastName + membership.firstName,
+          // 附加会员详细信息
+          membership: {
+            salutation: membership.salutation,
+            lastName: membership.lastName,
+            firstName: membership.firstName,
+            mobile: membership.mobile,
+            email: membership.email,
+            birthDate: membership.birthDate,
+            province: membership.province,
+            city: membership.city,
+            district: membership.district,
+          },
+        };
+      }
+
       return result;
     });
   }
