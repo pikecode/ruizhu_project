@@ -146,31 +146,86 @@ export default {
     selectAddress(index) {
       const address = this.addresses[index]
 
-      console.log('📍 [Addresses] 选择地址:', address)
+      console.log('📍 [Addresses] 📌 用户选择了地址:', JSON.stringify(address))
 
-      // 通过 eventChannel 返回选中的地址
-      const eventChannel = this.getOpenerEventChannel?.()
-      console.log('📍 [Addresses] eventChannel 是否存在:', !!eventChannel)
-
-      if (eventChannel) {
-        const addressData = {
-          id: address.id,
-          name: address.name,
-          phone: address.phone,
-          province: address.province,
-          city: address.city,
-          district: address.district,
-          detail: address.detail,
-          receiverName: address.name,
-          receiverPhone: address.phone,
-          addressDetail: address.detail
-        }
-        console.log('📍 [Addresses] 发送地址数据:', addressData)
-        eventChannel.emit('selectAddress', addressData)
+      // 验证地址数据完整性
+      if (!address || !address.id) {
+        console.error('📍 [Addresses] ❌ 地址数据无效，缺少必要字段')
+        uni.showToast({
+          title: '地址数据无效',
+          icon: 'none'
+        })
+        return
       }
 
-      // 返回到上一页面
-      uni.navigateBack()
+      // 构造返回数据（确保包含所有必要字段）
+      const addressData = {
+        id: address.id,
+        name: address.name || '',
+        phone: address.phone || '',
+        province: address.province || '',
+        city: address.city || '',
+        district: address.district || '',
+        detail: address.detail || '',
+        // 备用字段名，用于兼容不同的字段命名
+        receiverName: address.name || '',
+        receiverPhone: address.phone || '',
+        addressDetail: address.detail || ''
+      }
+      console.log('📍 [Addresses] ✅ 构造的地址数据:', JSON.stringify(addressData))
+
+      // 方案1：尝试使用 eventChannel（优先方案）
+      let eventChannelSuccess = false
+      let eventChannel = null
+      try {
+        // 优先尝试 uni-app API
+        if (typeof uni !== 'undefined' && uni.getOpenerEventChannel) {
+          eventChannel = uni.getOpenerEventChannel()
+        }
+        // 如果uni没有，尝试原生wx API
+        else if (typeof wx !== 'undefined' && wx.getOpenerEventChannel) {
+          eventChannel = wx.getOpenerEventChannel()
+        }
+
+        // 如果获取到eventChannel，尝试发送数据
+        if (eventChannel) {
+          console.log('📍 [Addresses] 🚀 通过eventChannel发送数据')
+          eventChannel.emit('selectAddress', addressData)
+          console.log('📍 [Addresses] ✅ eventChannel发送成功')
+          eventChannelSuccess = true
+        }
+      } catch (err) {
+        console.warn('📍 [Addresses] ⚠️ eventChannel发送失败:', err)
+      }
+
+      // 方案2：使用localStorage（降级方案）
+      if (!eventChannelSuccess) {
+        console.warn('📍 [Addresses] ⚠️ eventChannel不可用，使用localStorage传递数据')
+        try {
+          uni.setStorageSync('_selectedAddressData', addressData)
+          console.log('📍 [Addresses] ✅ 地址数据已保存到localStorage')
+        } catch (err) {
+          console.error('📍 [Addresses] ❌ localStorage保存失败:', err)
+          uni.showToast({
+            title: '地址选择失败',
+            icon: 'none'
+          })
+          return
+        }
+      }
+
+      // 显示成功提示
+      uni.showToast({
+        title: '地址已选择',
+        icon: 'success',
+        duration: 1000
+      })
+
+      // 延迟返回，确保数据传递完成
+      setTimeout(() => {
+        console.log('📍 [Addresses] 📤 返回到上一页面')
+        uni.navigateBack()
+      }, 300)
     },
 
     /**

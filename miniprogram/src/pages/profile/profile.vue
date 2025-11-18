@@ -1,5 +1,13 @@
 <template>
   <view class="profile-page">
+    <!-- 手机号授权弹窗 -->
+    <phone-auth-modal
+      :visible="showPhoneAuthModal"
+      :on-success="handlePhoneAuthSuccess"
+      :on-cancel="handlePhoneAuthCancel"
+      @close="showPhoneAuthModal = false"
+    ></phone-auth-modal>
+
     <!-- 轮播图区域（包含动画和其他banner） -->
     <view class="banner-section">
       <swiper
@@ -33,9 +41,9 @@
             ></image>
             <view class="banner-text-overlay">
               <text class="banner-brand">YUNJIE</text>
-              <view class="banner-welcome">
+              <view class="banner-welcome" v-if="userNickname">
               <view class="welcome-desc-row">
-                <text class="welcome-desc">{{ userGreeting }}先生，您好</text>
+                <text class="welcome-desc">{{ userNickname }}{{ genderText }}，您好</text>
                 <view class="welcome-actions">
                   <view class="action-icon edit" @tap="onEditProfile">
                     <text>✎</text>
@@ -96,9 +104,11 @@
 
     <!-- 账户操作 -->
     <view class="account-actions-section">
-      <button class="logout-button" @tap="handleLogout">
-        <text class="logout-icon">🚪</text>
-        <text class="logout-text">退出登录</text>
+      <button
+        :class="['account-button', authService.isLoggedIn() ? 'logout-mode' : 'login-mode']"
+        @tap="handleAccountAction"
+      >
+        <text class="account-text">{{ authService.isLoggedIn() ? '退出登录' : '点击登陆' }}</text>
       </button>
     </view>
 
@@ -108,12 +118,14 @@
       :columns="2"
       @product-tap="onProductTap"
       @favorite-change="onFavoriteChange"
+      @favorite-need-auth="onFavoriteNeedAuth"
     />
   </view>
 </template>
 
 <script>
 import RecommendSection from '../../components/RecommendSection.vue'
+import PhoneAuthModal from '../../components/PhoneAuthModal.vue'
 import { authService } from '../../services/auth'
 import { collectionService } from '../../services/collection'
 import wishlistService from '../../services/wishlist'
@@ -121,45 +133,86 @@ import { bannerService } from '../../services/banner'
 
 export default {
   components: {
-    RecommendSection
+    RecommendSection,
+    PhoneAuthModal
   },
   data() {
     return {
+      authService, // 暴露 authService 给模板使用
       appVersion: '1.0.0',
-      userGreeting: '张**',
+      userGreeting: '',
+      showPhoneAuthModal: false,
+      pendingAction: null,
+      userNickname: '',
+      genderText: '',
       indicatorColor: 'rgba(255, 255, 255, 0.5)',
       indicatorActiveColor: '#ffffff',
       currentBannerIndex: 0,
       banners: [
-        {
-          image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80'
-        },
-        {
-          image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80'
-        },
-        {
-          image: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800&q=80'
-        }
       ],
       orderStatuses: [
-        { id: 'pending-payment', label: '待支付', icon: '/static/icons/order-pending-payment.svg' },
-        { id: 'pending-shipment', label: '待发货', icon: '/static/icons/order-pending-shipment.svg' },
+        { id: 'pending', label: '待支付', icon: '/static/icons/order-pending-payment.svg' },
+        { id: 'paid', label: '已支付', icon: '/static/icons/order-pending-shipment.svg' },
         { id: 'shipped', label: '已发货', icon: '/static/icons/order-shipped.svg' },
-        { id: 'aftersales', label: '售后', icon: '/static/icons/order-aftersales.svg' }
+        { id: 'cancelled', label: '已取消', icon: '/static/icons/order-cancelled.svg' }
       ],
       recommendProducts: []
     }
   },
   onLoad() {
+    this.loadUserInfo()
     this.loadProfileBanners()
     this.loadRecommendedProducts()
   },
   onShow() {
-    // 每次显示页面时重新加载推荐商品和轮播图
+    // 每次显示页面时重新加载用户信息、推荐商品和轮播图
+    this.loadUserInfo()
     this.loadProfileBanners()
     this.loadRecommendedProducts()
   },
   methods: {
+    /**
+     * 加载用户信息（从localStorage）
+     * 更新显示用户昵称和性别的数据
+     */
+    loadUserInfo() {
+      try {
+        const userStr = uni.getStorageSync('user')
+        if (userStr) {
+          const user = typeof userStr === 'string' ? JSON.parse(userStr) : userStr
+
+          // 只有当有昵称时才设置，否则保持空字符串以隐藏问候语
+          if (user.nickname) {
+            this.userNickname = user.nickname
+
+            // 将性别枚举值转换为中文文本
+            const genderMap = {
+              'male': '先生',
+              'female': '女士',
+              'unknown': '先生'
+            }
+            this.genderText = genderMap[user.gender] || '先生'
+
+            console.log(`👤 [Profile] 已加载用户信息: ${this.userNickname}${this.genderText}`)
+          } else {
+            // 没有昵称时清空数据，隐藏问候语
+            this.userNickname = ''
+            this.genderText = ''
+            console.log('ℹ️ [Profile] 用户未设置昵称，隐藏问候语')
+          }
+        } else {
+          // 未登陆时清空数据
+          this.userNickname = ''
+          this.genderText = ''
+          console.log('ℹ️ [Profile] 未找到用户信息，隐藏问候语')
+        }
+      } catch (error) {
+        console.error('❌ [Profile] 加载用户信息失败:', error)
+        // 加载失败时清空数据，隐藏问候语
+        this.userNickname = ''
+        this.genderText = ''
+      }
+    },
     /**
      * 加载个人页面的轮播图数据（从admin维护的profile-banners）
      */
@@ -216,9 +269,16 @@ export default {
      */
     async loadRecommendedProducts() {
       try {
+        console.log('📦 [Profile] 开始加载推荐商品...')
         const collectionData = await collectionService.getCollectionBySlug('guess-you-like')
 
-        if (collectionData && collectionData.products) {
+        console.log('📦 [Profile] API 返回的 collectionData:', collectionData)
+        console.log('📦 [Profile] collectionData.products:', collectionData?.products)
+        console.log('📦 [Profile] products 数量:', collectionData?.products?.length)
+
+        if (collectionData && collectionData.products && collectionData.products.length > 0) {
+          console.log('📦 [Profile] 开始映射 products，共', collectionData.products.length, '个')
+
           this.recommendProducts = collectionData.products.map(product => ({
             id: product.id,
             name: product.name,
@@ -233,11 +293,19 @@ export default {
             isSold: product.stockStatus === 'outOfStock' || product.stockStatus === 'soldOut' || product.isOutOfStock === 1 || product.stockQuantity === 0
           }))
 
+          console.log('✅ [Profile] 映射完成，推荐商品数量:', this.recommendProducts.length)
+          console.log('✅ [Profile] 第一个推荐商品:', this.recommendProducts[0])
+
           // 加载推荐商品的收藏状态
           await this.loadRecommendedProductsFavoriteStatus()
+        } else {
+          console.warn('⚠️ [Profile] collectionData 为空或没有 products:', collectionData)
+          this.recommendProducts = []
         }
       } catch (error) {
-        console.error('Failed to load recommended products:', error)
+        console.error('❌ [Profile] 加载推荐商品失败:', error)
+        console.error('❌ [Profile] 错误堆栈:', error.stack)
+        this.recommendProducts = []
       }
     },
 
@@ -246,6 +314,12 @@ export default {
      */
     async loadRecommendedProductsFavoriteStatus() {
       try {
+        // 只有已登陆的用户才能加载收藏状态
+        if (!authService.isLoggedIn()) {
+          console.log('ℹ️ [Profile] 未登陆，跳过加载收藏状态')
+          return
+        }
+
         const productIds = this.recommendProducts.map(p => p.id)
         console.log('🔍 [Profile] 检查收藏状态 - 产品IDs:', productIds)
         if (productIds.length === 0) return
@@ -270,16 +344,93 @@ export default {
       this.currentBannerIndex = e.detail.current
     },
     onOrderStatusTap(status) {
+      // 检查是否已登陆
+      if (!authService.isLoggedIn()) {
+        this.pendingAction = { type: 'statusTab', status: status.id }
+        this.showPhoneAuthModal = true
+        return
+      }
       uni.navigateTo({
         url: `/pages/orders/orders?status=${status.id}`
       })
     },
     goToOrders(type) {
+      // 检查是否已登陆
+      if (!authService.isLoggedIn()) {
+        this.pendingAction = { type: 'allOrders', status: type }
+        this.showPhoneAuthModal = true
+        return
+      }
       uni.navigateTo({
         url: `/pages/orders/orders?status=${type}`
       })
     },
+    /**
+     * 手机号授权成功回调
+     */
+    handlePhoneAuthSuccess() {
+      console.log('📱 [Profile] 手机号授权成功')
+
+      // 刷新页面信息：重新加载用户信息、轮播图和推荐商品
+      this.loadUserInfo()
+      this.loadProfileBanners()
+      this.loadRecommendedProducts()
+
+      // 执行待执行的操作
+      const action = this.pendingAction
+      this.pendingAction = null
+
+      if (action?.type === 'statusTab') {
+        uni.navigateTo({
+          url: `/pages/orders/orders?status=${action.status}`
+        })
+      } else if (action?.type === 'allOrders') {
+        uni.navigateTo({
+          url: `/pages/orders/orders?status=${action.status}`
+        })
+      } else if (action?.type === 'wishlist') {
+        uni.navigateTo({
+          url: '/pages/wishlist/wishlist'
+        })
+      } else if (action?.type === 'addresses') {
+        uni.navigateTo({
+          url: '/pages/addresses/addresses'
+        })
+      } else if (action?.type === 'authorization') {
+        uni.navigateTo({
+          url: '/pages/legal/authorization'
+        })
+      } else if (action?.type === 'favorite') {
+        // 收藏操作：重新加载推荐商品后，自动收藏
+        // 由于 loadRecommendedProducts 已在上面调用，收藏状态会自动更新
+        console.log('💖 [Profile] 用户登陆成功，推荐商品已重新加载并更新收藏状态')
+      } else {
+        // 如果没有待执行的操作，说明是直接点击登陆按钮
+        // 保持在当前页面，页面已经刷新显示已登陆状态
+        console.log('📱 [Profile] 用户已成功登陆，页面信息已刷新')
+      }
+    },
+    /**
+     * 手机号授权取消回调
+     */
+    handlePhoneAuthCancel() {
+      console.log('📱 [Profile] 用户取消了手机号授权')
+      this.pendingAction = null
+    },
     onQuickAccessTap(type) {
+      // 检查是否已登陆
+      if (!authService.isLoggedIn()) {
+        // 未登陆时根据类型设置待执行操作
+        if (type === 'wishlist') {
+          this.pendingAction = { type: 'wishlist' }
+        } else if (type === 'addresses') {
+          this.pendingAction = { type: 'addresses' }
+        }
+        this.showPhoneAuthModal = true
+        return
+      }
+
+      // 已登陆时直接导航
       if (type === 'wishlist') {
         uni.navigateTo({
           url: '/pages/wishlist/wishlist'
@@ -291,6 +442,14 @@ export default {
       }
     },
     onLegalTap(type) {
+      // 检查是否已登陆（个人信息授权需要登陆）
+      if (type === 'privacy' && !authService.isLoggedIn()) {
+        this.pendingAction = { type: 'authorization' }
+        this.showPhoneAuthModal = true
+        return
+      }
+
+      // 法律条款不需要登陆，直接导航
       if (type === 'terms') {
         uni.navigateTo({
           url: '/pages/legal/legal'
@@ -309,8 +468,9 @@ export default {
         console.error('Failed to save product:', e)
       }
 
+      // 传递产品ID作为URL参数
       uni.navigateTo({
-        url: '/pages/product/detail'
+        url: `/pages/product/detail?id=${item.id}`
       })
     },
     onFavoriteChange({ index, isFavorite }) {
@@ -321,11 +481,37 @@ export default {
         duration: 1000
       })
     },
+    /**
+     * 处理推荐商品收藏时需要授权的情况
+     */
+    onFavoriteNeedAuth({ index, item }) {
+      console.log('❤️ [Profile] 未登陆用户试图收藏商品:', item.name)
+      // 设置待执行操作为收藏，登陆后触发收藏
+      this.pendingAction = { type: 'favorite', index: index }
+      // 显示手机号授权弹窗
+      this.showPhoneAuthModal = true
+    },
     onEditProfile() {
       uni.navigateTo({
         url: '/pages/profile/edit'
       })
     },
+    /**
+     * 处理账户操作（登陆或退出登录）
+     */
+    handleAccountAction() {
+      if (authService.isLoggedIn()) {
+        // 已登陆 - 执行退出登录
+        this.handleLogout()
+      } else {
+        // 未登陆 - 显示手机号授权登陆弹窗
+        this.showPhoneAuthModal = true
+      }
+    },
+
+    /**
+     * 退出登录
+     */
     async handleLogout() {
       // Show confirmation dialog
       uni.showModal({
@@ -344,12 +530,11 @@ export default {
                 duration: 1000
               })
 
-              // Redirect to login page after logout
-              setTimeout(() => {
-                uni.redirectTo({
-                  url: '/pages/auth/login'
-                })
-              }, 1000)
+              // 刷新页面信息：清空用户信息并重新加载推荐商品（移除收藏状态）
+              this.loadUserInfo()
+              this.loadProfileBanners()
+              this.loadRecommendedProducts()
+              console.log('🚪 [Profile] 已退出登录，页面信息已刷新，推荐商品已重新加载')
             } catch (error) {
               console.error('Logout failed:', error)
               uni.showToast({
@@ -635,37 +820,55 @@ export default {
   margin-top: 60rpx;
   margin-bottom: 40rpx;
 
-  .logout-button {
+  .account-button {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12rpx;
     width: 100%;
-    padding: 28rpx 24rpx;
-    background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
-    border: none;
+    padding: 18rpx 0;
     border-radius: 8rpx;
     cursor: pointer;
-    box-shadow: 0 4rpx 12rpx rgba(255, 107, 107, 0.2);
     transition: all 0.3s ease;
 
-    &:active {
-      transform: scale(0.98);
-      box-shadow: 0 2rpx 6rpx rgba(255, 107, 107, 0.15);
-    }
-
-    .logout-icon {
-      display: block;
-      font-size: 32rpx;
-      line-height: 1;
-    }
-
-    .logout-text {
+    .account-text {
       display: block;
       font-size: 28rpx;
-      color: #ffffff;
       font-weight: 500;
       letter-spacing: 1rpx;
+    }
+
+    /* 退出登录模式 - 已登陆，显示退出登录 */
+    &.logout-mode {
+      background: #ffffff;
+      border: 2px solid #d0d0d0;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+
+      .account-text {
+        color: #333333;
+      }
+
+      &:active {
+        background: #f5f5f5;
+        border-color: #b0b0b0;
+        box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.12);
+      }
+    }
+
+    /* 登陆模式 - 未登陆，显示登陆 */
+    &.login-mode {
+      background: #ffffff;
+      border: 2px solid #d0d0d0;
+      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+
+      .account-text {
+        color: #333333;
+      }
+
+      &:active {
+        background: #f5f5f5;
+        border-color: #b0b0b0;
+        box-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.12);
+      }
     }
   }
 }

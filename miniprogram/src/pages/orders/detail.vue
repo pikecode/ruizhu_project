@@ -1,12 +1,6 @@
 <template>
   <view class="page">
-    <!-- 页面头部 -->
-    <view class="header">
-      <view class="header-back" @tap="goBack">
-        <text>← 返回</text>
-      </view>
-      <text class="header-title">订单详情</text>
-    </view>
+  
 
     <!-- 订单状态 -->
     <view class="status-section">
@@ -423,6 +417,7 @@ export default {
       padding: 12rpx;
       background: #f9f9f9;
       border-radius: 8rpx;
+      align-items: flex-start;
 
       .item-image {
         width: 80rpx;
@@ -437,6 +432,7 @@ export default {
         display: flex;
         flex-direction: column;
         gap: 4rpx;
+        min-width: 0;
 
         .item-name {
           display: block;
@@ -445,7 +441,10 @@ export default {
           font-weight: 500;
           overflow: hidden;
           text-overflow: ellipsis;
-          white-space: nowrap;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          word-break: break-word;
         }
 
         .item-specs {
@@ -462,6 +461,7 @@ export default {
         color: #000000;
         min-width: 80rpx;
         text-align: right;
+        flex-shrink: 0;
       }
     }
   }

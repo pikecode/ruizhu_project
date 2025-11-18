@@ -26,6 +26,11 @@ export const ordersService = {
     return api.put(`/admin/orders/${id}`, { status }).then((res) => res.data.data)
   },
 
+  // Update order (admin only)
+  updateOrder: (id: string, payload: Partial<Order>): Promise<Order> => {
+    return api.put(`/admin/orders/${id}`, payload).then((res) => res.data.data)
+  },
+
   // Cancel order (admin only)
   cancelOrder: (id: string): Promise<Order> => {
     return api.put(`/admin/orders/${id}`, { status: 'cancelled' }).then((res) => res.data.data)

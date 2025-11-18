@@ -167,6 +167,7 @@ export interface Order {
   status: OrderStatus
   shippingAddress: Address
   productIds?: string  // 多个产品ID用分号分隔，例如: "1;2;3"
+  trackingNumber?: string  // 快递单号
   createdAt: string
   updatedAt: string
 }

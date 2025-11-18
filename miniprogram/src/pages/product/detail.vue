@@ -186,6 +186,7 @@ import { cartService } from '../../services/cart'
 import { authService } from '../../services/auth'
 import { api } from '../../services/api'
 import { submitConsultation } from '../../services/consultations'
+import { extractErrorType, isInsufficientStockError, isAuthError } from '../../types/error'
 import PhoneAuthModal from '../../components/PhoneAuthModal.vue'
 
 export default {
@@ -418,12 +419,33 @@ export default {
         uni.hideLoading()
         console.error('Failed to add to cart:', error)
 
-        // 检查是否是登录过期错误
-        const errorMsg = error.message || ''
-        if (errorMsg.includes('登录过期') || errorMsg.includes('401')) {
+        // 获取错误信息和错误类型
+        let errorMsg = ''
+        if (error instanceof Error) {
+          errorMsg = error.message || ''
+        } else if (typeof error === 'string') {
+          errorMsg = error
+        } else {
+          errorMsg = JSON.stringify(error)
+        }
+
+        console.log('🛒 [AddToCart] 错误消息:', errorMsg)
+        console.log('🛒 [AddToCart] 错误类型:', extractErrorType(error))
+
+        // 根据错误类型或消息文本判断
+        if (isAuthError(errorMsg)) {
           // 显示手机号授权弹窗
           this.pendingAction = 'addToCart'
           this.showPhoneAuthModal = true
+        } else if (isInsufficientStockError(error, errorMsg)) {
+          // 库存不足错误处理
+          // 如果是新商品加入时库存不足，显示错误提示
+          // 如果是购物车中已有商品，后端已静默处理，不增加数量，前端也不显示错误
+          uni.showToast({
+            title: '库存不足，未能添加',
+            icon: 'none',
+            duration: 1500
+          })
         } else {
           uni.showToast({
             title: errorMsg || '添加失败，请重试',
@@ -431,6 +453,47 @@ export default {
           })
         }
       }
+    },
+
+    /**
+     * 处理库存不足情况的智能提示
+     */
+    handleInsufficientStock(errorMsg) {
+      console.log('📦 [Stock] 库存不足提示:', errorMsg)
+
+      // 首先显示 Toast 提示
+      uni.showToast({
+        title: '库存不足',
+        icon: 'none',
+        duration: 1500
+      })
+
+      // 延迟后显示模态框让用户选择
+      setTimeout(() => {
+        uni.showModal({
+          title: '库存提示',
+          content: errorMsg || '您选择的数量超过可用库存，请调整数量或查看购物车',
+          confirmText: '查看购物车',
+          cancelText: '继续购物',
+          success: (res) => {
+            if (res.confirm) {
+              // 用户选择查看购物车
+              console.log('📦 [Stock] 用户选择查看购物车')
+              uni.switchTab({
+                url: '/pages/cart/cart'
+              })
+            } else {
+              // 用户选择继续购物，保持在当前页面
+              console.log('📦 [Stock] 用户选择继续购物')
+              uni.showToast({
+                title: '您可以调整数量后重试',
+                icon: 'none',
+                duration: 1500
+              })
+            }
+          }
+        })
+      }, 500)
     },
     buyNow() {
       // 检查用户是否已授权
@@ -453,6 +516,7 @@ export default {
         })
 
         // 直接生成订单对象，仅包含当前商品
+        // 库存检查将在后端结算时进行
         const buyNowOrder = {
           items: [
             {
@@ -481,19 +545,10 @@ export default {
       } catch (error) {
         uni.hideLoading()
         console.error('Failed to proceed with purchase:', error)
-
-        // 检查是否是登录过期错误
-        const errorMsg = error.message || ''
-        if (errorMsg.includes('登录过期') || errorMsg.includes('401')) {
-          // 显示手机号授权弹窗
-          this.pendingAction = 'buyNow'
-          this.showPhoneAuthModal = true
-        } else {
-          uni.showToast({
-            title: errorMsg || '操作失败，请重试',
-            icon: 'none'
-          })
-        }
+        uni.showToast({
+          title: '操作失败，请重试',
+          icon: 'none'
+        })
       }
     },
 

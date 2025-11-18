@@ -574,6 +574,9 @@ export class Order {
   @Column({ type: 'timestamp', nullable: true, name: 'shipped_at' })
   shippedAt: Date;
 
+  @Column({ type: 'varchar', length: 100, nullable: true, name: 'tracking_number' })
+  trackingNumber: string;
+
   @Column({ type: 'timestamp', nullable: true, name: 'delivered_at' })
   deliveredAt: Date;
 

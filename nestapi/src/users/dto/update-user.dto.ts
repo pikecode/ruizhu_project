@@ -1,4 +1,4 @@
-import { IsOptional, IsNumber, Min, Max, IsString } from 'class-validator';
+import { IsOptional, IsNumber, Min, Max, IsString, IsIn, IsDateString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class UpdateUserDto {
@@ -9,6 +9,43 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   email?: string;
+
+  @IsOptional()
+  @IsIn(['male', 'female', 'unknown'])
+  gender?: 'male' | 'female' | 'unknown';
+
+  @IsOptional()
+  @IsString()
+  province?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  country?: string;
+
+  @IsOptional()
+  @IsString()
+  district?: string;
+
+  @IsOptional()
+  @IsDateString()
+  birthday?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    // 处理布尔值，支持 1/0, true/false, 'true'/'false' 等形式
+    if (typeof value === 'string') {
+      return value === '1' || value === 'true' || value === 'True';
+    }
+    if (typeof value === 'number') {
+      return value === 1;
+    }
+    return Boolean(value);
+  })
+  isProfileAuthorized?: boolean;
 
   @IsOptional()
   @Transform(({ value }) => {

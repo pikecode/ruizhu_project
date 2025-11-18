@@ -4,6 +4,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter, AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { DataSource } from 'typeorm';
+import { seedRegions } from './database/seeds/regions.seeder';
 
 // Make crypto available globally for @nestjs/schedule compatibility with Node.js
 // Note: In Node.js 22+, crypto is already available globally, so we check first
@@ -13,6 +15,14 @@ if (typeof globalThis.crypto === 'undefined') {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // 初始化地区数据
+  try {
+    const dataSource = app.get(DataSource);
+    await seedRegions(dataSource);
+  } catch (error) {
+    console.error('Failed to seed regions:', error);
+  }
 
   // Set global API prefix (excluding Swagger docs)
   app.setGlobalPrefix('api', { exclude: ['docs', 'docs/json'] });

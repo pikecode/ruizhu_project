@@ -36,6 +36,7 @@ export interface Order {
   paymentStatus: string
   shippingAddress: any
   remark: string | null
+  trackingNumber?: string | null  // 快递单号
   createdAt: string
   updatedAt: string
   items: OrderItem[]

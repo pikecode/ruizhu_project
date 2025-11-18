@@ -22,8 +22,8 @@ const PROD_URL = 'https://yunjie.online/api'
 
 // 根据环境选择 API 地址
 // 修改这里来切换开发/生产环境
-const BASE_URL = PROD_URL  // 生产环境（线上）
-// const BASE_URL = DEV_URL  // 本地开发环境（如需本地调试，注释上一行，取消注释此行）
+// const BASE_URL = PROD_URL  // 生产环境（线上）
+const BASE_URL = PROD_URL  // 本地开发环境（如需本地调试，注释上一行，取消注释此行）
 
 interface RequestOptions {
   method?: string
@@ -87,6 +87,22 @@ export const request = async <T = any>(
           uni.removeStorageSync('user')
           // 抛出错误，让调用方决定如何处理（显示授权弹窗或重定向）
           reject(new Error('登录过期，请重新登录'))
+        } else if (res.statusCode === 422) {
+          // 业务验证失败 (如库存不足)
+          console.error('❌ [API] 422 业务验证失败')
+          console.error('❌ [API] 响应数据:', res.data)
+          // 提取错误类型 - 可能在 res.data 或 res.data.response 中
+          let errorType = res.data?.errorType
+          if (!errorType && res.data?.response) {
+            errorType = res.data.response.errorType
+          }
+          console.error('❌ [API] 错误类型:', errorType)
+          // 抛出错误，携带完整的错误信息和类型供前端使用
+          const error = new Error(res.data?.message || `业务验证失败(${res.statusCode})`)
+          const apiError = error as any
+          apiError.errorType = errorType
+          apiError.statusCode = res.statusCode
+          reject(error)
         } else {
           console.error('❌ [API] 请求失败 - 状态码:', res.statusCode)
           console.error('❌ [API] 响应数据:', res.data)

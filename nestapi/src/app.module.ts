@@ -25,6 +25,7 @@ import { MembershipsModule } from './modules/memberships/memberships.module';
 import { MemberBenefitsModule } from './modules/member-benefits/member-benefits.module';
 import { WishlistsModule } from './modules/wishlists/wishlists.module';
 import { ConsultationsModule } from './modules/consultations/consultations.module';
+import { RegionsModule } from './modules/regions/regions.module';
 import { getDatabaseConfig } from './database/database.config';
 
 @Module({
@@ -63,6 +64,7 @@ import { getDatabaseConfig } from './database/database.config';
     MemberBenefitsModule, // 会员礼遇模块
     WishlistsModule, // 心愿单（收藏）模块
     ConsultationsModule, // 产品咨询模块
+    RegionsModule, // 地区（省、市、区）模块
   ],
   controllers: [AppController],
   providers: [AppService],
