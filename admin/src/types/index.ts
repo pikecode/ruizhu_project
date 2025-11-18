@@ -225,6 +225,36 @@ export interface MemberBenefitListItem extends Omit<MemberBenefit, 'imageKey'> {
   // 列表项特有字段
 }
 
+// Region (Province, City, District)
+export interface Province {
+  id: number
+  name: string
+  code: string
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface City {
+  id: number
+  name: string
+  code: string
+  provinceId: number
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface District {
+  id: number
+  name: string
+  code: string
+  cityId: number
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
 // Pagination
 export interface PaginationParams {
   page: number

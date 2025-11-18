@@ -301,9 +301,30 @@ export class OrdersService {
         where: { orderId: order.id },
       });
 
+    // 为每个订单项加载产品信息（包括图片）
+    const itemsWithProducts = await Promise.all(
+      items.map(async (item) => {
+        const product = await this.productRepository.findOne({
+          where: { id: item.productId },
+        });
+        return {
+          ...item,
+          product: product
+            ? {
+                id: product.id,
+                name: product.name,
+                coverImageUrl: product.coverImageUrl,
+                currentPrice: product.currentPrice,
+                originalPrice: product.originalPrice,
+              }
+            : null,
+        };
+      }),
+    );
+
     return {
       ...order,
-      items,
+      items: itemsWithProducts,
     } as any;
   }
 

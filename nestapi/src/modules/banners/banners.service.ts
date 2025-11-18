@@ -301,13 +301,15 @@ export class BannersService {
     const execAsync = promisify(exec);
 
     try {
-      // 从视频的第2秒截取一帧作为封面
-      // -ss 2: 跳转到2秒
+      // 从视频的第0.5秒截取一帧作为封面（适用于短视频）
+      // -ss 0.5: 跳转到0.5秒
       // -vframes 1: 只提取1帧
       // -q:v 2: 图片质量（1-31，2为高质量）
+      // -pix_fmt yuvj420p: 转换为JPEG兼容的色彩格式
+      // -strict -2: 允许使用实验性的编解码器和格式
 
       await execAsync(
-        `ffmpeg -i "${videoPath}" -ss 2 -vframes 1 -q:v 2 "${outputPath}"`,
+        `ffmpeg -i "${videoPath}" -ss 0.5 -vframes 1 -q:v 2 -pix_fmt yuvj420p -strict -2 "${outputPath}"`,
       );
     } catch (error) {
       throw new BadRequestException(

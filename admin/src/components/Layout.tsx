@@ -97,6 +97,11 @@ export default function Layout({ children }: LayoutProps) {
         label: '👥 消费者用户',
         onClick: () => handleNavigate('/consumer-users'),
       },
+      {
+        key: '/regions',
+        label: '地区管理',
+        onClick: () => handleNavigate('/regions'),
+      },
     ]
 
     // 只有admin角色才能看到Admin用户菜单
