@@ -187,7 +187,7 @@ export interface Address {
   country: string
 }
 
-export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
+export type OrderStatus = 'pending' | 'paid' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
 
 // Auth
 export interface LoginPayload {
