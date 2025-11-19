@@ -363,14 +363,24 @@ export class AuthService {
       console.log('[wechatLoginWithCode] Storing sessionKey for openId:', openId);
 
       try {
-        // 查找或创建用户，并存储 sessionKey
-        await this.usersService.createOrUpdateByPhone(
-          null, // 暂无手机号
-          openId,
-          {
-            sessionKey, // 存储 sessionKey 到数据库
-          }
-        );
+        // 先查找是否存在该 openId 的用户
+        const existingUser = await this.usersService.findByOpenId(openId);
+
+        if (existingUser) {
+          // 用户已存在，更新 sessionKey
+          console.log('[wechatLoginWithCode] User exists, updating sessionKey');
+          await this.usersService.updateSessionKey(existingUser.id, sessionKey);
+        } else {
+          // 用户不存在，创建新用户并存储 sessionKey
+          console.log('[wechatLoginWithCode] Creating new user with sessionKey');
+          await this.usersService.createOrUpdateByPhone(
+            null, // 暂无手机号
+            openId,
+            {
+              sessionKey, // 存储 sessionKey 到数据库
+            }
+          );
+        }
         console.log('[wechatLoginWithCode] SessionKey stored successfully');
       } catch (dbError) {
         console.error('[wechatLoginWithCode] Failed to store sessionKey:', dbError);
