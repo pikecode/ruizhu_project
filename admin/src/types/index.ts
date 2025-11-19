@@ -187,7 +187,7 @@ export interface Address {
   country: string
 }
 
-export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
+export type OrderStatus = 'pending' | 'paid' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
 
 // Auth
 export interface LoginPayload {
@@ -223,6 +223,36 @@ export interface MemberBenefit {
 
 export interface MemberBenefitListItem extends Omit<MemberBenefit, 'imageKey'> {
   // 列表项特有字段
+}
+
+// Region (Province, City, District)
+export interface Province {
+  id: number
+  name: string
+  code: string
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface City {
+  id: number
+  name: string
+  code: string
+  provinceId: number
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface District {
+  id: number
+  name: string
+  code: string
+  cityId: number
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
 }
 
 // Pagination

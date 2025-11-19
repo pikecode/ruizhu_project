@@ -19,6 +19,7 @@ const ConsultationsPage = lazy(() => import('@/pages/Consultations'))
 const MemberBenefitsPage = lazy(() => import('@/pages/MemberBenefits'))
 const UsersPage = lazy(() => import('@/pages/Users'))
 const ConsumerUsersPage = lazy(() => import('@/pages/ConsumerUsers'))
+const RegionsPage = lazy(() => import('@/pages/Regions'))
 const NotFoundPage = lazy(() => import('@/pages/NotFound'))
 
 const withSuspense = (Component: React.LazyExoticComponent<() => JSX.Element>) => (
@@ -91,6 +92,10 @@ export const routes = [
   {
     path: '/consumer-users',
     element: withProtection(ConsumerUsersPage),
+  },
+  {
+    path: '/regions',
+    element: withProtection(RegionsPage),
   },
   {
     path: '/',

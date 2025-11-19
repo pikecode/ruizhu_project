@@ -13,16 +13,15 @@ export interface Consultation {
   userPhone: string
   userEmail: string | null
   color: string | null
+  // 服装相关
+  clothingSize: string | null
   height: string | null
   weight: string | null
   chest: string | null
   waist: string | null
   hip: string | null
+  // 鞋履相关
   shoeSize: string | null
-  ringSize: string | null
-  jewelrySize: string | null
-  jewelryMaterial: string | null
-  perfumePreference: string | null
   remarks: string | null
   status: 'unread' | 'read' | 'processing' | 'completed'
   createdAt: string

@@ -487,12 +487,15 @@ export default function ConsultationsPage() {
                       {selectedConsultation.categoryName}
                     </div>
                   </Col>
-                  <Col xs={24} sm={12}>
-                    <div>
-                      <strong>颜色：</strong>
-                      {selectedConsultation.color || '-'}
-                    </div>
-                  </Col>
+                  {/* 珠宝(2)和香水(4)没有颜色字段 */}
+                  {selectedConsultation.categoryId !== 2 && selectedConsultation.categoryId !== 4 && (
+                    <Col xs={24} sm={12}>
+                      <div>
+                        <strong>颜色：</strong>
+                        {selectedConsultation.color || '-'}
+                      </div>
+                    </Col>
+                  )}
                 </Row>
               </div>
 
@@ -501,6 +504,12 @@ export default function ConsultationsPage() {
                 <div style={{ marginBottom: '24px' }}>
                   <h3>服装尺码信息</h3>
                   <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                      <div>
+                        <strong>通用尺码：</strong>
+                        {selectedConsultation.clothingSize || '-'}
+                      </div>
+                    </Col>
                     <Col xs={24} sm={12}>
                       <div>
                         <strong>身高：</strong>
@@ -549,45 +558,6 @@ export default function ConsultationsPage() {
                 </div>
               )}
 
-              {selectedConsultation.categoryId === 2 && (
-                <div style={{ marginBottom: '24px' }}>
-                  <h3>珠宝定制信息</h3>
-                  <Row gutter={16}>
-                    <Col xs={24} sm={12}>
-                      <div>
-                        <strong>戒指码：</strong>
-                        {selectedConsultation.ringSize || '-'}
-                      </div>
-                    </Col>
-                    <Col xs={24} sm={12}>
-                      <div>
-                        <strong>珠宝尺寸（mm）：</strong>
-                        {selectedConsultation.jewelrySize || '-'}
-                      </div>
-                    </Col>
-                    <Col xs={24}  sm={12}>
-                      <div>
-                        <strong>材质偏好：</strong>
-                        {selectedConsultation.jewelryMaterial || '-'}
-                      </div>
-                    </Col>
-                  </Row>
-                </div>
-              )}
-
-              {selectedConsultation.categoryId === 4 && (
-                <div style={{ marginBottom: '24px' }}>
-                  <h3>香水偏好</h3>
-                  <Row gutter={16}>
-                    <Col xs={24} sm={12}>
-                      <div>
-                        <strong>香调偏好：</strong>
-                        {selectedConsultation.perfumePreference || '-'}
-                      </div>
-                    </Col>
-                  </Row>
-                </div>
-              )}
 
               {/* Remarks */}
               {selectedConsultation.remarks && (

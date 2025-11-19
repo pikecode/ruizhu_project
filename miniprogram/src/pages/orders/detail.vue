@@ -96,21 +96,31 @@
 </template>
 
 <script>
+import ordersService from '../../services/orders'
+
 export default {
   data() {
     return {
       order: {
         orderId: '',
         items: [],
-        address: {},
+        address: {
+          name: '',
+          phone: '',
+          province: '',
+          city: '',
+          district: '',
+          detail: ''
+        },
         subtotal: 0,
         expressPrice: 0,
         discount: 0,
         total: 0,
-        status: 'completed',
-        statusText: '已完成',
+        status: 'pending',
+        statusText: '加载中...',
         createdAt: ''
-      }
+      },
+      isLoading: false
     }
   },
   onLoad(options) {
@@ -119,48 +129,83 @@ export default {
     }
   },
   methods: {
-    loadOrderDetail(orderId) {
+    async loadOrderDetail(orderId) {
       try {
-        const orders = uni.getStorageSync('orderHistory') || []
-        const order = orders.find((o) => o.id === orderId)
+        this.isLoading = true
+        console.log('加载订单详情，订单ID:', orderId)
 
-        if (order) {
-          this.order = order
-        } else {
-          // 模拟数据
+        const orderData = await ordersService.getOrderDetail(orderId)
+
+        if (orderData) {
+          console.log('获取订单详情成功:', orderData)
+
+          // 转换API返回的数据结构以适配前端显示
           this.order = {
-            id: 1,
-            orderId: 'ORD20231025001',
-            items: [
-              {
-                id: 1,
-                name: '【明星同款】Prada Explore 中号Re-Nylon单肩包',
-                color: '黑色',
-                price: '17900',
-                quantity: 1,
-                image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&q=80'
-              }
-            ],
-            address: {
-              name: '张三',
-              phone: '18912345678',
-              province: '广东省',
-              city: '深圳市',
-              district: '福田区',
-              detail: '中心广场写字楼A座2501室'
+            id: orderData.id,
+            orderId: orderData.orderNumber,
+            items: orderData.items ? orderData.items.map(item => ({
+              id: item.id,
+              name: item.product?.name || item.productName || '未知商品',
+              image: item.product?.coverImageUrl || 'https://via.placeholder.com/400x400?text=No+Image',
+              quantity: item.quantity,
+              price: item.priceSnapshot || item.unitPrice || 0, // 保持分为单位，在模板中转换
+              color: '默认'
+            })) : [],
+            address: orderData.shippingAddress ? {
+              name: orderData.shippingAddress.receiverName || '',
+              phone: orderData.shippingAddress.receiverPhone || '',
+              province: orderData.shippingAddress.province || '',
+              city: orderData.shippingAddress.city || '',
+              district: orderData.shippingAddress.district || '',
+              detail: orderData.shippingAddress.addressDetail || ''
+            } : {
+              name: '',
+              phone: '',
+              province: '',
+              city: '',
+              district: '',
+              detail: ''
             },
-            subtotal: 17900,
-            expressPrice: 10,
-            discount: 0,
-            total: 17910,
-            status: 'completed',
-            statusText: '已完成',
-            createdAt: new Date().toISOString()
+            subtotal: orderData.subtotal || orderData.subtotalAmount || 0,
+            expressPrice: orderData.shippingCost || orderData.shippingAmount || 0,
+            discount: orderData.discountAmount || 0,
+            total: orderData.totalAmount || 0,
+            status: orderData.status,
+            statusText: this.getStatusText(orderData.status),
+            trackingNumber: orderData.trackingNumber || null,
+            createdAt: orderData.createdAt
           }
+        } else {
+          uni.showToast({
+            title: '订单不存在',
+            icon: 'none'
+          })
+          setTimeout(() => {
+            uni.navigateBack()
+          }, 1500)
         }
-      } catch (e) {
-        console.error('Failed to load order detail:', e)
+      } catch (error) {
+        console.error('Failed to load order detail:', error)
+        uni.showToast({
+          title: '加载订单详情失败',
+          icon: 'none'
+        })
+      } finally {
+        this.isLoading = false
       }
+    },
+
+    getStatusText(status) {
+      const statusMap = {
+        'pending': '待支付',
+        'paid': '已支付',
+        'shipped': '已发货',
+        'delivered': '已送达',
+        'completed': '已完成',
+        'cancelled': '已取消',
+        'refunded': '已退款'
+      }
+      return statusMap[status] || status
     },
     formatPrice(price) {
       // 处理价格单位转换
