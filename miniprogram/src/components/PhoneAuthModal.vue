@@ -103,7 +103,14 @@ export default defineComponent({
       this.errorMessage = '';
 
       try {
-        // 调用auth service处理授权
+        // ⚠️ 重要：不要在这里调用 wechatLogin()！
+        // 原因：event.detail.encryptedData 是用当前的 sessionKey 加密的
+        // 如果我们在这里调用 wechatLogin() 会生成新的 sessionKey
+        // 新旧 sessionKey 不匹配会导致解密失败
+        //
+        // sessionKey 应该在 App.vue 的 onLaunch 中初始化
+        // 这样可以确保 sessionKey 在用户点击授权按钮之前就已经存在
+        console.log('📱 开始处理手机号授权...');
         const userInfo = await authService.handlePhoneNumberEvent(event);
 
         uni.showToast({

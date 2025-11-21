@@ -290,7 +290,8 @@ export default {
         categoryId: apiProduct.categoryId,
         isNew: apiProduct.isNew || false,
         isFavorite: false,
-        isSold: apiProduct.stockStatus === 'outOfStock' || apiProduct.stockStatus === 'soldOut' || apiProduct.isOutOfStock === 1 || apiProduct.stockQuantity === 0,
+        stockQuantity: apiProduct.stockQuantity || 0,
+        isSold: apiProduct.stockQuantity <= 0,
         colors: defaultColors
       }
     },

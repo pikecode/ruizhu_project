@@ -140,27 +140,58 @@ export class AuthService {
    * @param openId 微信openId
    * @param encryptedPhone 加密的手机号数据
    * @param iv 初始化向量
-   * @param sessionKey 会话密钥
+   * @param sessionKey 会话密钥（可选：如果数据库中不存在，可从请求中接收）
    * @returns JWT token 和用户信息
    */
   async wechatPhoneLogin(
     openId: string,
     encryptedPhone: string,
     iv: string,
-    sessionKey: string,
+    sessionKey?: string, // 可选参数：作为数据库sessionKey的备用方案
   ) {
     try {
       console.log('[phone-login] Starting phone login process', {
         openId: openId.substring(0, 10) + '...',
         encryptedPhoneLength: encryptedPhone?.length,
         ivLength: iv?.length,
-        sessionKeyLength: sessionKey?.length,
+        hasRequestSessionKey: !!sessionKey,
       });
+
+      // 尝试从数据库获取存储的 sessionKey
+      const user = (await this.usersService.findByOpenId(openId)) as any;
+
+      let dbSessionKey: string | null = user?.sessionKey || null;
+      console.log('[phone-login] Database sessionKey status:', {
+        found: !!dbSessionKey,
+        userId: user?.id
+      });
+
+      // 如果数据库中没有 sessionKey，尝试使用请求中提供的 sessionKey（后备方案）
+      let finalSessionKey: string;
+      if (dbSessionKey) {
+        // 优先使用数据库中的 sessionKey
+        finalSessionKey = dbSessionKey;
+        console.log('[phone-login] Using sessionKey from database');
+      } else if (sessionKey) {
+        // 后备方案：使用请求中提供的 sessionKey
+        finalSessionKey = sessionKey;
+        console.log('[phone-login] Using sessionKey from request body (fallback)');
+      } else {
+        // 两种方式都没有 sessionKey
+        console.error('[phone-login] No sessionKey available', {
+          openId: openId.substring(0, 10) + '...',
+          userExists: !!user,
+          hasRequestSessionKey: !!sessionKey,
+        });
+        throw new BadRequestException('会话已过期，请先调用微信登录接口获取授权');
+      }
+
+      console.log('[phone-login] Using sessionKey for decryption');
 
       // 解密手机号数据
       let phoneData;
       try {
-        phoneData = this.decryptWechatData(encryptedPhone, iv, sessionKey);
+        phoneData = this.decryptWechatData(encryptedPhone, iv, finalSessionKey);
         console.log('[phone-login] Decryption successful', { phoneNumber: phoneData?.phoneNumber });
       } catch (decryptError) {
         console.error('[phone-login] Decryption failed', {
@@ -178,32 +209,32 @@ export class AuthService {
       console.log('[phone-login] Phone number extracted:', phone);
 
       // 查找或创建用户
-      let user = await this.usersService.findByPhone(phone);
-      console.log('[phone-login] User lookup result:', { userId: user?.id, exists: !!user });
+      let phoneUser = await this.usersService.findByPhone(phone);
+      console.log('[phone-login] User lookup result:', { userId: phoneUser?.id, exists: !!phoneUser });
 
-      if (user) {
+      if (phoneUser) {
         // 更新现有用户的openId和授权状态
-        if (user.openId !== openId) {
-          user = await this.usersService.bindPhoneToOpenId(openId, phone);
-          console.log('[phone-login] Bound phone to OpenId:', { userId: user.id });
+        if (phoneUser.openId !== openId) {
+          phoneUser = await this.usersService.bindPhoneToOpenId(openId, phone);
+          console.log('[phone-login] Bound phone to OpenId:', { userId: phoneUser.id });
         }
       } else {
         // 创建新用户
-        user = await this.usersService.createOrUpdateByPhone(phone, openId, {
+        phoneUser = await this.usersService.createOrUpdateByPhone(phone, openId, {
           nickname: phoneData.name || `用户_${phone.slice(-4)}`,
         });
-        console.log('[phone-login] New user created:', { userId: user.id });
+        console.log('[phone-login] New user created:', { userId: phoneUser.id });
       }
 
       // 更新最后登录信息
       // 注意：这里需要客户端提供IP，或者在中间件中获取
       const ip = '0.0.0.0'; // 实际应该从请求中获取
-      await this.usersService.updateLastLogin(user.id, ip);
+      await this.usersService.updateLastLogin(phoneUser.id, ip);
       console.log('[phone-login] Last login updated');
 
       // 生成 JWT token
-      const payload = { phone: user.phone, sub: user.id, openId: user.openId };
-      const { password, ...userWithoutPassword } = user;
+      const payload = { phone: phoneUser.phone, sub: phoneUser.id, openId: phoneUser.openId };
+      const { password, ...userWithoutPassword } = phoneUser;
 
       const token = this.jwtService.sign(payload);
       console.log('[phone-login] JWT token generated successfully');
@@ -280,6 +311,12 @@ export class AuthService {
    * 微信登录 - 使用授权码获取 openId 和 sessionKey
    * 小程序调用 uni.login() 后获取 code，前端通过此接口获取 openId 和 sessionKey
    *
+   * 完整流程：
+   * 1. 调用微信 jscode2session 接口获取 openId 和 sessionKey
+   * 2. 在数据库中创建或更新用户，存储 sessionKey
+   * 3. 返回 openId 和 sessionKey 给前端
+   * 4. 前端后续使用这些信息调用手机号登录接口
+   *
    * @param code 微信授权码（来自 uni.login()）
    * @returns { openId, sessionKey }
    */
@@ -318,9 +355,42 @@ export class AuthService {
         throw new BadRequestException('微信返回数据不完整');
       }
 
+      const openId = data.openid;
+      const sessionKey = data.session_key;
+
+      // 关键步骤：将 sessionKey 存储到数据库
+      // 这确保后续手机号登录时可以从数据库获取 sessionKey 进行解密
+      console.log('[wechatLoginWithCode] Storing sessionKey for openId:', openId);
+
+      try {
+        // 先查找是否存在该 openId 的用户
+        const existingUser = await this.usersService.findByOpenId(openId);
+
+        if (existingUser) {
+          // 用户已存在，更新 sessionKey
+          console.log('[wechatLoginWithCode] User exists, updating sessionKey');
+          await this.usersService.updateSessionKey(existingUser.id, sessionKey);
+        } else {
+          // 用户不存在，创建新用户并存储 sessionKey
+          console.log('[wechatLoginWithCode] Creating new user with sessionKey');
+          await this.usersService.createOrUpdateByPhone(
+            null, // 暂无手机号
+            openId,
+            {
+              sessionKey, // 存储 sessionKey 到数据库
+            }
+          );
+        }
+        console.log('[wechatLoginWithCode] SessionKey stored successfully');
+      } catch (dbError) {
+        console.error('[wechatLoginWithCode] Failed to store sessionKey:', dbError);
+        // 即使存储失败也继续返回，不阻止前端流程
+        console.warn('[wechatLoginWithCode] Continuing despite database storage error');
+      }
+
       return {
-        openId: data.openid,
-        sessionKey: data.session_key,
+        openId,
+        sessionKey,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {

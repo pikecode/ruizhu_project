@@ -297,4 +297,12 @@ export class UsersService {
     const { password, ...result } = updatedUser;
     return result;
   }
+
+  /**
+   * 更新用户的 sessionKey
+   * 用于微信登录时更新 sessionKey
+   */
+  async updateSessionKey(userId: number, sessionKey: string): Promise<void> {
+    await this.usersRepository.update(userId, { sessionKey });
+  }
 }

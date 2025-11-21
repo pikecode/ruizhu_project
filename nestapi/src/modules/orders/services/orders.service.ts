@@ -230,47 +230,9 @@ export class OrdersService {
       throw itemsError;
     }
 
-    // 扣减库存：订单创建时立即扣减库存（使用乐观锁防止超卖）
-    // 乐观锁原理: 通过version字段版本检查，确保并发时库存正确扣减
-    for (const item of createDto.items) {
-      const product = await this.getProductById(item.productId);
-
-      // 使用乐观锁更新库存：只有当version匹配时才成功更新
-      // 如果其他请求并发修改了该产品，这里会失败，需要重试
-      // 注意: version字段暂未在数据库中实现，使用简单的ID匹配更新
-      const updateResult = await this.productRepository.update(
-        {
-          id: product.id,
-          // version: product.version  // 乐观锁条件（已禁用，等待数据库迁移）
-        },
-        {
-          stockQuantity: product.stockQuantity - item.quantity,
-          // 使用 () => '...' 语法执行数据库函数来递增版本
-          // version: () => 'version + 1',  // （已禁用，等待数据库迁移）
-          // 动态计算库存状态
-          stockStatus:
-            product.stockQuantity - item.quantity <= 0
-              ? 'soldOut'
-              : product.stockQuantity - item.quantity <= product.lowStockThreshold
-              ? 'outOfStock'
-              : 'normal',
-          isSoldOut:
-            product.stockQuantity - item.quantity <= 0 ? true : false,
-          isOutOfStock:
-            product.stockQuantity - item.quantity > 0 &&
-            product.stockQuantity - item.quantity <= product.lowStockThreshold
-              ? true
-              : false,
-        },
-      );
-
-      // 检查是否成功更新（乐观锁冲突检测）
-      if (updateResult.affected === 0) {
-        throw new BadRequestException(
-          `产品 ${product.name} 库存已被其他订单占用，请重试。(乐观锁冲突)`,
-        );
-      }
-    }
+    // 注意：订单创建时不扣减库存，只在支付成功后扣减
+    // 这样可以防止用户下单后不支付导致库存被占用
+    // 库存扣减逻辑已移至 markOrderAsPaidByOutTradeNo 方法中
 
     // 返回订单，同时包含订单项信息
     return {
@@ -625,6 +587,56 @@ export class OrdersService {
     const savedOrder = await this.orderRepository.save(order);
     this.logger.log(`[markOrderAsPaidByOutTradeNo] 订单已成功保存，orderId=${orderId}, status=${savedOrder.status}, paidAt=${savedOrder.paidAt}`);
 
+    // 支付成功后扣减库存（使用乐观锁防止超卖）
+    this.logger.log(`[markOrderAsPaidByOutTradeNo] 开始扣减库存，orderId=${orderId}`);
+    const orderItems = await this.dataSource.getRepository(OrderItem).find({
+      where: { orderId: orderId },
+    });
+
+    for (const item of orderItems) {
+      const product = await this.getProductById(item.productId);
+      this.logger.log(`[markOrderAsPaidByOutTradeNo] 扣减库存 - 产品ID: ${item.productId}, 当前库存: ${product.stockQuantity}, 扣减数量: ${item.quantity}`);
+
+      // 检查库存是否足够
+      if (product.stockQuantity < item.quantity) {
+        this.logger.error(`[markOrderAsPaidByOutTradeNo] 库存不足 - 产品ID: ${item.productId}, 需要: ${item.quantity}, 剩余: ${product.stockQuantity}`);
+        throw new BadRequestException(
+          `产品 ${product.name} 库存不足，无法完成支付`,
+        );
+      }
+
+      // 扣减库存
+      const updateResult = await this.productRepository.update(
+        { id: product.id },
+        {
+          stockQuantity: product.stockQuantity - item.quantity,
+          stockStatus:
+            product.stockQuantity - item.quantity <= 0
+              ? 'soldOut'
+              : product.stockQuantity - item.quantity <= product.lowStockThreshold
+              ? 'outOfStock'
+              : 'normal',
+          isSoldOut:
+            product.stockQuantity - item.quantity <= 0 ? true : false,
+          isOutOfStock:
+            product.stockQuantity - item.quantity > 0 &&
+            product.stockQuantity - item.quantity <= product.lowStockThreshold
+              ? true
+              : false,
+        },
+      );
+
+      if (updateResult.affected === 0) {
+        this.logger.error(`[markOrderAsPaidByOutTradeNo] 更新库存失败 - 产品ID: ${item.productId}`);
+        throw new BadRequestException(
+          `产品 ${product.name} 库存更新失败，请联系客服`,
+        );
+      }
+
+      this.logger.log(`[markOrderAsPaidByOutTradeNo] 库存扣减成功 - 产品ID: ${item.productId}, 新库存: ${product.stockQuantity - item.quantity}`);
+    }
+
+    this.logger.log(`[markOrderAsPaidByOutTradeNo] 所有库存扣减完成，orderId=${orderId}`);
     return savedOrder;
   }
 

@@ -197,38 +197,32 @@ export const authService = {
    *
    * @param forceRefresh 是否强制刷新sessionKey（手机号授权时需要新的sessionKey）
    */
-  async wechatLogin(forceRefresh: boolean = false): Promise<{ openId: string; sessionKey: string }> {
+  async wechatLogin(forceRefresh: boolean = false): Promise<{ openId: string }> {
     return new Promise((resolve, reject) => {
-      // 首先尝试获取存储的信息
-      const storedOpenId = uni.getStorageSync('openId')
-      const storedSessionKey = uni.getStorageSync('sessionKey')
+      // ⚠️ 重要改动：不再检查缓存的 openId
+      // 原因：即使有缓存的 openId，也需要调用后端API确保 sessionKey 被存储到数据库
+      // sessionKey 会过期，每次应用启动时都应该重新获取并存储最新的 sessionKey
 
-      // 如果存在缓存且不需要强制刷新，直接返回缓存
-      if (storedOpenId && storedSessionKey && !forceRefresh) {
-        resolve({ openId: storedOpenId, sessionKey: storedSessionKey })
-        return
-      }
-
-      // 如果没有存储或需要强制刷新，调用微信登录
+      // 调用微信登录获取最新的 code
       uni.login({
         provider: 'weixin',
         success: (loginRes: any) => {
           if (loginRes.code) {
-            // 调用后端接口获取 openId 和 sessionKey
+            // 调用后端接口获取 openId（不再请求 sessionKey）
+            // ⚠️ 安全提示：sessionKey 应该只在后端保存，不发送给客户端
             api
               .post<{
                 openId: string
-                sessionKey: string
-              }>('/auth/wechat/login-code', {
+              }>('/auth/wechat/login-with-code', {
                 code: loginRes.code
               })
               .then((response) => {
-                const { openId, sessionKey } = response
-                // 存储 openId 和 sessionKey
+                const { openId } = response
+                // 只存储 openId
                 uni.setStorageSync('openId', openId)
-                uni.setStorageSync('sessionKey', sessionKey)
-                console.log('✅ 微信登录成功，获得新的 sessionKey')
-                resolve({ openId, sessionKey })
+                console.log('✅ 微信登录成功，openId:', openId)
+                console.log('⚠️ 注意：sessionKey 不会在客户端保存，手机号解密将由后端完成')
+                resolve({ openId })
               })
               .catch((error) => {
                 reject(new Error('微信登录失败: ' + error.message))
@@ -247,6 +241,12 @@ export const authService = {
   /**
    * 处理微信手机号授权事件
    * 获取用户授权的手机号并进行登录/注册
+   *
+   * ⚠️ 安全提示：
+   * - 不再在前端请求或存储 sessionKey
+   * - 前端只存储 openId
+   * - 加密的手机号数据发送给后端，由后端使用其存储的 sessionKey 进行解密
+   * - 这样可以防止 sessionKey 在网络中传输，保证安全性
    */
   async handlePhoneNumberEvent(event: any): Promise<User> {
     // 获取手机号加密数据
@@ -262,29 +262,31 @@ export const authService = {
     }
 
     try {
-      // 注意：WeChat sessionKey 有有效期（通常30分钟）
-      // 我们需要在手机号授权前重新获取新的 sessionKey 以确保有效
-      // 强制刷新 sessionKey，不使用缓存中可能过期的 sessionKey
-      // 这是 WeChat 手机号授权的关键要求
+      console.log('📱 开始微信手机号授权流程...')
 
-      // 先清除旧的 sessionKey，确保强制刷新
-      console.log('🧹 清除旧的 sessionKey 缓存，强制重新获取...')
-      uni.removeStorageSync('sessionKey')
-      uni.removeStorageSync('openId')
+      // 获取已存储的 openId（⚠️ 关键：不能刷新 sessionKey！）
+      // 重要说明：
+      // 1. encryptedData 是用当前的 sessionKey 加密的
+      // 2. 如果此时调用 wechatLogin(true) 刷新，会生成新的 sessionKey
+      // 3. 用新的 sessionKey 解密旧的 encryptedData 必然失败
+      // 4. 正确做法：使用已存储的 openId，后端用已存储的 sessionKey 解密
+      const openId = uni.getStorageSync('openId')
 
-      const loginInfo = await this.wechatLogin(true) // forceRefresh = true
-      const openId = loginInfo.openId
-      const sessionKey = loginInfo.sessionKey
+      if (!openId) {
+        throw new Error('请先完成微信登录')
+      }
 
-      console.log('🔄 已获取新的 sessionKey 用于手机号解密')
+      console.log('✓ 已获取 openId:', openId.substring(0, 10) + '...')
+      console.log('📤 发送加密手机号数据给后端进行解密...')
 
-      console.log('📱 调用 /auth/wechat/phone-login 接口...')
       // 调用后端接口进行手机号登录/注册
+      // ⚠️ 安全：只发送 openId 和加密数据，不发送 sessionKey
+      // 后端会使用其自己存储的 sessionKey 进行解密
       const response = await api.post<AuthResponse>('/auth/wechat/phone-login', {
         openId,
         encryptedPhone: detail.encryptedData,
-        iv: detail.iv,
-        sessionKey
+        iv: detail.iv
+        // ⚠️ sessionKey 不发送 - 后端使用其自己存储的 sessionKey 进行解密
       })
 
       console.log('✅ API 响应:', {
