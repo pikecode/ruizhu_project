@@ -290,7 +290,8 @@ export default {
             isSaleOn: product.isSaleOn,
             imageCount: 1, // RecommendSection组件需要此字段
             isFavorite: false, // 初始化收藏状态
-            isSold: product.stockStatus === 'outOfStock' || product.stockStatus === 'soldOut' || product.isOutOfStock === 1 || product.stockQuantity === 0
+            stockQuantity: product.stockQuantity || 0,
+            isSold: product.stockQuantity <= 0
           }))
 
           console.log('✅ [Profile] 映射完成，推荐商品数量:', this.recommendProducts.length)

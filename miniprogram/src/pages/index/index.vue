@@ -400,7 +400,8 @@ export default {
               cn: product.subtitle || '\u00A0', // 如果没有副标题，使用不换行空格占位
               price: product.currentPrice ? (product.currentPrice / 100).toFixed(2) : '0.00',
               image: product.coverImageUrl || '',
-              isSold: product.stockStatus === 'outOfStock' || product.stockStatus === 'soldOut' || product.isOutOfStock === 1 || product.stockQuantity === 0
+              stockQuantity: product.stockQuantity || 0,
+              isSold: product.stockQuantity <= 0
             }))
 
             console.log('货架商品加载成功:', this.shelfProducts)
@@ -431,7 +432,8 @@ export default {
             category: product.subtitle || '珠宝',
             price: product.currentPrice ? (product.currentPrice / 100).toFixed(2) : '0.00',
             image: product.coverImageUrl || '',
-            isSold: product.stockStatus === 'outOfStock' || product.stockStatus === 'soldOut' || product.isOutOfStock === 1 || product.stockQuantity === 0
+            stockQuantity: product.stockQuantity || 0,
+            isSold: product.stockQuantity <= 0
           }))
 
           console.log('珠宝商品加载成功:', this.jewelryProducts)
@@ -488,7 +490,8 @@ export default {
             name: product.name,
             price: product.currentPrice ? (product.currentPrice / 100).toFixed(2) : '0.00',
             image: product.coverImageUrl || '',
-            isSold: product.stockStatus === 'outOfStock' || product.stockStatus === 'soldOut' || product.isOutOfStock === 1 || product.stockQuantity === 0
+            stockQuantity: product.stockQuantity || 0,
+            isSold: product.stockQuantity <= 0
           }))
 
           console.log('推荐商品加载成功:', this.recommendProducts)

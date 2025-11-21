@@ -22,7 +22,7 @@
       </view>
       <view class="info-row">
         <text class="info-label">订单状态</text>
-        <text class="info-value status-waiting">{{ order.status }}</text>
+        <text class="info-value status-waiting">{{ getStatusText(order.status) }}</text>
       </view>
       <view class="info-row">
         <text class="info-label">下单时间</text>
@@ -88,7 +88,7 @@
         <text class="fee-value">¥{{ calculateSubtotal() }}</text>
       </view>
       <view v-if="userDiscount < 1.0" class="fee-row discount">
-        <text class="fee-label">VIP折扣 ({{ Math.round((1 - userDiscount) * 100) }}%)</text>
+        <text class="fee-label">VIP折扣 ({{ (userDiscount * 100).toFixed(0) }}%)</text>
         <text class="fee-value">-¥{{ calculateDiscountAmount() }}</text>
       </view>
       <view class="fee-row total">
@@ -284,6 +284,17 @@ export default {
       const hours = String(date.getHours()).padStart(2, '0')
       const minutes = String(date.getMinutes()).padStart(2, '0')
       return `${year}-${month}-${day} ${hours}:${minutes}`
+    },
+    getStatusText(status) {
+      const statusMap = {
+        'pending': '待支付',
+        'paid': '已支付',
+        'confirmed': '已确认',
+        'shipped': '已发货',
+        'delivered': '已送达',
+        'cancelled': '已取消'
+      }
+      return statusMap[status] || status
     },
     copyOrderId() {
       uni.setClipboardData({

@@ -213,7 +213,8 @@ export default {
             isSaleOn: product.isSaleOn,
             imageCount: 1, // RecommendSection组件需要此字段
             isFavorite: false, // 初始化收藏状态
-            isSold: product.stockStatus === 'outOfStock' || product.stockStatus === 'soldOut' || product.isOutOfStock === 1 || product.stockQuantity === 0
+            stockQuantity: product.stockQuantity || 0,
+            isSold: product.stockQuantity <= 0
           }))
 
           // 加载推荐商品的收藏状态

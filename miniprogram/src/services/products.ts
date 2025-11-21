@@ -85,7 +85,8 @@ function mapProductToFrontend(backendProduct: ProductListItem, categoryName: str
     price: formatPrice(backendProduct.currentPrice),
     image: backendProduct.coverImageUrl || '',
     isNew: backendProduct.isNew,
-    isSold: backendProduct.stockStatus === 'outOfStock' || backendProduct.stockStatus === 'soldOut'
+    stockQuantity: backendProduct.stockQuantity || 0,
+    isSold: backendProduct.stockQuantity <= 0
   }
 }
 

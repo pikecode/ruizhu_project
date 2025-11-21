@@ -62,20 +62,33 @@
         <text>确认订单</text>
       </view>
     </view>
+
+    <!-- 手机授权弹窗 -->
+    <PhoneAuthModal
+      :visible="showPhoneAuthModal"
+      @close="showPhoneAuthModal = false"
+      :onSuccess="handleAuthSuccess"
+      :onCancel="handleAuthCancel"
+    />
   </view>
 </template>
 
 <script>
 import ordersService from '../../services/orders'
 import { api } from '../../services/api'
+import PhoneAuthModal from '../../components/PhoneAuthModal.vue'
 
 export default {
+  components: {
+    PhoneAuthModal
+  },
   data() {
     return {
       cartItems: [],
       selectedAddress: null,
       userDiscount: 1.0, // 用户VIP折扣倍数，默认1.0（无折扣）
-      eventChannel: null // 存储 eventChannel 引用，便于管理监听
+      eventChannel: null, // 存储 eventChannel 引用，便于管理监听
+      showPhoneAuthModal: false // 控制手机授权弹窗显示
     }
   },
   computed: {
@@ -107,9 +120,9 @@ export default {
       return (discountedInFen / 100).toFixed(2)
     }
   },
-  onLoad() {
+  async onLoad() {
     this.loadCartItems()
-    this.loadUserDiscount()
+    await this.loadUserDiscount()
   },
   onShow() {
     // 页面每次显示时，检查是否有从地址页面返回的地址数据
@@ -142,18 +155,41 @@ export default {
         this.cartItems = []
       }
     },
-    loadUserDiscount() {
+    async loadUserDiscount() {
       try {
-        // 从本地存储获取用户信息中的折扣
+        // 从本地存储获取用户信息
         const userInfo = uni.getStorageSync('userInfo')
-        if (userInfo && userInfo.discount) {
-          const discount = parseFloat(userInfo.discount)
-          if (discount > 0 && discount <= 1.0) {
-            this.userDiscount = discount
-            console.log('💳 [Checkout] 用户VIP折扣已加载:', this.userDiscount)
-            return
+
+        // 如果有用户ID，从后端获取最新折扣信息
+        if (userInfo && userInfo.id) {
+          try {
+            console.log('💳 [Checkout] 从后端获取最新用户折扣信息...')
+            const response = await api.get(`/users/${userInfo.id}`)
+
+            if (response && response.discount !== undefined && response.discount !== null) {
+              const discount = parseFloat(response.discount)
+              if (discount > 0 && discount <= 1.0) {
+                this.userDiscount = discount
+                console.log('💳 [Checkout] 用户VIP折扣已加载（实时）:', this.userDiscount)
+                // 同时更新本地缓存
+                uni.setStorageSync('userInfo', response)
+                return
+              }
+            }
+          } catch (error) {
+            console.warn('⚠️ [Checkout] 获取最新折扣失败，使用本地缓存:', error)
+            // 如果API调用失败，降级使用本地缓存
+            if (userInfo.discount) {
+              const discount = parseFloat(userInfo.discount)
+              if (discount > 0 && discount <= 1.0) {
+                this.userDiscount = discount
+                console.log('💳 [Checkout] 用户VIP折扣已加载（缓存）:', this.userDiscount)
+                return
+              }
+            }
           }
         }
+
         // 没有找到或无效，使用默认值
         this.userDiscount = 1.0
         console.log('💳 [Checkout] 使用默认折扣倍数: 1.0（无折扣）')
@@ -290,7 +326,7 @@ export default {
             if (response) {
               freshUserData = response
 
-              if (response.discount) {
+              if (response.discount !== undefined && response.discount !== null) {
                 freshUserDiscount = parseFloat(response.discount)
                 console.log('💳 [Checkout] 从后端获取的用户折扣:', freshUserDiscount, '(类型:', typeof response.discount, ')')
 
@@ -300,14 +336,28 @@ export default {
                   freshUserDiscount = 1.0
                 }
               } else {
-                console.warn('⚠️ [Checkout] 后端返回的用户数据中没有 discount 字段')
+                console.warn('⚠️ [Checkout] 后端返回的用户数据中没有 discount 字段，使用默认值')
+                freshUserDiscount = 1.0
               }
+            } else {
+              throw new Error('后端未返回用户数据')
             }
           } catch (error) {
-            console.warn('⚠️ [Checkout] 获取用户信息失败，使用缓存值:', error)
-            // 失败时使用缓存的折扣值
-            freshUserDiscount = this.userDiscount
+            console.error('❌ [Checkout] 获取用户信息失败:', error)
+            uni.hideLoading()
+            uni.showModal({
+              title: '提示',
+              content: '无法获取用户折扣信息，请稍后重试',
+              showCancel: false
+            })
+            return
           }
+        } else {
+          console.error('❌ [Checkout] 用户未登录或用户ID不存在')
+          uni.hideLoading()
+          // 显示手机授权弹窗
+          this.showPhoneAuthModal = true
+          return
         }
 
         // 计算订单总金额（以分为单位）
@@ -464,6 +514,60 @@ export default {
           icon: 'none'
         })
       }
+    },
+
+    // 手机授权成功回调
+    async handleAuthSuccess() {
+      console.log('✅ [Checkout] 手机授权成功，重新尝试提交订单')
+      // 关闭弹窗
+      this.showPhoneAuthModal = false
+
+      // ⚠️ 重要：手机授权成功后，用户信息被保存到 'user' 键（JSON字符串）
+      // 需要同步到 'userInfo' 键，并从后端获取最新的折扣信息
+      try {
+        const userStr = uni.getStorageSync('user')
+        if (userStr) {
+          const user = JSON.parse(userStr)
+
+          // 从后端获取最新的用户信息（包括最新的折扣）
+          if (user.id) {
+            console.log('💳 [Checkout] 从后端获取最新用户信息和折扣...')
+            try {
+              const freshUserData = await api.get(`/users/${user.id}`)
+              if (freshUserData) {
+                console.log('💳 [Checkout] 获取到最新用户数据:', freshUserData)
+                // 同步到 userInfo，确保使用最新的折扣
+                uni.setStorageSync('userInfo', freshUserData)
+                console.log('✅ [Checkout] 已同步最新用户信息到 userInfo，折扣:', freshUserData.discount)
+              }
+            } catch (error) {
+              console.error('❌ [Checkout] 获取最新用户信息失败，使用授权返回的数据:', error)
+              // 如果获取失败，至少使用授权返回的用户信息
+              uni.setStorageSync('userInfo', user)
+            }
+          } else {
+            uni.setStorageSync('userInfo', user)
+          }
+        }
+      } catch (e) {
+        console.error('❌ [Checkout] 同步用户信息失败:', e)
+      }
+
+      // 重新加载用户折扣信息
+      this.loadUserDiscount()
+      // 重新尝试确认订单
+      this.confirmOrder()
+    },
+
+    // 手机授权取消回调
+    handleAuthCancel() {
+      console.log('⚠️ [Checkout] 用户取消手机授权')
+      this.showPhoneAuthModal = false
+      uni.showToast({
+        title: '需要登录后才能下单',
+        icon: 'none',
+        duration: 2000
+      })
     }
   }
 }
