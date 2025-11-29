@@ -1,5 +1,5 @@
 <template>
-  <view class="recommend-section">
+  <view class="recommend-section" v-if="items.length > 0">
     <text class="recommend-title">{{ title }}</text>
     <view class="recommend-grid" :class="{ 'columns-3': columns === 3 }">
       <view
