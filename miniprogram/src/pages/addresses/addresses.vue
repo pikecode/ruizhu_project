@@ -97,11 +97,12 @@ export default {
           // 提取 addresses 数组（后端返回 { addresses, total, page, totalPages } 或直接是数组）
           let addressList = Array.isArray(response) ? response : response.addresses || []
 
-          // 字段映射：后端返回 receiverName/receiverPhone，前端期望 name/phone
+          // 字段映射：后端返回 receiverName/receiverPhone/addressDetail，前端期望 name/phone/detail
           this.addresses = addressList.map(addr => ({
             ...addr,
             name: addr.receiverName || addr.name,
-            phone: addr.receiverPhone || addr.phone
+            phone: addr.receiverPhone || addr.phone,
+            detail: addr.addressDetail || addr.detail || ''
           }))
         } else {
           console.warn('获取地址列表失败')

@@ -18,7 +18,10 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "migration:run": "node scripts/run-migration.js"
+    "migration:run": "node scripts/run-migration.js",
+    "import-regions": "ts-node -r tsconfig-paths/register src/scripts/import-regions.ts",
+    "generate-regions-sql": "ts-node -r tsconfig-paths/register src/scripts/generate-regions-sql.ts",
+    "execute-regions-sql": "ts-node -r tsconfig-paths/register src/scripts/execute-regions-sql.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

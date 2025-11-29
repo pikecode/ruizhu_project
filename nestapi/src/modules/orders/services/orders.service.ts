@@ -159,6 +159,9 @@ export class OrdersService {
       orderNo: this.generateOrderNumber(),
       // 🔴 重要: 保存完整地址信息到shippingAddress JSON字段，而不是addressId
       ...(shippingAddress && { shippingAddress }),
+      // 从地址信息中提取收货人名字和电话
+      ...(shippingAddress && { receiverName: shippingAddress.receiverName }),
+      ...(shippingAddress && { receiverPhone: shippingAddress.receiverPhone }),
       subtotal: createDto.totalAmount,  // Items total (in cents)
       shippingCost: createDto.shippingAmount || 0,  // Shipping cost (in cents)
       discountAmount: createDto.discountAmount || 0,  // Additional discounts (in cents)
@@ -185,7 +188,7 @@ export class OrdersService {
             );
           }
 
-          // 先构造 selectedAttributes，包含 productType 和 discount
+          // 先构造 selectedAttributes，包含 productType、discount 和产品图片等信息
           const selectedAttributes: Record<string, any> = item.selectedAttributes || {};
           if (item.productType) {
             selectedAttributes.productType = item.productType;
@@ -194,9 +197,29 @@ export class OrdersService {
             selectedAttributes.discount = item.discount;
           }
 
+          // 保存产品的图片URL：优先使用 images 数组中的图片，其次使用 coverImageUrl
+          if (product.images && product.images.length > 0) {
+            // 优先获取 cover 类型的图片，如果没有则取第一张
+            const coverImage = product.images.find((img: any) => img.imageType === 'cover') || product.images[0];
+            if (coverImage && coverImage.imageUrl) {
+              selectedAttributes.coverImageUrl = coverImage.imageUrl;
+            }
+          } else if (product.coverImageUrl) {
+            // 如果没有 images，使用缓存字段
+            selectedAttributes.coverImageUrl = product.coverImageUrl;
+          }
+
+          // 保存产品的详细信息（分类、描述等）
+          if (product.category) {
+            selectedAttributes.category = product.category;
+          }
+          if (product.description) {
+            selectedAttributes.description = product.description;
+          }
+
           console.log(`[OrdersService] 创建订单项 - productId: ${item.productId}, selectedAttributes:`, selectedAttributes);
 
-          // 创建订单项记录（关键字段包括产品类型和折扣）
+          // 创建订单项记录（关键字段包括产品类型、折扣和产品图片）
           const orderItemData = {
             orderId: savedOrder.id,
             productId: item.productId,
@@ -263,12 +286,10 @@ export class OrdersService {
         where: { orderId: order.id },
       });
 
-    // 为每个订单项加载产品信息（包括图片）
+    // 为每个订单项加载产品信息（包括图片）- 与 admin 端逻辑一致
     const itemsWithProducts = await Promise.all(
       items.map(async (item) => {
-        const product = await this.productRepository.findOne({
-          where: { id: item.productId },
-        });
+        const product = await this.getProductById(item.productId);
         return {
           ...item,
           product: product
@@ -727,7 +748,7 @@ export class OrdersService {
   }
 
   /**
-   * Admin: Get all orders with pagination (includes user information)
+   * Admin: Get all orders with pagination (includes user and items information)
    */
   async getAllOrders(
     page: number = 1,
@@ -747,8 +768,65 @@ export class OrdersService {
       order: { createdAt: 'DESC' },
     });
 
+    // 为每个订单加载订单项和产品信息
+    const enrichedOrders = await Promise.all(
+      orders.map(async (order) => {
+        // 获取订单项
+        const items = await this.dataSource
+          .getRepository(OrderItem)
+          .find({
+            where: { orderId: order.id },
+          });
+
+        // 为每个订单项加载产品信息
+        const itemsWithProducts = await Promise.all(
+          items.map(async (item) => {
+            try {
+              const product = await this.getProductById(item.productId);
+
+              // 确保 selectedAttributes 存在
+              if (!item.selectedAttributes) {
+                item.selectedAttributes = {};
+              }
+
+              // 补全产品图片和其他信息
+              if (product) {
+                // 使用产品的图片信息
+                if (product.images && product.images.length > 0) {
+                  const coverImage = product.images.find((img: any) => img.imageType === 'cover') || product.images[0];
+                  if (coverImage && coverImage.imageUrl) {
+                    item.selectedAttributes.coverImageUrl = coverImage.imageUrl;
+                  }
+                } else if (product.coverImageUrl) {
+                  item.selectedAttributes.coverImageUrl = product.coverImageUrl;
+                }
+
+                // 补全其他产品信息
+                if (!item.selectedAttributes.category && product.category) {
+                  item.selectedAttributes.category = product.category;
+                }
+                if (!item.selectedAttributes.description && product.description) {
+                  item.selectedAttributes.description = product.description;
+                }
+              }
+
+              return item;
+            } catch (error) {
+              console.warn(`Failed to load product ${item.productId} for order item:`, error);
+              return item;
+            }
+          }),
+        );
+
+        return {
+          ...order,
+          items: itemsWithProducts,
+        };
+      }),
+    );
+
     return {
-      items: orders,
+      items: enrichedOrders,
       total,
       page,
       totalPages: Math.ceil(total / limit),
@@ -799,11 +877,11 @@ export class OrdersService {
   }
 
   /**
-   * Admin: Get order by ID (no user check, includes user information)
+   * Admin: Get order by ID (no user check, includes user and items information)
+   * 返回格式与用户端一致：items 中包含完整的 product 对象
    */
   async getOrderById(orderId: number): Promise<Order> {
     const order = await this.orderRepository.findOne({
-      relations: ['user'],
       where: { id: orderId },
     });
 
@@ -811,7 +889,46 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    return order;
+    // 加载用户信息
+    if (order.userId) {
+      const user = await this.userRepository.findOne({
+        where: { id: order.userId },
+      });
+      if (user) {
+        order.user = user;
+      }
+    }
+
+    // 获取订单项，这样前端可以得到完整的订单信息（包括产品类型和折扣）
+    const items = await this.dataSource
+      .getRepository(OrderItem)
+      .find({
+        where: { orderId: order.id },
+      });
+
+    // 为每个订单项加载产品信息（包括图片）- 与用户端逻辑一致
+    const itemsWithProducts = await Promise.all(
+      items.map(async (item) => {
+        const product = await this.getProductById(item.productId);
+        return {
+          ...item,
+          product: product
+            ? {
+                id: product.id,
+                name: product.name,
+                coverImageUrl: product.coverImageUrl,
+                currentPrice: product.currentPrice,
+                originalPrice: product.originalPrice,
+              }
+            : null,
+        };
+      }),
+    );
+
+    return {
+      ...order,
+      items: itemsWithProducts,
+    } as any;
   }
 
   /**
@@ -885,6 +1002,7 @@ export class OrdersService {
   private async getProductById(productId: number): Promise<Product> {
     const product = await this.productRepository.findOne({
       where: { id: productId },
+      relations: ['images'], // 确保加载产品的图片关系
     });
 
     if (!product) {

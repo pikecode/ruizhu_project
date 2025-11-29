@@ -152,15 +152,15 @@ export default {
               color: '默认'
             })) : [],
             address: orderData.shippingAddress ? {
-              name: orderData.shippingAddress.receiverName || '',
-              phone: orderData.shippingAddress.receiverPhone || '',
+              name: orderData.receiverName || orderData.shippingAddress.receiverName || '',
+              phone: orderData.receiverPhone || orderData.shippingAddress.receiverPhone || '',
               province: orderData.shippingAddress.province || '',
               city: orderData.shippingAddress.city || '',
               district: orderData.shippingAddress.district || '',
               detail: orderData.shippingAddress.addressDetail || ''
             } : {
-              name: '',
-              phone: '',
+              name: orderData.receiverName || '',
+              phone: orderData.receiverPhone || '',
               province: '',
               city: '',
               district: '',

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Table, Button, Space, Card, Tag, message, Input, Modal, Tabs } from 'antd'
-import { ReloadOutlined, EditOutlined } from '@ant-design/icons'
+import { Table, Button, Space, Card, Tag, message, Input, Modal, Tabs, Descriptions, Divider } from 'antd'
+import { ReloadOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons'
 import Layout from '@/components/Layout'
 import { useAuthStore } from '@/store'
 import { ordersService } from '@/services/orders'
@@ -11,7 +11,9 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(false)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
   const [trackingModalVisible, setTrackingModalVisible] = useState(false)
+  const [detailModalVisible, setDetailModalVisible] = useState(false)
   const [editingOrder, setEditingOrder] = useState<Order | null>(null)
+  const [detailOrder, setDetailOrder] = useState<Order | null>(null)
   const [trackingNumber, setTrackingNumber] = useState('')
   const [activeStatus, setActiveStatus] = useState<string>('all')
   const { isHydrated } = useAuthStore()
@@ -87,6 +89,26 @@ export default function OrdersPage() {
     setTrackingNumber('')
   }
 
+  const handleViewDetail = async (order: Order) => {
+    try {
+      setLoading(true)
+      // 调用订单详情 API 获取完整数据
+      const detailData = await ordersService.getOrderById(String(order.id))
+      setDetailOrder(detailData)
+      setDetailModalVisible(true)
+    } catch (error) {
+      message.error('加载订单详情失败')
+      console.error(error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCloseDetail = () => {
+    setDetailModalVisible(false)
+    setDetailOrder(null)
+  }
+
   const statusColor: Record<string, string> = {
     pending: 'orange',
     confirmed: 'blue',
@@ -109,10 +131,14 @@ export default function OrdersPage() {
 
   const columns = [
     {
-      title: '订单ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 120,
+      title: '订单编号',
+      dataIndex: 'orderNo',
+      key: 'orderNo',
+      width: 180,
+      render: (_: any, record: Order) => {
+        // 如果有orderNo字段就显示,否则用ID作为编号
+        return record.orderNo || `ORD${String(record.id).padStart(8, '0')}`
+      },
     },
     {
       title: '用户信息',
@@ -136,14 +162,6 @@ export default function OrdersPage() {
       key: 'totalAmount',
       width: 120,
       render: (total: number) => `¥${(total / 100).toFixed(2)}`,
-    },
-    {
-      title: '商品数量',
-      key: 'itemCount',
-      width: 100,
-      render: (_: any, record: Order) => {
-        return record.items?.length || 0
-      },
     },
     {
       title: '状态',
@@ -180,6 +198,22 @@ export default function OrdersPage() {
       key: 'createdAt',
       width: 180,
       render: (text: string) => new Date(text).toLocaleDateString(),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 120,
+      fixed: 'right',
+      render: (_: any, record: Order) => (
+        <Button
+          type="primary"
+          size="small"
+          icon={<EyeOutlined />}
+          onClick={() => handleViewDetail(record)}
+        >
+          查看详情
+        </Button>
+      ),
     },
   ]
 
@@ -249,7 +283,7 @@ export default function OrdersPage() {
         >
           <div style={{ marginTop: 16 }}>
             <div style={{ marginBottom: 12 }}>
-              <strong>订单ID:</strong> {editingOrder?.id}
+              <strong>订单编号:</strong> {editingOrder?.orderNo || `ORD${String(editingOrder?.id || '').padStart(8, '0')}`}
             </div>
             <div style={{ marginBottom: 12 }}>
               <strong>订单状态:</strong> <Tag color="cyan">{statusTextMap[editingOrder?.status || 'shipped']}</Tag>
@@ -267,6 +301,222 @@ export default function OrdersPage() {
               </p>
             </div>
           </div>
+        </Modal>
+
+        <Modal
+          title="订单详情"
+          open={detailModalVisible}
+          onCancel={handleCloseDetail}
+          width={700}
+          footer={[
+            <Button key="close" onClick={handleCloseDetail}>
+              关闭
+            </Button>,
+          ]}
+        >
+          {detailOrder && (
+            <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+              {/* 订单摘要 - 仿小程序风格 */}
+              <div style={{ padding: '16px', backgroundColor: '#fff', marginBottom: '12px', borderRadius: '4px' }}>
+                {/* 订单状态 */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '12px' }}>
+                  <Tag color={statusColor[detailOrder.status]} style={{ fontSize: '12px' }}>
+                    {statusTextMap[detailOrder.status] || detailOrder.status}
+                  </Tag>
+                </div>
+
+                {/* 订单金额 */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #f0f0f0' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>订单金额</div>
+                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#f00' }}>
+                      ¥{(detailOrder.totalAmount ? detailOrder.totalAmount / 100 : detailOrder.totalPrice || 0).toFixed(2)}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>下单时间</div>
+                    <div style={{ fontSize: '14px' }}>{new Date(detailOrder.createdAt).toLocaleDateString()} {new Date(detailOrder.createdAt).toLocaleTimeString()}</div>
+                  </div>
+                </div>
+
+                {/* 快递单号 */}
+                {detailOrder.trackingNumber && (
+                  <div style={{ paddingTop: '12px', fontSize: '13px' }}>
+                    <span style={{ color: '#999' }}>快递单号：</span>
+                    <span style={{ fontWeight: '500' }}>{detailOrder.trackingNumber}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* 收货地址 */}
+              <div style={{ padding: '16px', backgroundColor: '#fff', marginBottom: '12px', borderRadius: '4px' }}>
+                <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '12px' }}>收货地址</div>
+                {detailOrder.shippingAddress && Object.keys(detailOrder.shippingAddress).length > 0 ? (
+                  <div>
+                    {/* 收货人信息 */}
+                    <div style={{ marginBottom: '8px', lineHeight: '1.6' }}>
+                      <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+                        {detailOrder.receiverName || detailOrder.shippingAddress.receiverName || '-'}
+                        <span style={{ marginLeft: '12px', color: '#666', fontWeight: 'normal', fontSize: '12px' }}>
+                          {detailOrder.receiverPhone || detailOrder.shippingAddress.receiverPhone || '-'}
+                        </span>
+                      </div>
+                      {/* 地址信息 */}
+                      <div style={{ color: '#666', fontSize: '13px' }}>
+                        {[
+                          detailOrder.shippingAddress.province || detailOrder.shippingAddress.state,
+                          detailOrder.shippingAddress.city,
+                          detailOrder.shippingAddress.district || detailOrder.shippingAddress.region,
+                        ]
+                          .filter(Boolean)
+                          .join('')}
+                        {detailOrder.shippingAddress.addressDetail || detailOrder.shippingAddress.street || detailOrder.shippingAddress.address || ''}
+                      </div>
+                    </div>
+
+                    {/* 额外信息 */}
+                    {(detailOrder.user?.email || detailOrder.shippingAddress.zipCode) && (
+                      <div style={{ paddingTop: '12px', borderTop: '1px solid #f0f0f0', fontSize: '13px', color: '#666' }}>
+                        {detailOrder.user?.email && (
+                          <div style={{ marginBottom: '6px' }}>
+                            <span>邮箱：</span>
+                            <span style={{ color: '#333' }}>{detailOrder.user.email}</span>
+                          </div>
+                        )}
+                        {detailOrder.shippingAddress.zipCode && (
+                          <div>
+                            <span>邮编：</span>
+                            <span style={{ color: '#333' }}>{detailOrder.shippingAddress.zipCode || detailOrder.shippingAddress.postalCode || '-'}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ color: '#999', fontSize: '13px' }}>暂无收货地址信息</div>
+                )}
+              </div>
+
+              {/* 商品清单 */}
+              <div style={{ padding: '16px', backgroundColor: '#fff', borderRadius: '4px' }}>
+                <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '12px' }}>商品清单</div>
+
+                {detailOrder.items && detailOrder.items.length > 0 ? (
+                  <div>
+                    {detailOrder.items.map((item, index) => {
+                      // 获取图片 URL - 从 product 对象中获取
+                      const imageUrl = item.product?.coverImageUrl;
+
+                      return (
+                        <div key={`${item.productId}-${index}`} style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: index < detailOrder.items!.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
+                          <div style={{ display: 'flex', gap: '12px' }}>
+                            {/* 产品图片 */}
+                            {imageUrl ? (
+                              <div style={{ flex: '0 0 80px', minHeight: '80px' }}>
+                                <img
+                                  src={imageUrl}
+                                  alt={item.productName}
+                                  style={{
+                                    width: '80px',
+                                    height: '80px',
+                                    objectFit: 'cover',
+                                    borderRadius: '4px',
+                                    backgroundColor: '#f5f5f5',
+                                  }}
+                                  onError={(e) => {
+                                    // 图片加载失败时显示占位符
+                                    (e.target as HTMLImageElement).style.backgroundColor = '#f0f0f0';
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <div style={{ flex: '0 0 80px', minHeight: '80px', backgroundColor: '#f5f5f5', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '12px', color: '#999' }}>无图片</span>
+                              </div>
+                            )}
+
+                            {/* 产品信息 */}
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                              {/* 产品名称和分类 */}
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '4px', lineHeight: '1.4' }}>
+                                  {item.productName}
+                                </div>
+                                {item.selectedAttributes?.categoryName && (
+                                  <div style={{ fontSize: '11px', color: '#999', marginBottom: '6px' }}>
+                                    分类：{item.selectedAttributes.categoryName}
+                                  </div>
+                                )}
+                                {item.selectedAttributes?.description && (
+                                  <div style={{ fontSize: '11px', color: '#666', marginBottom: '6px', lineHeight: '1.3' }}>
+                                    {item.selectedAttributes.description.substring(0, 50)}
+                                    {item.selectedAttributes.description.length > 50 ? '...' : ''}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 数量和价格 */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ fontSize: '12px', color: '#999' }}>
+                                  数量：<span style={{ color: '#333', fontWeight: '500' }}>{item.quantity}</span>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#f00' }}>
+                                    ¥{(item.priceSnapshot ? item.priceSnapshot / 100 : item.price / 100).toFixed(2)}
+                                  </div>
+                                  {item.selectedAttributes?.productType && (
+                                    <div style={{ fontSize: '10px', color: '#999', marginTop: '2px' }}>
+                                      {item.selectedAttributes.productType === 'vip_recharge' ? 'VIP充值' : item.selectedAttributes.productType}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* 金额汇总 */}
+                    <div style={{ paddingTop: '12px', borderTop: '1px solid #f0f0f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
+                        <span>商品小计</span>
+                        <span>¥{(detailOrder.subtotal ? detailOrder.subtotal / 100 : 0).toFixed(2)}</span>
+                      </div>
+
+                      {detailOrder.discountAmount && detailOrder.discountAmount > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#f00' }}>
+                          <span>
+                            VIP折扣
+                            {detailOrder.subtotal && detailOrder.subtotal > 0 && (
+                              <span style={{ fontSize: '11px', marginLeft: '4px', color: '#999' }}>
+                                ({((detailOrder.discountAmount / detailOrder.subtotal) * 10).toFixed(1)}折)
+                              </span>
+                            )}
+                          </span>
+                          <span>-¥{(detailOrder.discountAmount / 100).toFixed(2)}</span>
+                        </div>
+                      )}
+
+                      {detailOrder.shippingCost && detailOrder.shippingCost > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
+                          <span>运费</span>
+                          <span>¥{(detailOrder.shippingCost / 100).toFixed(2)}</span>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid #f0f0f0', fontSize: '14px', fontWeight: 'bold' }}>
+                        <span>应付金额</span>
+                        <span style={{ color: '#f00' }}>¥{(detailOrder.totalAmount ? detailOrder.totalAmount / 100 : 0).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ color: '#999', fontSize: '13px' }}>暂无商品信息</div>
+                )}
+              </div>
+            </div>
+          )}
         </Modal>
       </div>
     </Layout>

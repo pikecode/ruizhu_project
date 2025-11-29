@@ -16,15 +16,11 @@ export const seedRegions = async (dataSource: DataSource) => {
   console.log('🌍 开始初始化地区数据...');
 
   try {
-    // 清除现有数据并重新初始化
+    // 只在数据为空时初始化,避免重复删除数据
     const existingProvinces = await provinceRepository.count();
     if (existingProvinces > 0) {
-      console.log('⏳ 清除现有地区数据...');
-      // 使用 query builder 清除所有数据（避免 TypeORM 的 delete({}) 空条件问题）
-      await districtRepository.createQueryBuilder().delete().from('districts').execute();
-      await cityRepository.createQueryBuilder().delete().from('cities').execute();
-      await provinceRepository.createQueryBuilder().delete().from('provinces').execute();
-      console.log('✓ 已清除旧数据');
+      console.log('✓ 地区数据已存在,跳过初始化');
+      return;
     }
 
     let provinceIndex = 0;

@@ -153,8 +153,8 @@ export interface ArrayCollection {
 
 // Order
 export interface Order {
-  id: string
-  userId: string
+  id: string | number
+  userId: string | number
   user?: {
     id: number
     nickname?: string
@@ -162,29 +162,43 @@ export interface Order {
     email?: string
   }
   items: OrderItem[]
-  totalPrice: number
+  subtotal?: number
+  totalPrice?: number
   totalAmount?: number
+  shippingCost?: number
+  discountAmount?: number
   status: OrderStatus
-  shippingAddress: Address
+  paymentStatus?: string
+  shippingAddress?: Record<string, any> | Address
+  receiverName?: string
+  receiverPhone?: string
   productIds?: string  // 多个产品ID用分号分隔，例如: "1;2;3"
   trackingNumber?: string  // 快递单号
+  notes?: string
   createdAt: string
   updatedAt: string
 }
 
 export interface OrderItem {
-  productId: string
+  productId: string | number
   productName: string
   quantity: number
   price: number
+  selectedAttributes?: Record<string, any>
 }
 
 export interface Address {
-  street: string
+  addressDetail?: string
+  street?: string
+  address?: string
   city: string
-  state: string
-  zipCode: string
-  country: string
+  province?: string
+  state?: string
+  district?: string
+  region?: string
+  zipCode?: string
+  postalCode?: string
+  country?: string
 }
 
 export type OrderStatus = 'pending' | 'paid' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
