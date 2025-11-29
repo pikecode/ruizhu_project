@@ -59,9 +59,9 @@
 
     <!-- 我的订单 -->
     <view class="orders-card">
-      <view class="orders-header" @tap="goToOrders('all')">
+      <view class="orders-header" >
         <text class="orders-title">我的订单</text>
-        <text class="orders-arrow">→</text>
+        <!-- <text class="orders-arrow">→</text> -->
       </view>
       <view class="order-status-grid">
         <view

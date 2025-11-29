@@ -148,7 +148,7 @@ export default {
               name: item.product?.name || item.productName || '未知商品',
               image: item.product?.coverImageUrl || 'https://via.placeholder.com/400x400?text=No+Image',
               quantity: item.quantity,
-              price: item.priceSnapshot || item.unitPrice || 0, // 保持分为单位，在模板中转换
+              price: item.priceSnapshot || item.unitPrice || 0, // 分为单位，在模板中除以100转换
               color: '默认'
             })) : [],
             address: orderData.shippingAddress ? {
@@ -208,15 +208,11 @@ export default {
       return statusMap[status] || status
     },
     formatPrice(price) {
-      // 处理价格单位转换
-      // 如果 price 是数字且大于 100，认为是分，需要除以 100
-      // 否则认为已经是元
-      if (typeof price === 'number' && price > 100) {
+      // 费用明细中的价格都是分为单位，需要除以100转为元
+      if (typeof price === 'number') {
         return (price / 100).toFixed(2)
-      } else if (typeof price === 'number') {
-        return price.toFixed(2)
       } else if (typeof price === 'string') {
-        return parseFloat(price).toFixed(2)
+        return (parseFloat(price) / 100).toFixed(2)
       }
       return '0.00'
     },

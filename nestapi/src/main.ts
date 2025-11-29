@@ -16,13 +16,14 @@ if (typeof globalThis.crypto === 'undefined') {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // 初始化地区数据
+  // 初始化地区数据 - 仅在数据为空时执行
   try {
     const dataSource = app.get(DataSource);
     await seedRegions(dataSource);
   } catch (error) {
     console.error('Failed to seed regions:', error);
   }
+  console.log('✓ 地区初始化检查完成');
 
   // Set global API prefix (excluding Swagger docs)
   app.setGlobalPrefix('api', { exclude: ['docs', 'docs/json'] });

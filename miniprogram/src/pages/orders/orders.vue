@@ -94,7 +94,9 @@
             ? '没有已支付订单'
             : activeTab === 'shipped'
             ? '没有已发货订单'
-            : '没有已取消订单'
+            : activeTab === 'cancelled'
+            ? '没有已取消订单'
+            : '暂无订单'
         }}
       </text>
       <text class="empty-description">去选购喜欢的商品吧</text>
@@ -136,6 +138,9 @@ export default {
     // 检查 URL 参数中是否指定了 status（从 profile 页面跳转过来）
     if (options?.status) {
       this.activeTab = options.status
+      console.log('[Orders] 从URL参数设置activeTab:', this.activeTab)
+    } else {
+      console.log('[Orders] 使用默认activeTab:', this.activeTab)
     }
     this.loadOrders()
   },
@@ -232,8 +237,10 @@ export default {
      * 切换标签页
      */
     selectTab(value) {
+      console.log('[Orders] 切换标签:', value, '当前:', this.activeTab)
       if (this.activeTab === value) return
       this.activeTab = value
+      console.log('[Orders] 标签已切换到:', this.activeTab)
     },
     updateTabCounts() {
       const counts = {
