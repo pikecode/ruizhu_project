@@ -66,7 +66,7 @@ export default function OrdersPage() {
 
     try {
       setLoading(true)
-      await ordersService.updateOrder(editingOrder.id, {
+      await ordersService.updateOrder(String(editingOrder.id), {
         trackingNumber,
         status: 'shipped'  // 自动更新订单状态为已发货
       })
@@ -132,12 +132,12 @@ export default function OrdersPage() {
   const columns = [
     {
       title: '订单编号',
-      dataIndex: 'orderNo',
-      key: 'orderNo',
+      dataIndex: 'id',
+      key: 'id',
       width: 180,
       render: (_: any, record: Order) => {
-        // 如果有orderNo字段就显示,否则用ID作为编号
-        return record.orderNo || `ORD${String(record.id).padStart(8, '0')}`
+        // 使用ID作为订单编号
+        return `ORD${String(record.id).padStart(8, '0')}`
       },
     },
     {
@@ -203,7 +203,7 @@ export default function OrdersPage() {
       title: '操作',
       key: 'action',
       width: 120,
-      fixed: 'right',
+      fixed: 'right' as const,
       render: (_: any, record: Order) => (
         <Button
           type="primary"
@@ -283,7 +283,7 @@ export default function OrdersPage() {
         >
           <div style={{ marginTop: 16 }}>
             <div style={{ marginBottom: 12 }}>
-              <strong>订单编号:</strong> {editingOrder?.orderNo || `ORD${String(editingOrder?.id || '').padStart(8, '0')}`}
+              <strong>订单编号:</strong> {`ORD${String(editingOrder?.id || '').padStart(8, '0')}`}
             </div>
             <div style={{ marginBottom: 12 }}>
               <strong>订单状态:</strong> <Tag color="cyan">{statusTextMap[editingOrder?.status || 'shipped']}</Tag>
@@ -318,6 +318,10 @@ export default function OrdersPage() {
             <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               {/* 订单摘要 - 仿小程序风格 */}
               <div style={{ padding: '16px', backgroundColor: '#fff', marginBottom: '12px', borderRadius: '4px' }}>
+                {/* 订单编号 */}
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>
+                  订单编号: <span style={{ color: '#333', fontWeight: '500' }}>{detailOrder.orderNo || `ORD${String(detailOrder.id).padStart(8, '0')}`}</span>
+                </div>
                 {/* 订单状态 */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '12px' }}>
                   <Tag color={statusColor[detailOrder.status]} style={{ fontSize: '12px' }}>
@@ -356,9 +360,9 @@ export default function OrdersPage() {
                     {/* 收货人信息 */}
                     <div style={{ marginBottom: '8px', lineHeight: '1.6' }}>
                       <div style={{ fontWeight: '500', marginBottom: '4px' }}>
-                        {detailOrder.receiverName || detailOrder.shippingAddress.receiverName || '-'}
+                        {detailOrder.receiverName || '-'}
                         <span style={{ marginLeft: '12px', color: '#666', fontWeight: 'normal', fontSize: '12px' }}>
-                          {detailOrder.receiverPhone || detailOrder.shippingAddress.receiverPhone || '-'}
+                          {detailOrder.receiverPhone || '-'}
                         </span>
                       </div>
                       {/* 地址信息 */}
@@ -462,7 +466,7 @@ export default function OrdersPage() {
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                   <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#f00' }}>
-                                    ¥{(item.priceSnapshot ? item.priceSnapshot / 100 : item.price / 100).toFixed(2)}
+                                    ¥{((item.priceSnapshot || item.price) / 100).toFixed(2)}
                                   </div>
                                   {item.selectedAttributes?.productType && (
                                     <div style={{ fontSize: '10px', color: '#999', marginTop: '2px' }}>

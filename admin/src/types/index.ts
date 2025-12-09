@@ -154,6 +154,7 @@ export interface ArrayCollection {
 // Order
 export interface Order {
   id: string | number
+  orderNo?: string  // 订单编号，如: ORD-1764408720244-0024
   userId: string | number
   user?: {
     id: number
@@ -184,7 +185,15 @@ export interface OrderItem {
   productName: string
   quantity: number
   price: number
+  priceSnapshot?: number  // 快照价格（分为单位）
   selectedAttributes?: Record<string, any>
+  product?: {
+    id: number
+    name: string
+    coverImageUrl?: string
+    currentPrice: number
+    originalPrice: number
+  }
 }
 
 export interface Address {
