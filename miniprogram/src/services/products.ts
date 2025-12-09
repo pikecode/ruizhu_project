@@ -58,7 +58,7 @@ const CATEGORY_MAP: Record<number, string> = {
   1: '服装',
   2: '珠宝',
   3: '鞋履',
-  4: '香水',
+  4: '精油香水',
   // 添加更多分类根据实际需要
 }
 
@@ -100,7 +100,7 @@ export function getCategories() {
     { id: 1, name: '服装' },
     { id: 2, name: '珠宝' },
     { id: 3, name: '鞋履' },
-    { id: 4, name: '香水' }
+    { id: 4, name: '精油香水' }
   ]
 }
 

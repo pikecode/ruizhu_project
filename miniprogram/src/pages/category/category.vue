@@ -74,7 +74,7 @@
             <image
               class="product-image"
               :src="product.image"
-              mode="aspectFill"
+              mode="aspectFit"
               @load="onImageLoad"
             ></image>
             <!-- 库存状态徽章 -->
@@ -432,12 +432,15 @@ export default {
       position: relative;
       width: 100%;
       height: 340rpx;
-      background: #f5f5f5;
       overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
 
       .product-image {
         width: 100%;
         height: 100%;
+        display: block;
       }
 
       .product-badge {

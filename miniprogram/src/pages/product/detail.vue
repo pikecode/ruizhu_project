@@ -17,7 +17,7 @@
       @change="onImageChange"
     >
       <swiper-item v-for="(image, index) in productImages" :key="index">
-        <image class="swiper-image" :src="image" mode="aspectFill"></image>
+        <image class="swiper-image" :src="image" mode="aspectFit"></image>
       </swiper-item>
     </swiper>
 
@@ -859,13 +859,15 @@ export default {
 .product-swiper {
   width: 100%;
   height: 800rpx;
-  background: #f5f5f5;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .swiper-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
 }
 
 /* 商品信息 */
