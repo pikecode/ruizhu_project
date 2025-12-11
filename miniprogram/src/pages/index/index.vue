@@ -284,6 +284,7 @@ import { collectionService } from '@/services/collection'
 import { newsService } from '@/services/news'
 import { memberBenefitsService } from '@/services/member-benefits'
 import { authService } from '@/services/auth'
+import { createHomeShareInfo, generateSharePath } from '@/services/share'
 
 export default {
   components: {
@@ -340,6 +341,31 @@ export default {
     this.loadRecommendedProducts()
     // 加载会员礼遇数据
     this.loadMemberBenefits()
+  },
+
+  /**
+   * 分享给朋友
+   */
+  onShareAppMessage() {
+    const shareInfo = createHomeShareInfo()
+    return {
+      title: shareInfo.title,
+      desc: shareInfo.desc || '',
+      path: shareInfo.path,
+      imageUrl: '/static/images/logo.jpg'
+    }
+  },
+
+  /**
+   * 分享到朋友圈
+   */
+  onShareTimeline() {
+    const shareInfo = createHomeShareInfo()
+    return {
+      title: shareInfo.title,
+      desc: shareInfo.desc || '',
+      imageUrl: '/static/images/logo.jpg'
+    }
   },
   methods: {
     /**

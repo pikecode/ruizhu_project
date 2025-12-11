@@ -187,6 +187,7 @@ import { authService } from '../../services/auth'
 import { api } from '../../services/api'
 import { submitConsultation } from '../../services/consultations'
 import { extractErrorType, isInsufficientStockError, isAuthError } from '../../types/error'
+import { createProductShareInfo, generateSharePath } from '../../services/share'
 import PhoneAuthModal from '../../components/PhoneAuthModal.vue'
 
 export default {
@@ -236,6 +237,39 @@ export default {
       }
     }
   },
+  /**
+   * 分享给朋友
+   */
+  onShareAppMessage() {
+    const shareInfo = createProductShareInfo(
+      this.productData.id,
+      this.productData.name,
+      this.productImages[0]
+    )
+    return {
+      title: shareInfo.title,
+      desc: shareInfo.desc || '',
+      path: generateSharePath(shareInfo.path, shareInfo.query),
+      imageUrl: shareInfo.imageUrl || '/static/images/logo.jpg'
+    }
+  },
+
+  /**
+   * 分享到朋友圈
+   */
+  onShareTimeline() {
+    const shareInfo = createProductShareInfo(
+      this.productData.id,
+      this.productData.name,
+      this.productImages[0]
+    )
+    return {
+      title: shareInfo.title,
+      desc: shareInfo.desc || '',
+      imageUrl: shareInfo.imageUrl || '/static/images/logo.jpg'
+    }
+  },
+
   async onLoad(options) {
     try {
       // ✅ 重要：在页面加载时就调用wechatLogin()确保sessionKey存储到数据库

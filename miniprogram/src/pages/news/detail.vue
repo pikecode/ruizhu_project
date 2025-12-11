@@ -45,6 +45,7 @@
 <script>
 import ConsultationNavbar from '@/components/ConsultationNavbar.vue'
 import { newsService } from '@/services/news'
+import { createNewsShareInfo, generateSharePath } from '@/services/share'
 
 export default {
   name: 'NewsDetail',
@@ -66,6 +67,39 @@ export default {
     } else {
       console.warn('Missing news ID')
       uni.showToast({ title: '缺少资讯ID', icon: 'error' })
+    }
+  },
+
+  /**
+   * 分享给朋友
+   */
+  onShareAppMessage() {
+    const shareInfo = createNewsShareInfo(
+      this.newsId,
+      this.newsItem?.title || '云杰精选资讯',
+      this.newsItem?.coverImageUrl
+    )
+    return {
+      title: shareInfo.title,
+      desc: shareInfo.desc || '',
+      path: generateSharePath(shareInfo.path, shareInfo.query),
+      imageUrl: shareInfo.imageUrl || '/static/images/logo.jpg'
+    }
+  },
+
+  /**
+   * 分享到朋友圈
+   */
+  onShareTimeline() {
+    const shareInfo = createNewsShareInfo(
+      this.newsId,
+      this.newsItem?.title || '云杰精选资讯',
+      this.newsItem?.coverImageUrl
+    )
+    return {
+      title: shareInfo.title,
+      desc: shareInfo.desc || '',
+      imageUrl: shareInfo.imageUrl || '/static/images/logo.jpg'
     }
   },
   methods: {

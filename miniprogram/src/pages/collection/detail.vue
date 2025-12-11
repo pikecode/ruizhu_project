@@ -87,9 +87,12 @@
 </template>
 
 <script>
+import { createCollectionShareInfo, generateSharePath } from '@/services/share'
+
 export default {
   data() {
     return {
+      collectionId: 0,
       collectionName: '秋冬系列',
       productCount: 243,
       searchKeyword: '',
@@ -198,8 +201,44 @@ export default {
     if (options.collection) {
       this.collectionName = options.collection
     }
+    // 从URL参数获取集合ID
+    if (options?.id) {
+      this.collectionId = parseInt(options.id)
+    }
     console.log('集合详情页加载', options)
   },
+
+  /**
+   * 分享给朋友
+   */
+  onShareAppMessage() {
+    const shareInfo = createCollectionShareInfo(
+      this.collectionId,
+      this.collectionName
+    )
+    return {
+      title: shareInfo.title,
+      desc: shareInfo.desc || '',
+      path: generateSharePath(shareInfo.path, shareInfo.query),
+      imageUrl: '/static/images/logo.jpg'
+    }
+  },
+
+  /**
+   * 分享到朋友圈
+   */
+  onShareTimeline() {
+    const shareInfo = createCollectionShareInfo(
+      this.collectionId,
+      this.collectionName
+    )
+    return {
+      title: shareInfo.title,
+      desc: shareInfo.desc || '',
+      imageUrl: '/static/images/logo.jpg'
+    }
+  },
+
   methods: {
     onSearchInput(e) {
       this.searchKeyword = e.detail.value
