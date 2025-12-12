@@ -212,15 +212,27 @@ export default {
    * 分享给朋友
    */
   onShareAppMessage() {
-    const shareInfo = createCollectionShareInfo(
-      this.collectionId,
-      this.collectionName
-    )
-    return {
-      title: shareInfo.title,
-      desc: shareInfo.desc || '',
-      path: generateSharePath(shareInfo.path, shareInfo.query),
-      imageUrl: '/static/images/logo.jpg'
+    try {
+      const collectionId = this.collectionId || 0
+      const collectionName = this.collectionName || '韵界精选集合'
+
+      const shareInfo = createCollectionShareInfo(
+        collectionId,
+        collectionName
+      )
+      return {
+        title: shareInfo.title,
+        desc: shareInfo.desc || '',
+        path: generateSharePath(shareInfo.path, shareInfo.query),
+        imageUrl: '/static/images/logo.jpg'
+      }
+    } catch (error) {
+      console.error('集合分享给朋友出错:', error)
+      return {
+        title: '韵界品牌官方旗舰店',
+        desc: '精选集合',
+        imageUrl: '/static/images/logo.jpg'
+      }
     }
   },
 
@@ -228,14 +240,26 @@ export default {
    * 分享到朋友圈
    */
   onShareTimeline() {
-    const shareInfo = createCollectionShareInfo(
-      this.collectionId,
-      this.collectionName
-    )
-    return {
-      title: shareInfo.title,
-      desc: shareInfo.desc || '',
-      imageUrl: '/static/images/logo.jpg'
+    try {
+      const collectionId = this.collectionId || 0
+      const collectionName = this.collectionName || '韵界精选集合'
+
+      const shareInfo = createCollectionShareInfo(
+        collectionId,
+        collectionName
+      )
+      return {
+        title: shareInfo.title,
+        desc: shareInfo.desc || '',
+        imageUrl: '/static/images/logo.jpg'
+      }
+    } catch (error) {
+      console.error('集合分享到朋友圈出错:', error)
+      return {
+        title: '韵界品牌官方旗舰店',
+        desc: '精选集合',
+        imageUrl: '/static/images/logo.jpg'
+      }
     }
   },
 

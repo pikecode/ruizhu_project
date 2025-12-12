@@ -74,16 +74,30 @@ export default {
    * 分享给朋友
    */
   onShareAppMessage() {
-    const shareInfo = createNewsShareInfo(
-      this.newsId,
-      this.newsItem?.title || '云杰精选资讯',
-      this.newsItem?.coverImageUrl
-    )
-    return {
-      title: shareInfo.title,
-      desc: shareInfo.desc || '',
-      path: generateSharePath(shareInfo.path, shareInfo.query),
-      imageUrl: shareInfo.imageUrl || '/static/images/logo.jpg'
+    try {
+      const newsId = this.newsId || 1
+      const newsTitle = this.newsItem?.title || '韵界精选资讯'
+      const newsImage = this.newsItem?.coverImageUrl
+
+      const shareInfo = createNewsShareInfo(
+        newsId,
+        newsTitle,
+        newsImage
+      )
+      return {
+        title: shareInfo.title,
+        desc: shareInfo.desc || '',
+        path: generateSharePath(shareInfo.path, shareInfo.query),
+        imageUrl: shareInfo.imageUrl || '/static/images/logo.jpg'
+      }
+    } catch (error) {
+      console.error('资讯分享给朋友出错:', error)
+      return {
+        title: '韵界品牌官方旗舰店',
+        desc: '精选资讯',
+        path: '/pages/news/detail',
+        imageUrl: '/static/images/logo.jpg'
+      }
     }
   },
 
@@ -91,15 +105,28 @@ export default {
    * 分享到朋友圈
    */
   onShareTimeline() {
-    const shareInfo = createNewsShareInfo(
-      this.newsId,
-      this.newsItem?.title || '云杰精选资讯',
-      this.newsItem?.coverImageUrl
-    )
-    return {
-      title: shareInfo.title,
-      desc: shareInfo.desc || '',
-      imageUrl: shareInfo.imageUrl || '/static/images/logo.jpg'
+    try {
+      const newsId = this.newsId || 1
+      const newsTitle = this.newsItem?.title || '韵界精选资讯'
+      const newsImage = this.newsItem?.coverImageUrl
+
+      const shareInfo = createNewsShareInfo(
+        newsId,
+        newsTitle,
+        newsImage
+      )
+      return {
+        title: shareInfo.title,
+        desc: shareInfo.desc || '',
+        imageUrl: shareInfo.imageUrl || '/static/images/logo.jpg'
+      }
+    } catch (error) {
+      console.error('资讯分享到朋友圈出错:', error)
+      return {
+        title: '韵界品牌官方旗舰店',
+        desc: '精选资讯',
+        imageUrl: '/static/images/logo.jpg'
+      }
     }
   },
   methods: {

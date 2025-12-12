@@ -241,10 +241,15 @@ export default {
    * 分享给朋友
    */
   onShareAppMessage() {
+    // 确保使用已加载的商品数据
+    const productId = this.productData?.id || 1
+    const productName = this.productData?.name || '韵界精选商品'
+    const productImage = this.productImages?.[0] || '/static/images/logo.jpg'
+
     const shareInfo = createProductShareInfo(
-      this.productData.id,
-      this.productData.name,
-      this.productImages[0]
+      productId,
+      productName,
+      productImage
     )
     return {
       title: shareInfo.title,
@@ -258,10 +263,15 @@ export default {
    * 分享到朋友圈
    */
   onShareTimeline() {
+    // 确保使用已加载的商品数据
+    const productId = this.productData?.id || 1
+    const productName = this.productData?.name || '韵界精选商品'
+    const productImage = this.productImages?.[0] || '/static/images/logo.jpg'
+
     const shareInfo = createProductShareInfo(
-      this.productData.id,
-      this.productData.name,
-      this.productImages[0]
+      productId,
+      productName,
+      productImage
     )
     return {
       title: shareInfo.title,
