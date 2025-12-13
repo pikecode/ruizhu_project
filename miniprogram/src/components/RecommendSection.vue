@@ -9,7 +9,7 @@
         @tap="onProductTap(item)"
       >
         <view class="recommend-image-wrapper">
-          <image :src="item.image" class="recommend-image" mode="aspectFill"></image>
+          <image :src="item.image" class="recommend-image" mode="aspectFit"></image>
           <!-- 售罄标志 -->
           <view v-if="item.isSold" class="sold-out-badge">售罄</view>
           <text class="favorite-btn" @tap.stop="toggleFavorite(index)">{{ item.isFavorite ? '♥' : '♡' }}</text>
@@ -195,10 +195,12 @@ export default {
         position: relative;
         width: 100%;
         height: 320rpx;
-        background: #f5f5f5;
         border-radius: 8rpx;
         overflow: hidden;
         margin-bottom: 16rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
 
         .recommend-image {
           width: 100%;

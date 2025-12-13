@@ -244,7 +244,7 @@ export default {
     // 确保使用已加载的商品数据
     const productId = this.productData?.id || 1
     const productName = this.productData?.name || '韵界精选商品'
-    const productImage = this.productImages?.[0] || '/static/images/logo.jpg'
+    const productImage = this.productImages?.[0] || '/static/images/share.jpg'
 
     const shareInfo = createProductShareInfo(
       productId,
@@ -255,7 +255,7 @@ export default {
       title: shareInfo.title,
       desc: shareInfo.desc || '',
       path: generateSharePath(shareInfo.path, shareInfo.query),
-      imageUrl: shareInfo.imageUrl || '/static/images/logo.jpg'
+      imageUrl: shareInfo.imageUrl || '/static/images/share.jpg'
     }
   },
 
@@ -266,7 +266,7 @@ export default {
     // 确保使用已加载的商品数据
     const productId = this.productData?.id || 1
     const productName = this.productData?.name || '韵界精选商品'
-    const productImage = this.productImages?.[0] || '/static/images/logo.jpg'
+    const productImage = this.productImages?.[0] || '/static/images/share.jpg'
 
     const shareInfo = createProductShareInfo(
       productId,
@@ -276,7 +276,7 @@ export default {
     return {
       title: shareInfo.title,
       desc: shareInfo.desc || '',
-      imageUrl: shareInfo.imageUrl || '/static/images/logo.jpg'
+      imageUrl: shareInfo.imageUrl || '/static/images/share.jpg'
     }
   },
 

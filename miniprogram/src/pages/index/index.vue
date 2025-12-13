@@ -353,7 +353,7 @@ export default {
         title: shareInfo.title,
         desc: shareInfo.desc || '',
         path: shareInfo.path,
-        imageUrl: '/static/images/logo.jpg'
+        imageUrl: '/static/images/share.jpg'
       }
     } catch (error) {
       console.error('分享给朋友出错:', error)
@@ -361,7 +361,7 @@ export default {
         title: '韵界品牌官方旗舰店',
         desc: '大女主时尚生活',
         path: '/pages/index/index',
-        imageUrl: '/static/images/logo.jpg'
+        imageUrl: '/static/images/share.jpg'
       }
     }
   },
@@ -375,14 +375,14 @@ export default {
       return {
         title: shareInfo.title,
         desc: shareInfo.desc || '',
-        imageUrl: '/static/images/logo.jpg'
+        imageUrl: '/static/images/share.jpg'
       }
     } catch (error) {
       console.error('分享到朋友圈出错:', error)
       return {
         title: '韵界品牌官方旗舰店',
         desc: '大女主时尚生活',
-        imageUrl: '/static/images/logo.jpg'
+        imageUrl: '/static/images/share.jpg'
       }
     }
   },

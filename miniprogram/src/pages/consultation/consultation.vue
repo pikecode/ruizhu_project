@@ -118,7 +118,7 @@
           <input v-model="consultForm.email" type="email" placeholder="请输入您的邮箱" />
         </view>
 
-        <!-- 通用颜色选择（珠宝和香水产品除外） -->
+        <!-- 通用颜色选择（珠宝和精油香水产品除外） -->
         <view v-if="selectedProduct.categoryId !== 2 && selectedProduct.categoryId !== 4" class="form-group">
           <text class="label">颜色</text>
           <input v-model="consultForm.color" type="text" placeholder="请输入颜色，如：红色、黑色等" />
@@ -240,7 +240,7 @@ export default {
         ringSize: '',
         jewelrySize: '',
         jewelryMaterial: '',
-        // 香水相关
+        // 精油香水相关
         perfumePreference: '',
         // 通用
         remarks: ''
@@ -252,7 +252,7 @@ export default {
         { id: 1, name: '服装', icon: '👔' },
         { id: 2, name: '珠宝', icon: '✨' },
         { id: 3, name: '鞋履', icon: '👞' },
-        { id: 4, name: '香水', icon: '🌸' }
+        { id: 4, name: '精油香水', icon: '🌸' }
       ],
 
       // 所有产品数据（从API加载）
@@ -502,7 +502,7 @@ export default {
         ringSize: this.consultForm.ringSize?.trim() || undefined,
         jewelrySize: this.consultForm.jewelrySize?.trim() || undefined,
         jewelryMaterial: this.consultForm.jewelryMaterial?.trim() || undefined,
-        // 香水相关
+        // 精油香水相关
         perfumePreference: this.consultForm.perfumePreference?.trim() || undefined,
         // 通用
         remarks: this.consultForm.remarks?.trim() || undefined
@@ -548,7 +548,7 @@ export default {
             ringSize: '',
             jewelrySize: '',
             jewelryMaterial: '',
-            // 香水相关
+            // 精油香水相关
             perfumePreference: '',
             // 通用
             remarks: ''
