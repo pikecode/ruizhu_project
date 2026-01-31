@@ -308,17 +308,21 @@ export class AuthService {
   }
 
   /**
-   * 微信登录 - 使用授权码获取 openId 和 sessionKey
-   * 小程序调用 uni.login() 后获取 code，前端通过此接口获取 openId 和 sessionKey
+   * 微信登录 - 使用授权码获取 openId
+   * 小程序调用 uni.login() 后获取 code，前端通过此接口获取 openId
+   *
+   * ⚠️ 安全说明：
+   * - sessionKey 不返回给前端（符合微信安全规范）
+   * - sessionKey 仅存储在数据库中，由后端进行手机号解密
    *
    * 完整流程：
    * 1. 调用微信 jscode2session 接口获取 openId 和 sessionKey
    * 2. 在数据库中创建或更新用户，存储 sessionKey
-   * 3. 返回 openId 和 sessionKey 给前端
-   * 4. 前端后续使用这些信息调用手机号登录接口
+   * 3. 仅返回 openId 给前端（不返回 sessionKey）
+   * 4. 前端后续使用 openId 调用手机号登录接口
    *
    * @param code 微信授权码（来自 uni.login()）
-   * @returns { openId, sessionKey }
+   * @returns { openId }
    */
   async wechatLoginWithCode(code: string) {
     if (!code) {
@@ -388,9 +392,11 @@ export class AuthService {
         console.warn('[wechatLoginWithCode] Continuing despite database storage error');
       }
 
+      // ⚠️ 安全改进：不再返回 sessionKey 给前端
+      // sessionKey 已存储在数据库中，后续手机号解密将从数据库获取
+      // 这样可以防止 sessionKey 在网络中明文传输
       return {
         openId,
-        sessionKey,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {

@@ -107,16 +107,21 @@ export class AuthController {
   }
 
   /**
-   * 微信登录 - 使用授权码获取 openId 和 sessionKey
-   * 小程序调用 uni.login() 后，通过此接口获取 openId 和 sessionKey
+   * 微信登录 - 使用授权码获取 openId
+   * 小程序调用 uni.login() 后，通过此接口获取 openId
+   *
+   * ⚠️ 安全说明：
+   * - sessionKey 不会返回给前端（符合微信安全规范）
+   * - sessionKey 仅存储在后端数据库中
+   * - 后续手机号解密由后端使用数据库中的 sessionKey 完成
    *
    * 请求流程：
    * 1. 小程序调用 uni.login() 获取临时 code
    * 2. 前端将 code 发送到此接口
    * 3. 后端使用 code 调用微信 jscode2session 接口
-   * 4. 后端存储 sessionKey 到数据库
-   * 5. 返回 openId 和 sessionKey 给前端
-   * 6. 前端使用 openId 和 sessionKey 调用手机号登录接口
+   * 4. 后端存储 sessionKey 到数据库（不返回给前端）
+   * 5. 返回 openId 给前端
+   * 6. 前端使用 openId 调用手机号登录接口
    *
    * 请求体:
    * {
@@ -125,8 +130,7 @@ export class AuthController {
    *
    * 响应:
    * {
-   *   "openId": "微信openId",
-   *   "sessionKey": "微信会话密钥（已在后端数据库存储）"
+   *   "openId": "微信openId"
    * }
    *
    * API 端点: POST /api/auth/wechat/login-with-code
